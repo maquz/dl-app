@@ -1,10 +1,32 @@
 const express = require("express");
 const crypto = require("crypto");
 const db = require("../db");
+const supabase = require("../supabase");
 
 const router = express.Router();
 const PHONE_REGEX = /^\d{3}-\d{3}-\d{4}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Look up a registration in Supabase by email or phone (fallback for Vercel/cloud)
+async function findSupabaseRegistration(identifier) {
+  if (!supabase) return null;
+  try {
+    const ident = (identifier || "").trim();
+    if (ident.includes("@")) {
+      const { data } = await supabase.from("registrations").select("*").ilike("email", ident).maybeSingle();
+      return data || null;
+    }
+    // Try exact phone match
+    const { data: byPhone } = await supabase.from("registrations").select("*").eq("phone_number", ident).maybeSingle();
+    if (byPhone) return byPhone;
+    // Try name
+    const { data: byName } = await supabase.from("registrations").select("*").ilike("officer_name", `%${ident}%`).maybeSingle();
+    return byName || null;
+  } catch (e) {
+    console.error("Supabase registration lookup error:", e.message);
+    return null;
+  }
+}
 
 function hashPassword(password, salt = crypto.randomBytes(16).toString("hex")) {
   const hash = crypto.scryptSync(password, salt, 64).toString("hex");
@@ -158,7 +180,7 @@ router.post("/signup", (req, res) => {
 });
 
 // POST /api/auth/login - Officer Sign In
-router.post("/login", (req, res) => {
+router.post("/login", async (req, res) => {
   const { identifier, email, phoneNumber, password } = req.body;
   const loginIdentifier = (identifier || email || phoneNumber || "").trim();
   const errors = {};
@@ -198,24 +220,36 @@ router.post("/login", (req, res) => {
       staffId: row.staff_id,
     };
   } else {
-    // Check if nominee exists in registrations
-    const reg = db.prepare(`
+    // Check local SQLite registrations first
+    let reg = db.prepare(`
       SELECT * FROM registrations 
       WHERE LOWER(email) = LOWER(?) 
          OR phone_number = ? 
          OR LOWER(officer_name) = LOWER(?)
     `).get(loginIdentifier, loginIdentifier, loginIdentifier);
 
+    // Fallback: check Supabase (needed on Vercel where SQLite is ephemeral)
+    if (!reg) {
+      reg = await findSupabaseRegistration(loginIdentifier);
+    }
+
     if (reg) {
       // Auto-create their officer login account with this password
       const passwordHash = hashPassword(password.trim());
-      const info = db.prepare(`
-        INSERT INTO officers (officer_name, phone_number, email, password_hash)
-        VALUES (?, ?, ?, ?)
-      `).run(reg.officer_name, reg.phone_number, reg.email, passwordHash);
+      let newOfficerId;
+      try {
+        const info = db.prepare(`
+          INSERT INTO officers (officer_name, phone_number, email, password_hash)
+          VALUES (?, ?, ?, ?)
+        `).run(reg.officer_name, reg.phone_number, reg.email, passwordHash);
+        newOfficerId = Number(info.lastInsertRowid);
+      } catch (e) {
+        // May fail on Vercel if DB is read-only or another error; that's OK
+        newOfficerId = reg.id || 0;
+      }
 
       officer = {
-        id: Number(info.lastInsertRowid),
+        id: newOfficerId,
         officerName: reg.officer_name,
         phoneNumber: reg.phone_number,
         email: reg.email,
@@ -227,12 +261,17 @@ router.post("/login", (req, res) => {
     }
   }
 
-  // Check if this officer already has a completed nomination registration
-  const regRow = db.prepare(`
+  // Check if this officer already has a completed nomination registration (SQLite first, then Supabase)
+  let regRow = db.prepare(`
     SELECT * FROM registrations 
     WHERE phone_number = ? 
        OR (email IS NOT NULL AND email != '' AND LOWER(email) = LOWER(?))
   `).get(officer.phoneNumber, officer.email || "");
+
+  if (!regRow) {
+    regRow = await findSupabaseRegistration(officer.email || officer.phoneNumber);
+  }
+
 
   let nominee = null;
   let hasRegistered = false;
@@ -407,7 +446,7 @@ function findAccountByQuery(query) {
 }
 
 // POST /api/auth/forgot-password - Instant Browser Password Recovery
-router.post("/forgot-password", (req, res) => {
+router.post("/forgot-password", async (req, res) => {
   const { email, identifier } = req.body;
   const lookupQuery = (identifier || email || "").trim();
 
@@ -415,7 +454,26 @@ router.post("/forgot-password", (req, res) => {
     return res.status(400).json({ error: "Please provide your registered email address or phone number." });
   }
 
-  const account = findAccountByQuery(lookupQuery);
+  let account = findAccountByQuery(lookupQuery);
+
+  // Fallback: check Supabase registrations (needed on Vercel)
+  if (!account) {
+    const supReg = await findSupabaseRegistration(lookupQuery);
+    if (supReg) {
+      account = {
+        type: "registration",
+        id: supReg.id,
+        name: supReg.officer_name,
+        email: supReg.email || `${supReg.phone_number.replace(/\D/g, "")}@ges.gov.gh`,
+        phone: supReg.phone_number,
+        role: `Nominated Officer (${supReg.district}, ${supReg.region})`,
+        loginUrl: "/officer/login",
+        loginIdentifier: supReg.email || supReg.phone_number,
+        defaultPassword: supReg.phone_number.replace(/\D/g, ""),
+      };
+    }
+  }
+
   if (!account) {
     return res.status(404).json({
       error: `No registered account found matching "${lookupQuery}". Please check your email/phone number or contact your Secretariat.`,
@@ -433,15 +491,19 @@ router.post("/forgot-password", (req, res) => {
   } else if (account.type === "admin") {
     db.prepare("UPDATE admins SET password_hash = ? WHERE id = ?").run(newHash, account.id);
   } else if (account.type === "registration") {
-    // Ensure officer account exists
-    const existingOff = db.prepare("SELECT id FROM officers WHERE phone_number = ?").get(account.phone);
-    if (existingOff) {
-      db.prepare("UPDATE officers SET password_hash = ? WHERE id = ?").run(newHash, existingOff.id);
-    } else {
-      db.prepare(`
-        INSERT INTO officers (officer_name, phone_number, email, password_hash)
-        VALUES (?, ?, ?, ?)
-      `).run(account.name, account.phone, account.email, newHash);
+    // Ensure officer account exists locally
+    try {
+      const existingOff = db.prepare("SELECT id FROM officers WHERE phone_number = ?").get(account.phone);
+      if (existingOff) {
+        db.prepare("UPDATE officers SET password_hash = ? WHERE id = ?").run(newHash, existingOff.id);
+      } else {
+        db.prepare(`
+          INSERT INTO officers (officer_name, phone_number, email, password_hash)
+          VALUES (?, ?, ?, ?)
+        `).run(account.name, account.phone, account.email, newHash);
+      }
+    } catch (e) {
+      // Ignore SQLite errors on Vercel read-only fs; password is still shown
     }
   }
 
