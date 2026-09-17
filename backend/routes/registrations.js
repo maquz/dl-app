@@ -102,6 +102,16 @@ function formatNomineeRecord(row) {
   };
 }
 
+// GET /api/registrations/meta/regions - List all regions and districts
+router.get("/meta/regions", (req, res) => {
+  try {
+    const districts = require("../data/districts.json");
+    res.json(districts);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to load regions metadata." });
+  }
+});
+
 // GET /api/registrations/my-nomination - Check if an officer is already registered
 router.get("/my-nomination", async (req, res) => {
   const phone = (req.query.phone || req.query.phoneNumber || "").trim();
@@ -327,7 +337,7 @@ router.get("/stats", adminAuth, async (req, res) => {
   if (supabase) {
     try {
       const { data, error } = await supabase.from("registrations").select("*");
-      if (!error && data) {
+      if (!error && data && data.length > 0) {
         allRows = data;
       }
     } catch(e) {}
@@ -400,7 +410,7 @@ router.get("/", adminAuth, async (req, res) => {
       }
 
       const { data, error } = await query;
-      if (!error && data && data.length > 0) {
+      if (!error && data) {
         let formatted = data.map((r) => {
           let rolesParsed = [];
           try {
@@ -528,8 +538,10 @@ router.put("/:id", adminAuth, async (req, res) => {
 
   let arrivalDate = null;
   if (cohortId) {
-    const c = db.prepare("SELECT * FROM cohorts WHERE id = ?").get(cohortId);
-    if (c) arrivalDate = c.arrival_date;
+    try {
+      const c = db.prepare("SELECT * FROM cohorts WHERE id = ?").get(cohortId);
+      if (c) arrivalDate = c.arrival_date;
+    } catch (e) {}
   }
 
   // Update Supabase if available
