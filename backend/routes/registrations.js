@@ -279,7 +279,7 @@ router.post("/", async (req, res) => {
   // Insert / Sync to Supabase if connected
   if (supabase) {
     try {
-      const { data: supaRow, error: supaErr } = await supabase.from("registrations").insert({
+      const insertPayload = {
         officer_name: officerName.trim(),
         sex,
         phone_number: phoneNumber.trim(),
@@ -290,14 +290,45 @@ router.post("/", async (req, res) => {
         roles,
         cohort_id: assignedCohortId,
         arrival_date: arrivalDate,
-        attendance_status: "Registered"
-      }).select().single();
+        attendance_status: "Registered",
+      };
 
-      if (!supaErr && supaRow) {
+      const { data: supaRow, error: supaErr } = await supabase
+        .from("registrations")
+        .insert(insertPayload)
+        .select()
+        .single();
+
+      if (supaErr) {
+        console.error("Supabase insert error:", supaErr.code, supaErr.message, supaErr.details);
+        // If duplicate key on primary key sequence mismatch, try with explicit high id
+        if (supaErr.code === "23505" && supaErr.details && supaErr.details.includes("registrations_pkey")) {
+          // Sequence is out of sync — get max id and insert with id+1
+          const { data: maxRow } = await supabase
+            .from("registrations")
+            .select("id")
+            .order("id", { ascending: false })
+            .limit(1)
+            .single();
+          const nextId = maxRow ? maxRow.id + 1 : 100;
+          const { data: retryRow, error: retryErr } = await supabase
+            .from("registrations")
+            .insert({ ...insertPayload, id: nextId })
+            .select()
+            .single();
+          if (!retryErr && retryRow) {
+            insertedId = retryRow.id;
+            console.log("Supabase insert succeeded with explicit id:", insertedId);
+          } else {
+            console.error("Supabase retry insert also failed:", retryErr?.message);
+          }
+        }
+      } else if (supaRow) {
         insertedId = supaRow.id;
+        console.log("Supabase insert OK, id:", insertedId);
       }
     } catch(err) {
-      console.error("Supabase insert error:", err.message);
+      console.error("Supabase insert exception:", err.message);
     }
   }
 
