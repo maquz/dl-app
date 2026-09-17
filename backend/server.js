@@ -34,6 +34,10 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: "Internal server error" });
 });
 
-app.listen(PORT, () => {
-  console.log(`DL Master Trainers API listening on http://localhost:${PORT}`);
-});
+if (process.env.NODE_ENV !== "production" || !process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`DL Master Trainers API listening on http://localhost:${PORT}`);
+  });
+}
+
+module.exports = app;
