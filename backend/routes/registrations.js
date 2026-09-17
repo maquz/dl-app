@@ -277,6 +277,8 @@ router.post("/", async (req, res) => {
   let insertedId = Number(info.lastInsertRowid);
 
   // Insert / Sync to Supabase if connected
+  // IMPORTANT: Always use explicit id (max+1) because the Supabase sequence
+  // is out of sync and auto-increment would generate duplicate key errors.
   if (supabase) {
     try {
       const insertPayload = {
@@ -293,35 +295,34 @@ router.post("/", async (req, res) => {
         attendance_status: "Registered",
       };
 
+      // Always get the current max id to use explicit id (bypasses broken sequence)
+      const { data: maxRow } = await supabase
+        .from("registrations")
+        .select("id")
+        .order("id", { ascending: false })
+        .limit(1)
+        .single();
+      const nextId = maxRow ? maxRow.id + 1 : 100;
+
       const { data: supaRow, error: supaErr } = await supabase
         .from("registrations")
-        .insert(insertPayload)
+        .insert({ ...insertPayload, id: nextId })
         .select()
         .single();
 
       if (supaErr) {
         console.error("Supabase insert error:", supaErr.code, supaErr.message, supaErr.details);
-        // If duplicate key on primary key sequence mismatch, try with explicit high id
-        if (supaErr.code === "23505" && supaErr.details && supaErr.details.includes("registrations_pkey")) {
-          // Sequence is out of sync — get max id and insert with id+1
-          const { data: maxRow } = await supabase
-            .from("registrations")
-            .select("id")
-            .order("id", { ascending: false })
-            .limit(1)
-            .single();
-          const nextId = maxRow ? maxRow.id + 1 : 100;
-          const { data: retryRow, error: retryErr } = await supabase
-            .from("registrations")
-            .insert({ ...insertPayload, id: nextId })
-            .select()
-            .single();
-          if (!retryErr && retryRow) {
-            insertedId = retryRow.id;
-            console.log("Supabase insert succeeded with explicit id:", insertedId);
-          } else {
-            console.error("Supabase retry insert also failed:", retryErr?.message);
-          }
+        // Last resort: try without explicit id
+        const { data: fallbackRow, error: fbErr } = await supabase
+          .from("registrations")
+          .insert(insertPayload)
+          .select()
+          .single();
+        if (!fbErr && fallbackRow) {
+          insertedId = fallbackRow.id;
+          console.log("Supabase insert OK (fallback), id:", insertedId);
+        } else {
+          console.error("Supabase fallback insert also failed:", fbErr?.message);
         }
       } else if (supaRow) {
         insertedId = supaRow.id;
