@@ -7,6 +7,9 @@ const { findNextAvailableCohort, findCohortForDistrict } = require("./cohorts");
 const router = express.Router();
 
 const VALID_ROLES = [
+  "DL District Trainer - Numeracy (Math)",
+  "DL District Trainer - Literacy (English)",
+  "DL District Trainer - IT Person (DL Dashboard)",
   "DL Master Trainer - Numeracy (Math)",
   "DL Master Trainer - Literacy (English)",
   "DL Master Trainer - IT Person (DL Dashboard)",
