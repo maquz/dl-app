@@ -142,9 +142,13 @@ router.post("/", adminAuth, (req, res) => {
   }
 });
 
-// PUT /api/national-trainers/:id - Update National Master Trainer (Admin)
-router.put("/:id", adminAuth, (req, res) => {
-  const id = req.params.id;
+// PUT /api/national-trainers/:id - Update National Master Trainer (Admin or Trainer Self-Service)
+router.put("/:id", trainerOrAdminAuth, async (req, res) => {
+  const id = Number(req.params.id);
+  if (req.trainer && Number(req.trainer.id) !== id) {
+    return res.status(403).json({ error: "You can only edit your own facilitator profile." });
+  }
+
   const name = req.body.name || req.body.officer_name;
   const placeOfWork = req.body.placeOfWork || req.body.place_of_work;
   const scheduleRole = req.body.scheduleRole || req.body.schedule_role;
@@ -170,6 +174,27 @@ router.put("/:id", adminAuth, (req, res) => {
     passHash = hashPassword(password.trim());
   }
 
+  // Supabase sync
+  const supabase = require("../supabase");
+  if (supabase) {
+    try {
+      const supaUpdate = {
+        name: name.trim(),
+        place_of_work: placeOfWork ? placeOfWork.trim() : "",
+        schedule_role: scheduleRole ? scheduleRole.trim() : existing.schedule_role,
+        contact_number: contactNumber.trim(),
+        email: email ? email.trim() : null,
+        status: req.admin ? status : existing.status,
+      };
+      if (password && password.trim().length >= 6) {
+        supaUpdate.password_hash = passHash;
+      }
+      await supabase.from("national_trainers").update(supaUpdate).eq("id", id);
+    } catch (e) {
+      console.error("Supabase trainer update error:", e.message);
+    }
+  }
+
   try {
     db.prepare(`
       UPDATE national_trainers
@@ -182,12 +207,12 @@ router.put("/:id", adminAuth, (req, res) => {
       contactNumber.trim(),
       email ? email.trim() : null,
       passHash,
-      status,
+      req.admin ? status : existing.status,
       id
     );
 
     const updated = db.prepare("SELECT id, name, place_of_work, schedule_role, contact_number, email, status, created_at FROM national_trainers WHERE id = ?").get(id);
-    res.json({ message: "National Master Trainer updated successfully.", trainer: updated });
+    res.json({ message: "Facilitator details updated successfully.", trainer: updated });
   } catch (err) {
     if (err.message && err.message.includes("UNIQUE")) {
       return res.status(400).json({ error: "Email or contact number conflicts with another facilitator." });

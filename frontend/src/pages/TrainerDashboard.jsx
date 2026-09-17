@@ -11,7 +11,8 @@ import {
   toggleAssessment,
   fetchAssessmentSubmissions,
   fetchAssessmentOverviewStats,
-  fetchNationalTrainers
+  fetchNationalTrainers,
+  updateNationalTrainer,
 } from "../api";
 
 export default function TrainerDashboard() {
@@ -28,6 +29,18 @@ export default function TrainerDashboard() {
   const [activeTab, setActiveTab] = useState("oversight"); // 'oversight' | 'assessments' | 'analytics' | 'team'
   const [successMsg, setSuccessMsg] = useState("");
   const [error, setError] = useState("");
+
+  // Profile Edit Modal State
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileForm, setProfileForm] = useState({
+    name: "",
+    placeOfWork: "",
+    scheduleRole: "Teacher",
+    contactNumber: "",
+    email: "",
+    password: "",
+  });
 
   // Cohorts & Participants Oversight State
   const [cohortStats, setCohortStats] = useState(null);
@@ -293,6 +306,54 @@ export default function TrainerDashboard() {
     }
   }
 
+  function handleOpenEditProfile() {
+    setProfileForm({
+      name: trainerProfile?.name || "",
+      placeOfWork: trainerProfile?.placeOfWork || trainerProfile?.place_of_work || "",
+      scheduleRole: trainerProfile?.scheduleRole || trainerProfile?.schedule_role || "Teacher",
+      contactNumber: trainerProfile?.contactNumber || trainerProfile?.contact_number || "",
+      email: trainerProfile?.email || "",
+      password: "",
+    });
+    setIsProfileModalOpen(true);
+  }
+
+  async function handleSaveProfile(e) {
+    e.preventDefault();
+    if (!profileForm.name.trim()) {
+      alert("Please enter full name.");
+      return;
+    }
+    if (!profileForm.contactNumber.trim()) {
+      alert("Please enter contact phone number.");
+      return;
+    }
+
+    setProfileSaving(true);
+    try {
+      const res = await updateNationalTrainer(token, trainerProfile.id, profileForm);
+      const updated = {
+        ...trainerProfile,
+        name: res.trainer.name,
+        placeOfWork: res.trainer.place_of_work,
+        scheduleRole: res.trainer.schedule_role,
+        contactNumber: res.trainer.contact_number,
+        email: res.trainer.email,
+        status: res.trainer.status,
+      };
+      setTrainerProfile(updated);
+      sessionStorage.setItem("trainer_profile", JSON.stringify(updated));
+      setSuccessMsg("Your facilitator profile details have been updated successfully.");
+      setTimeout(() => setSuccessMsg(""), 4000);
+      setIsProfileModalOpen(false);
+      loadTrainers();
+    } catch (err) {
+      alert(err.message || "Failed to update profile details.");
+    } finally {
+      setProfileSaving(false);
+    }
+  }
+
   function handleLogout() {
     sessionStorage.removeItem("trainer_token");
     sessionStorage.removeItem("trainer_profile");
@@ -302,6 +363,11 @@ export default function TrainerDashboard() {
 
   return (
     <div className="page-wide">
+      {successMsg && (
+        <div className="banner banner-success" style={{ marginBottom: "1rem" }}>
+          ✓ {successMsg}
+        </div>
+      )}
       <div className="dashboard-header">
         <div>
           <div className="dashboard-brand-row">
@@ -316,8 +382,16 @@ export default function TrainerDashboard() {
             <strong>{trainerProfile?.placeOfWork || "National"}</strong> ({trainerProfile?.contactNumber})
           </p>
         </div>
-        <div className="dashboard-header-actions">
-          <Link to="/assessments" className="btn-secondary" style={{ marginRight: "0.5rem" }} target="_blank">
+        <div className="dashboard-header-actions" style={{ display: "flex", gap: "0.6rem", alignItems: "center", flexWrap: "wrap" }}>
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={handleOpenEditProfile}
+            style={{ background: "#0f766e", borderColor: "#0f766e", display: "flex", alignItems: "center", gap: "0.4rem" }}
+          >
+            ✏️ Edit My Details
+          </button>
+          <Link to="/assessments" className="btn-secondary" target="_blank">
             Open Candidate Portal ↗
           </Link>
           <button className="btn-secondary" onClick={handleLogout}>
@@ -875,6 +949,150 @@ export default function TrainerDashboard() {
                 </button>
                 <button type="submit" className="btn-primary" disabled={builderSaving}>
                   {builderSaving ? "Saving..." : "Save Assessment"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT FACILITATOR DETAILS MODAL */}
+      {isProfileModalOpen && (
+        <div className="modal-overlay" role="dialog" aria-modal="true" onClick={() => !profileSaving && setIsProfileModalOpen(false)}>
+          <div className="modal-card" style={{ maxWidth: "560px" }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Edit Facilitator Details</h2>
+              <button
+                type="button"
+                className="modal-close"
+                onClick={() => setIsProfileModalOpen(false)}
+                disabled={profileSaving}
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveProfile}>
+              <div className="form-group" style={{ marginBottom: "1rem" }}>
+                <label style={{ display: "block", fontWeight: 600, marginBottom: "0.4rem" }}>
+                  Facilitator Full Name <span style={{ color: "red" }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={profileForm.name}
+                  onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
+                  placeholder="e.g. Dr. Victor King Anyanful"
+                  style={{ width: "100%", padding: "0.65rem 0.85rem", border: "1.5px solid #cbd5e1", borderRadius: "8px" }}
+                />
+              </div>
+
+              <div className="form-group" style={{ marginBottom: "1rem" }}>
+                <label style={{ display: "block", fontWeight: 600, marginBottom: "0.4rem" }}>
+                  Place of Work / Station <span style={{ color: "red" }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={profileForm.placeOfWork}
+                  onChange={(e) => setProfileForm({ ...profileForm, placeOfWork: e.target.value })}
+                  placeholder="e.g. Ola College of Education"
+                  style={{ width: "100%", padding: "0.65rem 0.85rem", border: "1.5px solid #cbd5e1", borderRadius: "8px" }}
+                />
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+                <div className="form-group">
+                  <label style={{ display: "block", fontWeight: 600, marginBottom: "0.4rem" }}>
+                    Schedule Role <span style={{ color: "red" }}>*</span>
+                  </label>
+                  <select
+                    value={profileForm.scheduleRole}
+                    onChange={(e) => setProfileForm({ ...profileForm, scheduleRole: e.target.value })}
+                    style={{ width: "100%", padding: "0.65rem 0.85rem", border: "1.5px solid #cbd5e1", borderRadius: "8px", background: "#fff" }}
+                  >
+                    <option value="Teacher">Teacher</option>
+                    <option value="M&S">M&S</option>
+                    <option value="STEM Coordinator">STEM Coordinator</option>
+                    <option value="SISO">SISO</option>
+                    <option value="Basic Schools Coordinator">Basic Schools Coordinator</option>
+                    <option value="IT Coordinator">IT Coordinator</option>
+                    <option value="Lecturer">Lecturer</option>
+                    <option value="Facilitator">Facilitator</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label style={{ display: "block", fontWeight: 600, marginBottom: "0.4rem" }}>
+                    Account Status
+                  </label>
+                  <input
+                    type="text"
+                    disabled
+                    value={trainerProfile?.status || "Active"}
+                    style={{ width: "100%", padding: "0.65rem 0.85rem", border: "1.5px solid #e2e8f0", borderRadius: "8px", background: "#f8fafc", color: "#64748b" }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+                <div className="form-group">
+                  <label style={{ display: "block", fontWeight: 600, marginBottom: "0.4rem" }}>
+                    Contact Phone Number <span style={{ color: "red" }}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={profileForm.contactNumber}
+                    onChange={(e) => setProfileForm({ ...profileForm, contactNumber: e.target.value })}
+                    placeholder="e.g. 026-962-4632"
+                    style={{ width: "100%", padding: "0.65rem 0.85rem", border: "1.5px solid #cbd5e1", borderRadius: "8px" }}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label style={{ display: "block", fontWeight: 600, marginBottom: "0.4rem" }}>
+                    Official Email
+                  </label>
+                  <input
+                    type="email"
+                    value={profileForm.email}
+                    onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
+                    placeholder="e.g. victor.anyanful@ges.gov.gh"
+                    style={{ width: "100%", padding: "0.65rem 0.85rem", border: "1.5px solid #cbd5e1", borderRadius: "8px" }}
+                  />
+                </div>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: "1.5rem" }}>
+                <label style={{ display: "block", fontWeight: 600, marginBottom: "0.4rem" }}>
+                  Reset Password (leave blank to keep current)
+                </label>
+                <input
+                  type="password"
+                  value={profileForm.password}
+                  onChange={(e) => setProfileForm({ ...profileForm, password: e.target.value })}
+                  placeholder="••••••••"
+                  style={{ width: "100%", padding: "0.65rem 0.85rem", border: "1.5px solid #cbd5e1", borderRadius: "8px" }}
+                />
+              </div>
+
+              <div className="modal-actions" style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem", borderTop: "1px solid #e2e8f0", paddingTop: "1rem" }}>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => setIsProfileModalOpen(false)}
+                  disabled={profileSaving}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  disabled={profileSaving}
+                  style={{ background: "#0f172a", borderColor: "#0f172a" }}
+                >
+                  {profileSaving ? "Saving…" : "Save Changes"}
                 </button>
               </div>
             </form>
