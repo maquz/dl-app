@@ -314,8 +314,16 @@ export async function fetchAssessmentOverviewStats() {
   return handle(res);
 }
 
-export async function fetchAssessmentForTest(id) {
-  const res = await fetch(`${API_URL}/assessments/${id}/take`);
+export async function fetchAssessmentForTest(id, params = {}) {
+  const token = sessionStorage.getItem("admin_token") || sessionStorage.getItem("admin_password") || sessionStorage.getItem("trainer_token") || "";
+  const queryObj = { ...params };
+  if (token && !queryObj.bypass) {
+    queryObj.bypass = "true";
+  }
+  const query = new URLSearchParams(queryObj).toString();
+  const res = await fetch(`${API_URL}/assessments/${id}/take${query ? `?${query}` : ""}`, {
+    headers: { ...getAdminAuthHeaders(token) },
+  });
   return handle(res);
 }
 

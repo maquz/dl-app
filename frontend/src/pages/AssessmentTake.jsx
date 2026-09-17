@@ -40,11 +40,24 @@ export default function AssessmentTake() {
     } catch {}
   }, [location.state]);
 
+  const isAdmin = Boolean(
+    sessionStorage.getItem("admin_token") ||
+    sessionStorage.getItem("admin_password") ||
+    sessionStorage.getItem("trainer_token") ||
+    location.search.includes("bypass=true") ||
+    location.search.includes("preview=true")
+  );
+
   useEffect(() => {
     const candidateCohortId = nomineeProfile?.cohortId || 1;
-    fetchAssessmentForTest(id, { candidateCohortId })
+    const params = { candidateCohortId };
+    if (isAdmin) {
+      params.bypass = "true";
+    }
+
+    fetchAssessmentForTest(id, params)
       .then((data) => {
-        if (data.isLocked) {
+        if (data.isLocked && !isAdmin) {
           setIsLocked(true);
           setLockInfo(data.lockInfo);
           setAssessment(data.assessment);
@@ -56,7 +69,7 @@ export default function AssessmentTake() {
       })
       .catch((err) => setError(err.message || "Unable to load test."))
       .finally(() => setLoading(false));
-  }, [id, nomineeProfile?.cohortId]);
+  }, [id, nomineeProfile?.cohortId, isAdmin]);
 
   function handleAnswer(questionId, option) {
     setAnswers((prev) => ({ ...prev, [questionId]: option }));
@@ -156,7 +169,23 @@ export default function AssessmentTake() {
           </div>
 
           <div style={{ display: "flex", gap: "1rem", justifyContent: "center", flexWrap: "wrap" }}>
-            <Link to="/confirmation" className="btn-primary">
+            {isAdmin && (
+              <button
+                type="button"
+                className="btn-primary"
+                style={{ background: "#0284c7", borderColor: "#0284c7" }}
+                onClick={() => {
+                  fetchAssessmentForTest(id, { bypass: "true" }).then((data) => {
+                    setIsLocked(false);
+                    setAssessment(data.assessment);
+                    setQuestions(data.questions || []);
+                  });
+                }}
+              >
+                🔓 Admin Instant Preview & Take Test
+              </button>
+            )}
+            <Link to="/confirmation" className="btn-secondary">
               ← Return to District Trainer Portal
             </Link>
             <button type="button" className="btn-secondary" onClick={() => window.location.reload()}>

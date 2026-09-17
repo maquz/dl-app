@@ -1867,7 +1867,7 @@ export default function AdminDashboard() {
                             >
                               Results
                             </button>
-                            <Link to={`/assessment/${a.id}`} className="btn-link-action" target="_blank" rel="noreferrer" title="Preview candidate test">
+                            <Link to={`/assessment/${a.id}?bypass=true`} className="btn-link-action" target="_blank" rel="noreferrer" title="Preview candidate test">
                               Preview ↗
                             </Link>
                           </div>
