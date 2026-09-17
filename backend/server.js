@@ -16,8 +16,32 @@ const CORS_ORIGIN = process.env.CORS_ORIGIN || "*";
 app.use(cors({ origin: CORS_ORIGIN }));
 app.use(express.json());
 
-app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", service: "DL Master Trainers Registration API" });
+app.get("/api/health", async (req, res) => {
+  const supabase = require("./supabase");
+  let supabaseStatus = "not configured";
+  let supabaseCount = null;
+  if (supabase) {
+    try {
+      const { count, error } = await supabase
+        .from("registrations")
+        .select("*", { count: "exact", head: true });
+      if (!error) {
+        supabaseStatus = "connected";
+        supabaseCount = count;
+      } else {
+        supabaseStatus = "error: " + error.message;
+      }
+    } catch (e) {
+      supabaseStatus = "error: " + e.message;
+    }
+  }
+  res.json({
+    status: "ok",
+    service: "DL Master Trainers Registration API",
+    supabase: supabaseStatus,
+    supabaseRegistrations: supabaseCount,
+    env: process.env.VERCEL ? "vercel" : "local",
+  });
 });
 
 app.use("/api/auth", authRouter);

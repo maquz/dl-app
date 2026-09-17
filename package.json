@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "build": "cd frontend && npm install && npm run build",
-    "start": "node backend/server.js"
+    "start": "node backend/server.js",
+    "sync:supabase": "node scripts/seed-supabase.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",
