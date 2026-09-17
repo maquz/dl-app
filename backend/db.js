@@ -1,12 +1,17 @@
 const path = require("path");
 const fs = require("fs");
 
-const DB_PATH = process.env.DB_PATH || "./data/registrations.db";
+const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+const DB_PATH = process.env.DB_PATH || (isServerless ? path.join("/tmp", "registrations.db") : path.join(__dirname, "data", "registrations.db"));
 
 // Make sure the folder for the DB file exists
 const dbDir = path.dirname(DB_PATH);
 if (!fs.existsSync(dbDir)) {
-  fs.mkdirSync(dbDir, { recursive: true });
+  try {
+    fs.mkdirSync(dbDir, { recursive: true });
+  } catch (e) {
+    // Ignore if directory already exists
+  }
 }
 
 let db;
@@ -17,7 +22,7 @@ try {
   try {
     const Database = require("better-sqlite3");
     db = new Database(DB_PATH);
-    db.pragma("journal_mode = WAL");
+    try { db.pragma("journal_mode = WAL"); } catch (_) {}
   } catch (err) {
     console.error("Failed to initialize SQLite database:", err);
     throw err;
