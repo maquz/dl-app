@@ -1,0 +1,17 @@
+{
+  "name": "dl-master-trainers-backend",
+  "version": "1.0.0",
+  "description": "Backend API for the DL Master Trainers (AF2) Nominee Registration Form - Ghana Education Service",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "xlsx": "^0.18.5"
+  }
+}

@@ -1,0 +1,90 @@
+[
+  {
+    "id": 1,
+    "name": "Charlotte Asare Nyarko",
+    "placeOfWork": "Adentan Education Office, Adentan",
+    "scheduleRole": "M&S",
+    "contactNumber": "020-860-7530",
+    "email": "charlotte.nyarko@ges.gov.gh"
+  },
+  {
+    "id": 2,
+    "name": "Eric Osei Adofo",
+    "placeOfWork": "Sheik Dr. Nuhu Sharubutu Islamic Basic School 'A', Kasoa",
+    "scheduleRole": "Teacher",
+    "contactNumber": "024-441-4923",
+    "email": "eric.adofo@ges.gov.gh"
+  },
+  {
+    "id": 3,
+    "name": "Alexandria Mercy Tetteh",
+    "placeOfWork": "St. John's Grammar School, Achimota",
+    "scheduleRole": "Teacher",
+    "contactNumber": "024-038-7868",
+    "email": "alexandria.tetteh@ges.gov.gh"
+  },
+  {
+    "id": 4,
+    "name": "Sonia Ndego Salbre Agbulbilla",
+    "placeOfWork": "Effiakwesimintsim, Takoradi",
+    "scheduleRole": "STEM Coordinator",
+    "contactNumber": "024-540-7628",
+    "email": "sonia.agbulbilla@ges.gov.gh"
+  },
+  {
+    "id": 5,
+    "name": "Susanna Opoku Nkansah",
+    "placeOfWork": "Jomoro Education Office, Jomoro",
+    "scheduleRole": "SISO",
+    "contactNumber": "054-692-0516",
+    "email": "susanna.nkansah@ges.gov.gh"
+  },
+  {
+    "id": 6,
+    "name": "Solomon King Nartey",
+    "placeOfWork": "Achinakrom SHS, Achinakrom",
+    "scheduleRole": "Teacher",
+    "contactNumber": "024-318-6194",
+    "email": "solomon.nartey@ges.gov.gh"
+  },
+  {
+    "id": 7,
+    "name": "Joshua Ampaabeng Ahenkorah",
+    "placeOfWork": "Kintampo North Education Office, Kintampo",
+    "scheduleRole": "Basic Schools Coordinator",
+    "contactNumber": "054-844-0989",
+    "email": "joshua.ahenkorah@ges.gov.gh"
+  },
+  {
+    "id": 8,
+    "name": "Doreen Serwaa Brefo",
+    "placeOfWork": "WESCO Demo JHS 'D', Kumasi",
+    "scheduleRole": "Teacher",
+    "contactNumber": "024-314-2866",
+    "email": "doreen.brefo@ges.gov.gh"
+  },
+  {
+    "id": 9,
+    "name": "Mark Anibriki",
+    "placeOfWork": "Tema Metro Education Office, Tema",
+    "scheduleRole": "IT Coordinator",
+    "contactNumber": "020-881-3144",
+    "email": "mark.anibriki@ges.gov.gh"
+  },
+  {
+    "id": 10,
+    "name": "Dr. Victor King Anyanful",
+    "placeOfWork": "Ola College of Education",
+    "scheduleRole": "Lecturer",
+    "contactNumber": "026-962-4632",
+    "email": "victor.anyanful@ges.gov.gh"
+  },
+  {
+    "id": 11,
+    "name": "Frank Murphy",
+    "placeOfWork": "Regional Education Office, Koforidua",
+    "scheduleRole": "IT Coordinator",
+    "contactNumber": "055-732-5843",
+    "email": "frank.murphy@ges.gov.gh"
+  }
+]

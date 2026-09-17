@@ -1,0 +1,136 @@
+[
+  {
+    "id": 1,
+    "title": "DL Workshop Pre-Training Assessment",
+    "type": "Pre-Test",
+    "description": "Diagnostic assessment to gauge participant baseline knowledge of Differentiated Learning principles, pedagogical grouping, and formative assessment prior to the workshop.",
+    "timeLimitMinutes": 20,
+    "isActive": 1,
+    "questions": [
+      {
+        "questionText": "What is the primary objective of Differentiated Learning (DL) in basic school classrooms?",
+        "questionType": "multiple_choice",
+        "options": [
+          "Giving the exact same worksheets to all students simultaneously",
+          "Adapting instruction, content, and pacing to match diverse learner needs",
+          "Separating high performers into private study halls only",
+          "Teaching solely through teacher-centered lectures"
+        ],
+        "correctAnswer": "Adapting instruction, content, and pacing to match diverse learner needs",
+        "points": 2
+      },
+      {
+        "questionText": "Which of the following is an example of differentiating the 'Process' in a literacy or numeracy lesson?",
+        "questionType": "multiple_choice",
+        "options": [
+          "Giving different end-of-term examination certificates",
+          "Providing tiered activities and varied instructional supports like manipulatives or graphic organizers",
+          "Charging varied fees for textbooks",
+          "Changing the classroom wall paint color"
+        ],
+        "correctAnswer": "Providing tiered activities and varied instructional supports like manipulatives or graphic organizers",
+        "points": 2
+      },
+      {
+        "questionText": "Formative assessment in Differentiated Learning is used exclusively for assigning final grades at the end of the term.",
+        "questionType": "true_false",
+        "options": [
+          "True",
+          "False"
+        ],
+        "correctAnswer": "False",
+        "points": 2
+      },
+      {
+        "questionText": "In the DL Dashboard and digital tracking system, what is the role of the IT Master Trainer?",
+        "questionType": "multiple_choice",
+        "options": [
+          "Fix electrical wiring in the entire municipal assembly",
+          "Oversee digital attendance, school data reporting, and guide teachers on portal navigation",
+          "Distribute physical stationery supplies only",
+          "Conduct physical sports competitions"
+        ],
+        "correctAnswer": "Oversee digital attendance, school data reporting, and guide teachers on portal navigation",
+        "points": 2
+      },
+      {
+        "questionText": "Flexible grouping allows learners to move between groups based on ongoing assessment and skill readiness rather than static labeling.",
+        "questionType": "true_false",
+        "options": [
+          "True",
+          "False"
+        ],
+        "correctAnswer": "True",
+        "points": 2
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "title": "DL Workshop Post-Training Evaluation",
+    "type": "Post-Test",
+    "description": "Summative assessment to measure participant knowledge gains, mastery of DL methodologies, and readiness to cascade training to teachers in their respective districts.",
+    "timeLimitMinutes": 25,
+    "isActive": 1,
+    "questions": [
+      {
+        "questionText": "Which three classroom elements can teachers differentiate according to learner readiness, interests, and learning profiles?",
+        "questionType": "multiple_choice",
+        "options": [
+          "Content, Process, and Product",
+          "Uniforms, Desks, and Bell timings",
+          "Chalk color, Blackboard height, and Room layout only",
+          "School fees, Lunch menu, and Holidays"
+        ],
+        "correctAnswer": "Content, Process, and Product",
+        "points": 2
+      },
+      {
+        "questionText": "When assessing foundational literacy (reading levels), what is the most effective immediate intervention in a differentiated classroom?",
+        "questionType": "multiple_choice",
+        "options": [
+          "Targeted small-group guided reading matched to specific phonics and comprehension stages",
+          "Suspending non-reading students from school",
+          "Reading aloud only to the highest performing students",
+          "Eliminating books from the classroom"
+        ],
+        "correctAnswer": "Targeted small-group guided reading matched to specific phonics and comprehension stages",
+        "points": 2
+      },
+      {
+        "questionText": "Differentiated Learning means writing an entirely separate, individual lesson plan for each of the 50 students in a class.",
+        "questionType": "true_false",
+        "options": [
+          "True",
+          "False"
+        ],
+        "correctAnswer": "False",
+        "points": 2
+      },
+      {
+        "questionText": "How should Master Trainers measure the success of DL cascading in their districts?",
+        "questionType": "multiple_choice",
+        "options": [
+          "By counting physical attendance and tracking learner progress via the DL Dashboard",
+          "By giving up on monitoring once the 3-day workshop ends",
+          "By testing only the headteachers",
+          "By ignoring classroom observation metrics"
+        ],
+        "correctAnswer": "By counting physical attendance and tracking learner progress via the DL Dashboard",
+        "points": 2
+      },
+      {
+        "questionText": "Which mindset is essential for a Master Trainer facilitating Differentiated Learning sessions?",
+        "questionType": "multiple_choice",
+        "options": [
+          "Growth mindset that believes every child can learn with appropriate instructional scaffolding",
+          "Fixed mindset that only naturally gifted students can achieve numeracy proficiency",
+          "Belief that one standard pace fits all learners",
+          "Focus on rote memorization without conceptual understanding"
+        ],
+        "correctAnswer": "Growth mindset that believes every child can learn with appropriate instructional scaffolding",
+        "points": 2
+      }
+    ]
+  }
+]

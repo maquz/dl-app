@@ -1,0 +1,80 @@
+﻿[
+  {
+    "id": 1,
+    "name": "Cohort 1",
+    "arrivalDate": "Sunday, 20/09/2026",
+    "arrivalDateIso": "2026-09-20",
+    "startDate": "Monday, 21/09/2026",
+    "startDateIso": "2026-09-21",
+    "endDate": "Tuesday, 22/09/2026",
+    "endDateIso": "2026-09-22",
+    "departureDate": "Wednesday, 23/09/2026",
+    "departureDateIso": "2026-09-23",
+    "expectedParticipants": 129
+  },
+  {
+    "id": 2,
+    "name": "Cohort 2",
+    "arrivalDate": "Wednesday, 23/09/2026",
+    "arrivalDateIso": "2026-09-23",
+    "startDate": "Thursday, 24/09/2026",
+    "startDateIso": "2026-09-24",
+    "endDate": "Friday, 25/09/2026",
+    "endDateIso": "2026-09-25",
+    "departureDate": "Saturday, 26/09/2026",
+    "departureDateIso": "2026-09-26",
+    "expectedParticipants": 129
+  },
+  {
+    "id": 3,
+    "name": "Cohort 3",
+    "arrivalDate": "Sunday, 27/09/2026",
+    "arrivalDateIso": "2026-09-27",
+    "startDate": "Monday, 28/09/2026",
+    "startDateIso": "2026-09-28",
+    "endDate": "Tuesday, 29/09/2026",
+    "endDateIso": "2026-09-29",
+    "departureDate": "Wednesday, 30/09/2026",
+    "departureDateIso": "2026-09-30",
+    "expectedParticipants": 132
+  },
+  {
+    "id": 4,
+    "name": "Cohort 4",
+    "arrivalDate": "Wednesday, 30/09/2026",
+    "arrivalDateIso": "2026-09-30",
+    "startDate": "Thursday, 01/10/2026",
+    "startDateIso": "2026-10-01",
+    "endDate": "Friday, 02/10/2026",
+    "endDateIso": "2026-10-02",
+    "departureDate": "Saturday, 03/10/2026",
+    "departureDateIso": "2026-10-03",
+    "expectedParticipants": 132
+  },
+  {
+    "id": 5,
+    "name": "Cohort 5",
+    "arrivalDate": "Sunday, 04/10/2026",
+    "arrivalDateIso": "2026-10-04",
+    "startDate": "Monday, 05/10/2026",
+    "startDateIso": "2026-10-05",
+    "endDate": "Tuesday, 06/10/2026",
+    "endDateIso": "2026-10-06",
+    "departureDate": "Wednesday, 07/10/2026",
+    "departureDateIso": "2026-10-07",
+    "expectedParticipants": 132
+  },
+  {
+    "id": 6,
+    "name": "Cohort 6",
+    "arrivalDate": "Wednesday, 07/10/2026",
+    "arrivalDateIso": "2026-10-07",
+    "startDate": "Thursday, 08/10/2026",
+    "startDateIso": "2026-10-08",
+    "endDate": "Friday, 09/10/2026",
+    "endDateIso": "2026-10-09",
+    "departureDate": "Saturday, 10/10/2026",
+    "departureDateIso": "2026-10-10",
+    "expectedParticipants": 129
+  }
+]

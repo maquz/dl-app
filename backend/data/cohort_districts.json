@@ -1,0 +1,1088 @@
+{
+  "1": {
+    "cohortId": 1,
+    "name": "Cohort 1",
+    "dates": "Sunday, 20th September 2026 – Wednesday, 23rd September 2026",
+    "districts": [
+      {
+        "region": "Ashanti",
+        "district": "Adansi Asokwa"
+      },
+      {
+        "region": "Ashanti",
+        "district": "Adansi North"
+      },
+      {
+        "region": "Ashanti",
+        "district": "Adansi South"
+      },
+      {
+        "region": "Ashanti",
+        "district": "Afigya Kwabre"
+      },
+      {
+        "region": "Ashanti",
+        "district": "Afigya Kwabre North"
+      },
+      {
+        "region": "Ashanti",
+        "district": "Ahafo Ano North"
+      },
+      {
+        "region": "Ashanti",
+        "district": "Ahafo Ano South East"
+      },
+      {
+        "region": "Ashanti",
+        "district": "Ahafo Ano South West"
+      },
+      {
+        "region": "Ashanti",
+        "district": "Akrofuom"
+      },
+      {
+        "region": "Ashanti",
+        "district": "Amansie Central"
+      },
+      {
+        "region": "Ashanti",
+        "district": "Amansie South"
+      },
+      {
+        "region": "Ashanti",
+        "district": "Amansie West"
+      },
+      {
+        "region": "Ashanti",
+        "district": "Asante Akim Central"
+      },
+      {
+        "region": "Ashanti",
+        "district": "Asante Akim North"
+      },
+      {
+        "region": "Ashanti",
+        "district": "Asante Akim South"
+      },
+      {
+        "region": "Ashanti",
+        "district": "Asokore Mampong"
+      },
+      {
+        "region": "Ashanti",
+        "district": "Asokwa"
+      },
+      {
+        "region": "Ashanti",
+        "district": "Atwima Kwanwoma"
+      },
+      {
+        "region": "Ashanti",
+        "district": "Atwima Mponua"
+      },
+      {
+        "region": "Ashanti",
+        "district": "Atwima Nwabiagya"
+      },
+      {
+        "region": "Ashanti",
+        "district": "Atwima Nwabiagya North"
+      },
+      {
+        "region": "Ashanti",
+        "district": "Bekwai"
+      },
+      {
+        "region": "Ashanti",
+        "district": "Bosome Freho"
+      },
+      {
+        "region": "Ashanti",
+        "district": "Bosomtwe"
+      },
+      {
+        "region": "Ashanti",
+        "district": "Ejisu"
+      },
+      {
+        "region": "Ashanti",
+        "district": "Ejura Sekyedumase"
+      },
+      {
+        "region": "Ashanti",
+        "district": "Juaben"
+      },
+      {
+        "region": "Ashanti",
+        "district": "Kumasi"
+      },
+      {
+        "region": "Ashanti",
+        "district": "Kwabre East"
+      },
+      {
+        "region": "Ashanti",
+        "district": "Kwadaso"
+      },
+      {
+        "region": "Ashanti",
+        "district": "Mampong"
+      },
+      {
+        "region": "Ashanti",
+        "district": "Obuasi"
+      },
+      {
+        "region": "Ashanti",
+        "district": "Obuasi East"
+      },
+      {
+        "region": "Ashanti",
+        "district": "Offinso"
+      },
+      {
+        "region": "Ashanti",
+        "district": "Offinso North"
+      },
+      {
+        "region": "Ashanti",
+        "district": "Oforikrom"
+      },
+      {
+        "region": "Ashanti",
+        "district": "Old Tafo"
+      },
+      {
+        "region": "Ashanti",
+        "district": "Sekyere Afram Plains"
+      },
+      {
+        "region": "Ashanti",
+        "district": "Sekyere Central"
+      },
+      {
+        "region": "Ashanti",
+        "district": "Sekyere East"
+      },
+      {
+        "region": "Ashanti",
+        "district": "Sekyere Kumawu"
+      },
+      {
+        "region": "Ashanti",
+        "district": "Sekyere South"
+      },
+      {
+        "region": "Ashanti",
+        "district": "Suame"
+      }
+    ]
+  },
+  "2": {
+    "cohortId": 2,
+    "name": "Cohort 2",
+    "dates": "Wednesday, 23rd September 2026 – Saturday, 26th September 2026",
+    "districts": [
+      {
+        "region": "Eastern",
+        "district": "Abuakwa South"
+      },
+      {
+        "region": "Eastern",
+        "district": "Akuapem North"
+      },
+      {
+        "region": "Eastern",
+        "district": "Akuapim South"
+      },
+      {
+        "region": "Eastern",
+        "district": "Akyemansa"
+      },
+      {
+        "region": "Eastern",
+        "district": "Asuogyaman"
+      },
+      {
+        "region": "Eastern",
+        "district": "Atiwa East"
+      },
+      {
+        "region": "Eastern",
+        "district": "Atiwa West"
+      },
+      {
+        "region": "Eastern",
+        "district": "Ayensuano"
+      },
+      {
+        "region": "Eastern",
+        "district": "Birim Central"
+      },
+      {
+        "region": "Eastern",
+        "district": "Birim North"
+      },
+      {
+        "region": "Eastern",
+        "district": "Birim South"
+      },
+      {
+        "region": "Eastern",
+        "district": "Denkyembour"
+      },
+      {
+        "region": "Eastern",
+        "district": "Fanteakwa North"
+      },
+      {
+        "region": "Eastern",
+        "district": "Fanteakwa South"
+      },
+      {
+        "region": "Eastern",
+        "district": "Kwaebibirem"
+      },
+      {
+        "region": "Eastern",
+        "district": "Kwahu Afram Plains North"
+      },
+      {
+        "region": "Eastern",
+        "district": "Kwahu Afram Plains South"
+      },
+      {
+        "region": "Eastern",
+        "district": "Kwahu East"
+      },
+      {
+        "region": "Eastern",
+        "district": "Kwahu South"
+      },
+      {
+        "region": "Eastern",
+        "district": "Kwahu West"
+      },
+      {
+        "region": "Eastern",
+        "district": "Lower Manya Krobo"
+      },
+      {
+        "region": "Eastern",
+        "district": "New Juaben North"
+      },
+      {
+        "region": "Eastern",
+        "district": "New Juaben South"
+      },
+      {
+        "region": "Eastern",
+        "district": "Nsawam Adoagyire"
+      },
+      {
+        "region": "Eastern",
+        "district": "Okere"
+      },
+      {
+        "region": "Eastern",
+        "district": "Suhum"
+      },
+      {
+        "region": "Eastern",
+        "district": "Upper Manya Krobo"
+      },
+      {
+        "region": "Eastern",
+        "district": "Upper West Akim"
+      },
+      {
+        "region": "Eastern",
+        "district": "West Akim"
+      },
+      {
+        "region": "Eastern",
+        "district": "Yilo Krobo"
+      },
+      {
+        "region": "North East",
+        "district": "Bunkpurugu Nyankpanduri"
+      },
+      {
+        "region": "North East",
+        "district": "Chereponi"
+      },
+      {
+        "region": "North East",
+        "district": "East Mamprusi"
+      },
+      {
+        "region": "North East",
+        "district": "Mamprugu Moagduri"
+      },
+      {
+        "region": "North East",
+        "district": "West Mamprusi"
+      },
+      {
+        "region": "North East",
+        "district": "Yunyoo-Nasuan"
+      },
+      {
+        "region": "Savannah",
+        "district": "Bole"
+      },
+      {
+        "region": "Savannah",
+        "district": "Central Gonja"
+      },
+      {
+        "region": "Savannah",
+        "district": "East Gonja"
+      },
+      {
+        "region": "Savannah",
+        "district": "North East Gonja"
+      },
+      {
+        "region": "Savannah",
+        "district": "North Gonja"
+      },
+      {
+        "region": "Savannah",
+        "district": "Sawla-Tuna-Kalba"
+      },
+      {
+        "region": "Savannah",
+        "district": "West Gonja"
+      }
+    ]
+  },
+  "3": {
+    "cohortId": 3,
+    "name": "Cohort 3",
+    "dates": "Sunday, 27th September 2026 – Wednesday, 30th September 2026",
+    "districts": [
+      {
+        "region": "Ahafo",
+        "district": "Asunafo North"
+      },
+      {
+        "region": "Ahafo",
+        "district": "Asunafo South"
+      },
+      {
+        "region": "Ahafo",
+        "district": "Asutifi North"
+      },
+      {
+        "region": "Ahafo",
+        "district": "Asutifi South"
+      },
+      {
+        "region": "Ahafo",
+        "district": "Tano North"
+      },
+      {
+        "region": "Ahafo",
+        "district": "Tano South"
+      },
+      {
+        "region": "Central",
+        "district": "Abura Asebu Kwamankese"
+      },
+      {
+        "region": "Central",
+        "district": "Agona East"
+      },
+      {
+        "region": "Central",
+        "district": "Agona West"
+      },
+      {
+        "region": "Central",
+        "district": "Ajumako Enyan Essiam"
+      },
+      {
+        "region": "Central",
+        "district": "Asikuma Odoben Brakwa"
+      },
+      {
+        "region": "Central",
+        "district": "Assin Central"
+      },
+      {
+        "region": "Central",
+        "district": "Assin North"
+      },
+      {
+        "region": "Central",
+        "district": "Assin South"
+      },
+      {
+        "region": "Central",
+        "district": "Awutu Senya East"
+      },
+      {
+        "region": "Central",
+        "district": "Awutu Senya West"
+      },
+      {
+        "region": "Central",
+        "district": "Cape Coast"
+      },
+      {
+        "region": "Central",
+        "district": "Effutu"
+      },
+      {
+        "region": "Central",
+        "district": "Ekumfi"
+      },
+      {
+        "region": "Central",
+        "district": "Gomoa Central"
+      },
+      {
+        "region": "Central",
+        "district": "Gomoa East"
+      },
+      {
+        "region": "Central",
+        "district": "Gomoa West"
+      },
+      {
+        "region": "Central",
+        "district": "Komenda Edina Eguafo Abirem"
+      },
+      {
+        "region": "Central",
+        "district": "Mfantseman"
+      },
+      {
+        "region": "Central",
+        "district": "Twifo Atti Morkwa"
+      },
+      {
+        "region": "Central",
+        "district": "Twifo Heman Lower Denkyira"
+      },
+      {
+        "region": "Central",
+        "district": "Upper Denkyira East"
+      },
+      {
+        "region": "Central",
+        "district": "Upper Denkyira West"
+      },
+      {
+        "region": "Northern",
+        "district": "Gushegu"
+      },
+      {
+        "region": "Northern",
+        "district": "Karaga"
+      },
+      {
+        "region": "Northern",
+        "district": "Kpandai"
+      },
+      {
+        "region": "Northern",
+        "district": "Kumbungu"
+      },
+      {
+        "region": "Northern",
+        "district": "Mion"
+      },
+      {
+        "region": "Northern",
+        "district": "Nanton"
+      },
+      {
+        "region": "Northern",
+        "district": "Nanumba North"
+      },
+      {
+        "region": "Northern",
+        "district": "Nanumba South"
+      },
+      {
+        "region": "Northern",
+        "district": "Saboba"
+      },
+      {
+        "region": "Northern",
+        "district": "Sagnarigu"
+      },
+      {
+        "region": "Northern",
+        "district": "Savelugu"
+      },
+      {
+        "region": "Northern",
+        "district": "Tamale"
+      },
+      {
+        "region": "Northern",
+        "district": "Tatale/Sanguli"
+      },
+      {
+        "region": "Northern",
+        "district": "Tolon"
+      },
+      {
+        "region": "Northern",
+        "district": "Yendi"
+      },
+      {
+        "region": "Northern",
+        "district": "Zabzugu"
+      }
+    ]
+  },
+  "4": {
+    "cohortId": 4,
+    "name": "Cohort 4",
+    "dates": "Wednesday, 30th September 2026 – Saturday, 3rd October 2026",
+    "districts": [
+      {
+        "region": "Bono",
+        "district": "Banda"
+      },
+      {
+        "region": "Bono",
+        "district": "Berekum"
+      },
+      {
+        "region": "Bono",
+        "district": "Berekum West"
+      },
+      {
+        "region": "Bono",
+        "district": "Dormaa Central"
+      },
+      {
+        "region": "Bono",
+        "district": "Dormaa East"
+      },
+      {
+        "region": "Bono",
+        "district": "Dormaa West"
+      },
+      {
+        "region": "Bono",
+        "district": "Jaman North"
+      },
+      {
+        "region": "Bono",
+        "district": "Jaman South"
+      },
+      {
+        "region": "Bono",
+        "district": "Sunyani"
+      },
+      {
+        "region": "Bono",
+        "district": "Sunyani West"
+      },
+      {
+        "region": "Bono",
+        "district": "Tain"
+      },
+      {
+        "region": "Bono",
+        "district": "Wenchi"
+      },
+      {
+        "region": "Bono East",
+        "district": "Atebubu Amantin"
+      },
+      {
+        "region": "Bono East",
+        "district": "Kintampo North"
+      },
+      {
+        "region": "Bono East",
+        "district": "Kintampo South"
+      },
+      {
+        "region": "Bono East",
+        "district": "Nkoranza North"
+      },
+      {
+        "region": "Bono East",
+        "district": "Nkoranza South"
+      },
+      {
+        "region": "Bono East",
+        "district": "Pru East"
+      },
+      {
+        "region": "Bono East",
+        "district": "Pru West"
+      },
+      {
+        "region": "Bono East",
+        "district": "Sene East"
+      },
+      {
+        "region": "Bono East",
+        "district": "Sene West"
+      },
+      {
+        "region": "Bono East",
+        "district": "Techiman"
+      },
+      {
+        "region": "Bono East",
+        "district": "Techiman North"
+      },
+      {
+        "region": "Eastern",
+        "district": "Abuakwa North"
+      },
+      {
+        "region": "Eastern",
+        "district": "Achiase"
+      },
+      {
+        "region": "Eastern",
+        "district": "Asene Manso Akroso"
+      },
+      {
+        "region": "Volta",
+        "district": "Adaklu"
+      },
+      {
+        "region": "Volta",
+        "district": "Afadzato South"
+      },
+      {
+        "region": "Volta",
+        "district": "Agotime Ziope"
+      },
+      {
+        "region": "Volta",
+        "district": "Akatsi North"
+      },
+      {
+        "region": "Volta",
+        "district": "Akatsi South"
+      },
+      {
+        "region": "Volta",
+        "district": "Anloga"
+      },
+      {
+        "region": "Volta",
+        "district": "Central Tongu"
+      },
+      {
+        "region": "Volta",
+        "district": "Ho"
+      },
+      {
+        "region": "Volta",
+        "district": "Ho West"
+      },
+      {
+        "region": "Volta",
+        "district": "Hohoe"
+      },
+      {
+        "region": "Volta",
+        "district": "Keta"
+      },
+      {
+        "region": "Volta",
+        "district": "Ketu North"
+      },
+      {
+        "region": "Volta",
+        "district": "Ketu South"
+      },
+      {
+        "region": "Volta",
+        "district": "Kpando"
+      },
+      {
+        "region": "Volta",
+        "district": "North Dayi"
+      },
+      {
+        "region": "Volta",
+        "district": "North Tongu"
+      },
+      {
+        "region": "Volta",
+        "district": "South Dayi"
+      },
+      {
+        "region": "Volta",
+        "district": "South Tongu"
+      }
+    ]
+  },
+  "5": {
+    "cohortId": 5,
+    "name": "Cohort 5",
+    "dates": "Sunday, 4th October, 2026 – Wednesday, 7th October, 2026",
+    "districts": [
+      {
+        "region": "Greater Accra",
+        "district": "Ablekuma Central"
+      },
+      {
+        "region": "Greater Accra",
+        "district": "Ablekuma North"
+      },
+      {
+        "region": "Greater Accra",
+        "district": "Ablekuma West"
+      },
+      {
+        "region": "Greater Accra",
+        "district": "Accra Metro"
+      },
+      {
+        "region": "Greater Accra",
+        "district": "Ada East"
+      },
+      {
+        "region": "Greater Accra",
+        "district": "Ada West"
+      },
+      {
+        "region": "Greater Accra",
+        "district": "Adentan"
+      },
+      {
+        "region": "Greater Accra",
+        "district": "Ashaiman"
+      },
+      {
+        "region": "Greater Accra",
+        "district": "Ayawaso Central"
+      },
+      {
+        "region": "Greater Accra",
+        "district": "Ayawaso East"
+      },
+      {
+        "region": "Greater Accra",
+        "district": "Ayawaso North"
+      },
+      {
+        "region": "Greater Accra",
+        "district": "Ayawaso West"
+      },
+      {
+        "region": "Greater Accra",
+        "district": "Ga Central"
+      },
+      {
+        "region": "Greater Accra",
+        "district": "Ga East"
+      },
+      {
+        "region": "Greater Accra",
+        "district": "Ga North"
+      },
+      {
+        "region": "Greater Accra",
+        "district": "Ga South"
+      },
+      {
+        "region": "Greater Accra",
+        "district": "Ga West"
+      },
+      {
+        "region": "Greater Accra",
+        "district": "Korle Klottey"
+      },
+      {
+        "region": "Greater Accra",
+        "district": "Kpone Katamanso"
+      },
+      {
+        "region": "Greater Accra",
+        "district": "Krowor"
+      },
+      {
+        "region": "Oti",
+        "district": "Biakoye"
+      },
+      {
+        "region": "Oti",
+        "district": "Guan"
+      },
+      {
+        "region": "Oti",
+        "district": "Jasikan"
+      },
+      {
+        "region": "Oti",
+        "district": "Kadjebi"
+      },
+      {
+        "region": "Oti",
+        "district": "Krachi East"
+      },
+      {
+        "region": "Oti",
+        "district": "Krachi Nchumuru"
+      },
+      {
+        "region": "Oti",
+        "district": "Krachi West"
+      },
+      {
+        "region": "Oti",
+        "district": "Nkwanta North"
+      },
+      {
+        "region": "Oti",
+        "district": "Nkwanta South"
+      },
+      {
+        "region": "Upper East",
+        "district": "Bawku"
+      },
+      {
+        "region": "Upper East",
+        "district": "Bawku West"
+      },
+      {
+        "region": "Upper East",
+        "district": "Binduri"
+      },
+      {
+        "region": "Upper East",
+        "district": "Bolgatanga"
+      },
+      {
+        "region": "Upper East",
+        "district": "Bolgatanga East"
+      },
+      {
+        "region": "Upper East",
+        "district": "Bongo"
+      },
+      {
+        "region": "Upper East",
+        "district": "Builsa North"
+      },
+      {
+        "region": "Upper East",
+        "district": "Builsa South"
+      },
+      {
+        "region": "Upper East",
+        "district": "Garu"
+      },
+      {
+        "region": "Upper East",
+        "district": "Kassena Nankana"
+      },
+      {
+        "region": "Upper East",
+        "district": "Kassena Nankana West"
+      },
+      {
+        "region": "Upper East",
+        "district": "Nabdam"
+      },
+      {
+        "region": "Upper East",
+        "district": "Pusiga"
+      },
+      {
+        "region": "Upper East",
+        "district": "Talensi"
+      },
+      {
+        "region": "Upper East",
+        "district": "Tempane"
+      }
+    ]
+  },
+  "6": {
+    "cohortId": 6,
+    "name": "Cohort 6",
+    "dates": "Wednesday, 7th October 2026 – Saturday, 10th October 2026",
+    "districts": [
+      {
+        "region": "Greater Accra",
+        "district": "La Dade Kotopon"
+      },
+      {
+        "region": "Greater Accra",
+        "district": "La Nkwantanang Madina"
+      },
+      {
+        "region": "Greater Accra",
+        "district": "Ledzekuku"
+      },
+      {
+        "region": "Greater Accra",
+        "district": "Ningo Prampram"
+      },
+      {
+        "region": "Greater Accra",
+        "district": "Okaikwei North"
+      },
+      {
+        "region": "Greater Accra",
+        "district": "Shai Osudoku"
+      },
+      {
+        "region": "Greater Accra",
+        "district": "Tema"
+      },
+      {
+        "region": "Greater Accra",
+        "district": "Tema West"
+      },
+      {
+        "region": "Greater Accra",
+        "district": "Weija Gbawe"
+      },
+      {
+        "region": "Upper West",
+        "district": "Daffiama Bussie Issa"
+      },
+      {
+        "region": "Upper West",
+        "district": "Jirapa"
+      },
+      {
+        "region": "Upper West",
+        "district": "Lambussie Karni"
+      },
+      {
+        "region": "Upper West",
+        "district": "Lawra"
+      },
+      {
+        "region": "Upper West",
+        "district": "Nadowli Kaleo"
+      },
+      {
+        "region": "Upper West",
+        "district": "Nandom"
+      },
+      {
+        "region": "Upper West",
+        "district": "Sissala East"
+      },
+      {
+        "region": "Upper West",
+        "district": "Sissala West"
+      },
+      {
+        "region": "Upper West",
+        "district": "Wa"
+      },
+      {
+        "region": "Upper West",
+        "district": "Wa East"
+      },
+      {
+        "region": "Upper West",
+        "district": "Wa West"
+      },
+      {
+        "region": "Western",
+        "district": "Ahanta West"
+      },
+      {
+        "region": "Western",
+        "district": "Amenfi Central"
+      },
+      {
+        "region": "Western",
+        "district": "Amenfi West"
+      },
+      {
+        "region": "Western",
+        "district": "Effia Kwesimintsim"
+      },
+      {
+        "region": "Western",
+        "district": "Ellembelle"
+      },
+      {
+        "region": "Western",
+        "district": "Jomoro"
+      },
+      {
+        "region": "Western",
+        "district": "Mpohor"
+      },
+      {
+        "region": "Western",
+        "district": "Nzema East"
+      },
+      {
+        "region": "Western",
+        "district": "Prestea-Huni Valley"
+      },
+      {
+        "region": "Western",
+        "district": "Sekondi Takoradi"
+      },
+      {
+        "region": "Western",
+        "district": "Shama"
+      },
+      {
+        "region": "Western",
+        "district": "Tarkwa Nsuaem"
+      },
+      {
+        "region": "Western",
+        "district": "Wassa Amenfi East"
+      },
+      {
+        "region": "Western",
+        "district": "Wassa East"
+      },
+      {
+        "region": "Western North",
+        "district": "Aowin"
+      },
+      {
+        "region": "Western North",
+        "district": "Bia East"
+      },
+      {
+        "region": "Western North",
+        "district": "Bia West"
+      },
+      {
+        "region": "Western North",
+        "district": "Bibiani-Anhwiaso Bekwai"
+      },
+      {
+        "region": "Western North",
+        "district": "Bodi"
+      },
+      {
+        "region": "Western North",
+        "district": "Juaboso"
+      },
+      {
+        "region": "Western North",
+        "district": "Sefwi Akontombra"
+      },
+      {
+        "region": "Western North",
+        "district": "Sefwi Wiawso"
+      },
+      {
+        "region": "Western North",
+        "district": "Suaman"
+      }
+    ]
+  }
+}
