@@ -1,6 +1,7 @@
 const express = require("express");
 const XLSX = require("xlsx");
 const db = require("../db");
+const supabase = require("../supabase");
 const adminAuth = require("../middleware/adminAuth");
 const { findNextAvailableCohort, findCohortForDistrict } = require("./cohorts");
 
@@ -62,10 +63,22 @@ function validateRegistration(body) {
   return errors;
 }
 
-
 function formatNomineeRecord(row) {
   if (!row) return null;
-  const cohort = row.cohort_id ? db.prepare("SELECT * FROM cohorts WHERE id = ?").get(row.cohort_id) : null;
+  let rolesParsed = [];
+  try {
+    rolesParsed = typeof row.roles === "string" ? JSON.parse(row.roles || "[]") : (row.roles || []);
+  } catch(e) {
+    rolesParsed = [row.roles];
+  }
+
+  let cohort = null;
+  if (row.cohort_id) {
+    try {
+      cohort = db.prepare("SELECT * FROM cohorts WHERE id = ?").get(row.cohort_id);
+    } catch(e) {}
+  }
+
   const regCode = (row.region || "GES").replace(/[^A-Za-z]/g, "").slice(0, 3).toUpperCase();
   return {
     id: row.id,
@@ -77,7 +90,7 @@ function formatNomineeRecord(row) {
     region: row.region,
     district: row.district,
     institutionName: row.institution_name,
-    roles: JSON.parse(row.roles || "[]"),
+    roles: rolesParsed,
     cohortId: row.cohort_id,
     cohortName: cohort ? cohort.name : (row.cohort_id ? `Cohort ${row.cohort_id}` : "Cohort 1"),
     arrivalDate: row.arrival_date || (cohort ? cohort.arrival_date : "Sunday, 20/09/2026"),
@@ -90,7 +103,7 @@ function formatNomineeRecord(row) {
 }
 
 // GET /api/registrations/my-nomination - Check if an officer is already registered
-router.get("/my-nomination", (req, res) => {
+router.get("/my-nomination", async (req, res) => {
   const phone = (req.query.phone || req.query.phoneNumber || "").trim();
   const email = (req.query.email || "").trim();
   const name = (req.query.name || req.query.officerName || "").trim();
@@ -99,6 +112,22 @@ router.get("/my-nomination", (req, res) => {
     return res.json({ hasRegistered: false, nominee: null });
   }
 
+  // 1. Try Supabase
+  if (supabase) {
+    try {
+      let q = supabase.from("registrations").select("*");
+      if (phone) q = q.eq("phone_number", phone);
+      else if (email) q = q.ilike("email", email);
+      const { data, error } = await q.maybeSingle();
+      if (!error && data) {
+        return res.json({ hasRegistered: true, nominee: formatNomineeRecord(data) });
+      }
+    } catch(err) {
+      console.error("Supabase my-nomination check error:", err.message);
+    }
+  }
+
+  // 2. Fallback to local SQLite
   let row = null;
   if (phone) {
     row = db.prepare("SELECT * FROM registrations WHERE phone_number = ?").get(phone);
@@ -118,7 +147,7 @@ router.get("/my-nomination", (req, res) => {
 });
 
 // POST /api/registrations - submit a new registration (public)
-router.post("/", (req, res) => {
+router.post("/", async (req, res) => {
   const errors = validateRegistration(req.body);
   if (Object.keys(errors).length > 0) {
     return res.status(400).json({ errors });
@@ -138,7 +167,48 @@ router.post("/", (req, res) => {
 
   const formattedEmail = email && email.trim() ? email.trim() : null;
 
-  // Duplicate check on phone number or email
+  // 1. Duplicate check via Supabase if connected
+  if (supabase) {
+    try {
+      const { data: existPhone } = await supabase
+        .from("registrations")
+        .select("*")
+        .eq("phone_number", phoneNumber.trim())
+        .maybeSingle();
+
+      if (existPhone) {
+        const nominee = formatNomineeRecord(existPhone);
+        return res.status(409).json({
+          error: `A nomination registration with phone "${phoneNumber}" already exists for ${existPhone.officer_name}.`,
+          existingReference: generateRefCode(existPhone.id, existPhone.region),
+          hasRegistered: true,
+          nominee,
+        });
+      }
+
+      if (formattedEmail) {
+        const { data: existEmail } = await supabase
+          .from("registrations")
+          .select("*")
+          .ilike("email", formattedEmail)
+          .maybeSingle();
+
+        if (existEmail) {
+          const nominee = formatNomineeRecord(existEmail);
+          return res.status(409).json({
+            error: `A nomination registration with email "${formattedEmail}" already exists for ${existEmail.officer_name}.`,
+            existingReference: generateRefCode(existEmail.id, existEmail.region),
+            hasRegistered: true,
+            nominee,
+          });
+        }
+      }
+    } catch (e) {
+      console.error("Supabase duplicate check error:", e.message);
+    }
+  }
+
+  // Duplicate check on SQLite
   let existing = db
     .prepare("SELECT * FROM registrations WHERE phone_number = ?")
     .get(phoneNumber.trim());
@@ -174,6 +244,7 @@ router.post("/", (req, res) => {
   const assignedCohortId = allocatedCohort ? allocatedCohort.id : null;
   const arrivalDate = allocatedCohort ? allocatedCohort.arrival_date : null;
 
+  // Insert to local SQLite
   const stmt = db.prepare(`
     INSERT INTO registrations
       (officer_name, sex, phone_number, email, region, district, institution_name, roles, cohort_id, arrival_date, attendance_status)
@@ -193,7 +264,33 @@ router.post("/", (req, res) => {
     arrivalDate
   );
 
-  const insertedId = Number(info.lastInsertRowid);
+  let insertedId = Number(info.lastInsertRowid);
+
+  // Insert / Sync to Supabase if connected
+  if (supabase) {
+    try {
+      const { data: supaRow, error: supaErr } = await supabase.from("registrations").insert({
+        officer_name: officerName.trim(),
+        sex,
+        phone_number: phoneNumber.trim(),
+        email: formattedEmail,
+        region: region.trim(),
+        district: district.trim(),
+        institution_name: institutionName.trim(),
+        roles,
+        cohort_id: assignedCohortId,
+        arrival_date: arrivalDate,
+        attendance_status: "Registered"
+      }).select().single();
+
+      if (!supaErr && supaRow) {
+        insertedId = supaRow.id;
+      }
+    } catch(err) {
+      console.error("Supabase insert error:", err.message);
+    }
+  }
+
   const referenceCode = generateRefCode(insertedId, region);
 
   return res.status(201).json({
@@ -224,17 +321,30 @@ router.post("/", (req, res) => {
 });
 
 // GET /api/registrations/stats - summary KPI and analytics (admin only)
-router.get("/stats", adminAuth, (req, res) => {
-  const allRows = db.prepare("SELECT * FROM registrations").all();
+router.get("/stats", adminAuth, async (req, res) => {
+  let allRows = [];
+
+  if (supabase) {
+    try {
+      const { data, error } = await supabase.from("registrations").select("*");
+      if (!error && data) {
+        allRows = data;
+      }
+    } catch(e) {}
+  }
+
+  if (allRows.length === 0) {
+    allRows = db.prepare("SELECT * FROM registrations").all();
+  }
 
   const total = allRows.length;
   let maleCount = 0;
   let femaleCount = 0;
   let attendedCount = 0;
   const roleCounts = {
-    "DL Master Trainer - Numeracy (Math)": 0,
-    "DL Master Trainer - Literacy (English)": 0,
-    "DL Master Trainer - IT Person (DL Dashboard)": 0,
+    "DL District Trainer - Numeracy (Math)": 0,
+    "DL District Trainer - Literacy (English)": 0,
+    "DL District Trainer - IT Person (DL Dashboard)": 0,
   };
   const regionCounts = {};
 
@@ -243,10 +353,17 @@ router.get("/stats", adminAuth, (req, res) => {
     if (row.sex === "Female") femaleCount++;
     if (row.attendance_status === "Attended") attendedCount++;
 
-    const roles = JSON.parse(row.roles || "[]");
+    let roles = [];
+    try {
+      roles = typeof row.roles === "string" ? JSON.parse(row.roles || "[]") : (row.roles || []);
+    } catch(e) {
+      roles = [row.roles];
+    }
+
     for (const r of roles) {
-      if (roleCounts[r] !== undefined) {
-        roleCounts[r]++;
+      const normalized = r.replace("Master Trainer", "District Trainer");
+      if (roleCounts[normalized] !== undefined) {
+        roleCounts[normalized]++;
       }
     }
 
@@ -266,9 +383,58 @@ router.get("/stats", adminAuth, (req, res) => {
 });
 
 // GET /api/registrations - list/search/filter (admin only)
-router.get("/", adminAuth, (req, res) => {
+router.get("/", adminAuth, async (req, res) => {
   const { q, region, district, role, cohort_id, attendance_status } = req.query;
 
+  // 1. Try Supabase
+  if (supabase) {
+    try {
+      let query = supabase.from("registrations").select("*, cohorts(name, arrival_date, start_date, end_date, departure_date, max_capacity)").order("submitted_at", { ascending: false });
+
+      if (region) query = query.eq("region", region);
+      if (district) query = query.eq("district", district);
+      if (cohort_id) query = query.eq("cohort_id", Number(cohort_id));
+      if (attendance_status) query = query.eq("attendance_status", attendance_status);
+      if (q) {
+        query = query.or(`officer_name.ilike.%${q}%,phone_number.ilike.%${q}%,email.ilike.%${q}%,institution_name.ilike.%${q}%`);
+      }
+
+      const { data, error } = await query;
+      if (!error && data && data.length > 0) {
+        let formatted = data.map((r) => {
+          let rolesParsed = [];
+          try {
+            rolesParsed = typeof r.roles === "string" ? JSON.parse(r.roles || "[]") : (r.roles || []);
+          } catch(e) {
+            rolesParsed = [r.roles];
+          }
+          return {
+            ...r,
+            referenceCode: generateRefCode(r.id, r.region),
+            roles: rolesParsed,
+            cohort_name: r.cohorts ? r.cohorts.name : (r.cohort_id ? `Cohort ${r.cohort_id}` : null),
+            cohort_arrival_date: r.cohorts ? r.cohorts.arrival_date : r.arrival_date,
+            cohort_start_date: r.cohorts ? r.cohorts.start_date : null,
+            cohort_end_date: r.cohorts ? r.cohorts.end_date : null,
+            cohort_departure_date: r.cohorts ? r.cohorts.departure_date : null,
+            cohort_capacity: r.cohorts ? r.cohorts.max_capacity : 150,
+          };
+        });
+
+        if (role) {
+          formatted = formatted.filter((r) => {
+            return r.roles.some(rl => rl.includes(role) || rl.replace("Master Trainer", "District Trainer").includes(role));
+          });
+        }
+
+        return res.json({ count: formatted.length, registrations: formatted });
+      }
+    } catch(err) {
+      console.error("Supabase GET registrations error:", err.message);
+    }
+  }
+
+  // 2. Fallback to local SQLite
   let sql = `
     SELECT 
       r.*,
@@ -314,22 +480,30 @@ router.get("/", adminAuth, (req, res) => {
 
   let rows = db.prepare(sql).all(...params);
 
-  rows = rows.map((r) => ({
-    ...r,
-    referenceCode: generateRefCode(r.id, r.region),
-    roles: JSON.parse(r.roles),
-  }));
+  rows = rows.map((r) => {
+    let rolesParsed = [];
+    try {
+      rolesParsed = typeof r.roles === "string" ? JSON.parse(r.roles || "[]") : (r.roles || []);
+    } catch(e) {
+      rolesParsed = [r.roles];
+    }
+    return {
+      ...r,
+      referenceCode: generateRefCode(r.id, r.region),
+      roles: rolesParsed,
+    };
+  });
 
   if (role) {
-    rows = rows.filter((r) => r.roles.includes(role));
+    rows = rows.filter((r) => r.roles.some(rl => rl.includes(role) || rl.replace("Master Trainer", "District Trainer").includes(role)));
   }
 
   res.json({ count: rows.length, registrations: rows });
 });
 
 // PUT /api/registrations/:id - update a registration (admin only)
-router.put("/:id", adminAuth, (req, res) => {
-  const id = req.params.id;
+router.put("/:id", adminAuth, async (req, res) => {
+  const id = Number(req.params.id);
   const errors = validateRegistration(req.body);
   if (Object.keys(errors).length > 0) {
     return res.status(400).json({ errors });
@@ -349,50 +523,47 @@ router.put("/:id", adminAuth, (req, res) => {
     checkInNotes,
   } = req.body;
 
-  // Check if duplicate with other record
-  const existing = db
-    .prepare("SELECT id FROM registrations WHERE phone_number = ? AND id != ?")
-    .get(phoneNumber.trim(), id);
-
-  if (existing) {
-    return res.status(409).json({
-      error: `Another registration already uses the phone number "${phoneNumber}".`,
-    });
-  }
-
-  let cohort = null;
-  if (cohortId) {
-    cohort = db.prepare("SELECT * FROM cohorts WHERE id = ?").get(cohortId);
-  }
-
-  const arrivalDate = cohort ? cohort.arrival_date : req.body.arrivalDate || null;
-  const validStatus = ["Registered", "Attended", "Absent", "Excused"].includes(attendanceStatus)
-    ? attendanceStatus
-    : "Registered";
-  const attendedAt = validStatus === "Attended" ? (req.body.attendedAt || new Date().toISOString()) : null;
-
   const formattedEmail = email && email.trim() ? email.trim() : null;
+  const status = attendanceStatus || "Registered";
 
+  let arrivalDate = null;
+  if (cohortId) {
+    const c = db.prepare("SELECT * FROM cohorts WHERE id = ?").get(cohortId);
+    if (c) arrivalDate = c.arrival_date;
+  }
+
+  // Update Supabase if available
+  if (supabase) {
+    try {
+      await supabase.from("registrations").update({
+        officer_name: officerName.trim(),
+        sex,
+        phone_number: phoneNumber.trim(),
+        email: formattedEmail,
+        region: region.trim(),
+        district: district.trim(),
+        institution_name: institutionName.trim(),
+        roles,
+        cohort_id: cohortId ? Number(cohortId) : null,
+        arrival_date: arrivalDate,
+        attendance_status: status,
+        check_in_notes: checkInNotes || null
+      }).eq("id", id);
+    } catch(err) {
+      console.error("Supabase update error:", err.message);
+    }
+  }
+
+  // Update local SQLite
   const stmt = db.prepare(`
     UPDATE registrations
-    SET 
-      officer_name = ?, 
-      sex = ?, 
-      phone_number = ?, 
-      email = ?, 
-      region = ?, 
-      district = ?, 
-      institution_name = ?, 
-      roles = ?,
-      cohort_id = ?,
-      arrival_date = ?,
-      attendance_status = ?,
-      attended_at = ?,
-      check_in_notes = ?
+    SET officer_name = ?, sex = ?, phone_number = ?, email = ?,
+        region = ?, district = ?, institution_name = ?, roles = ?,
+        cohort_id = ?, arrival_date = ?, attendance_status = ?, check_in_notes = ?
     WHERE id = ?
   `);
 
-  const info = stmt.run(
+  stmt.run(
     officerName.trim(),
     sex,
     phoneNumber.trim(),
@@ -403,115 +574,145 @@ router.put("/:id", adminAuth, (req, res) => {
     JSON.stringify(roles),
     cohortId ? Number(cohortId) : null,
     arrivalDate,
-    validStatus,
-    attendedAt,
-    checkInNotes ? checkInNotes.trim() : null,
+    status,
+    checkInNotes || null,
     id
   );
 
-  if (info.changes === 0) {
-    return res.status(404).json({ error: "Registration not found." });
+  const updated = db.prepare("SELECT * FROM registrations WHERE id = ?").get(id);
+  res.json({ message: "Registration updated successfully.", nominee: formatNomineeRecord(updated) });
+});
+
+// DELETE /api/registrations/:id - delete a registration (admin only)
+router.delete("/:id", adminAuth, async (req, res) => {
+  const id = Number(req.params.id);
+
+  if (supabase) {
+    try {
+      await supabase.from("registrations").delete().eq("id", id);
+    } catch(err) {
+      console.error("Supabase delete error:", err.message);
+    }
   }
 
-  return res.json({
-    message: "Registration updated successfully.",
-    nominee: {
-      id: Number(id),
-      referenceCode: generateRefCode(id, region),
-      officer_name: officerName.trim(),
-      sex,
-      phone_number: phoneNumber.trim(),
-      email: formattedEmail,
-      region: region.trim(),
-      district: district.trim(),
-      institution_name: institutionName.trim(),
-      roles,
-      cohort_id: cohortId ? Number(cohortId) : null,
-      cohort_name: cohort ? cohort.name : null,
-      arrival_date: arrivalDate,
-      attendance_status: validStatus,
-      attended_at: attendedAt,
-      check_in_notes: checkInNotes || null,
-    },
+  db.prepare("DELETE FROM registrations WHERE id = ?").run(id);
+  res.json({ message: "Registration deleted successfully." });
+});
+
+// GET /api/registrations/export/csv - export all registrations as CSV
+router.get("/export/csv", adminAuth, async (req, res) => {
+  let rows = [];
+  if (supabase) {
+    try {
+      const { data } = await supabase.from("registrations").select("*, cohorts(name)").order("id", { ascending: true });
+      if (data && data.length > 0) {
+        rows = data.map(r => ({
+          ...r,
+          cohort_name: r.cohorts ? r.cohorts.name : (r.cohort_id ? `Cohort ${r.cohort_id}` : "")
+        }));
+      }
+    } catch(e) {}
+  }
+
+  if (rows.length === 0) {
+    rows = db.prepare(`
+      SELECT r.*, c.name as cohort_name
+      FROM registrations r
+      LEFT JOIN cohorts c ON r.cohort_id = c.id
+      ORDER BY r.id ASC
+    `).all();
+  }
+
+  const exportData = rows.map((r) => {
+    let rolesParsed = [];
+    try {
+      rolesParsed = typeof r.roles === "string" ? JSON.parse(r.roles || "[]") : (r.roles || []);
+    } catch(e) {
+      rolesParsed = [r.roles];
+    }
+    return {
+      "Ref Code": generateRefCode(r.id, r.region),
+      "Officer Name": r.officer_name,
+      "Sex": r.sex,
+      "Phone Number": r.phone_number,
+      "Email Address": r.email || "",
+      "Region": r.region,
+      "District": r.district,
+      "Institution / School": r.institution_name,
+      "Nominated Role(s)": rolesParsed.join("; "),
+      "Assigned Cohort": r.cohort_name || (r.cohort_id ? `Cohort ${r.cohort_id}` : "Unassigned"),
+      "Arrival Date": r.arrival_date || "",
+      "Attendance Status": r.attendance_status || "Registered",
+      "Check-in Notes": r.check_in_notes || "",
+      "Submitted At": r.submitted_at,
+    };
   });
-});
 
-// DELETE /api/registrations/:id - remove a registration (admin only)
-router.delete("/:id", adminAuth, (req, res) => {
-  const info = db.prepare("DELETE FROM registrations WHERE id = ?").run(req.params.id);
-  if (info.changes === 0) {
-    return res.status(404).json({ error: "Registration not found." });
-  }
-  res.json({ message: "Registration deleted." });
-});
-
-function getAllForExport() {
-  const rows = db.prepare(`
-    SELECT 
-      r.*,
-      c.name as cohort_name,
-      c.arrival_date as cohort_arrival_date,
-      c.start_date as cohort_start_date,
-      c.end_date as cohort_end_date,
-      c.departure_date as cohort_departure_date
-    FROM registrations r
-    LEFT JOIN cohorts c ON r.cohort_id = c.id
-    ORDER BY r.submitted_at DESC
-  `).all();
-
-  return rows.map((r) => ({
-    "Reference Code": generateRefCode(r.id, r.region),
-    "Name of Officer": r.officer_name,
-    "Email Address": r.email || "",
-    Sex: r.sex,
-    "Phone Number": r.phone_number,
-    Region: r.region,
-    District: r.district,
-    "Institution / Place of Work": r.institution_name,
-    "Nominated Roles": JSON.parse(r.roles).join("; "),
-    "Assigned Cohort": r.cohort_name || "Unassigned",
-    "Arrival Date": r.arrival_date || r.cohort_arrival_date || "",
-    "Training Start Date": r.cohort_start_date || "",
-    "Training End Date": r.cohort_end_date || "",
-    "Departure Date": r.cohort_departure_date || "",
-    "Attendance Status": r.attendance_status || "Registered",
-    "Attended Date/Time": r.attended_at || "",
-    "Submitted At": r.submitted_at,
-  }));
-}
-
-// GET /api/registrations/export/csv (admin only)
-router.get("/export/csv", adminAuth, (req, res) => {
-  const data = getAllForExport();
-  const worksheet = XLSX.utils.json_to_sheet(data);
-  const csv = XLSX.utils.sheet_to_csv(worksheet);
+  const ws = XLSX.utils.json_to_sheet(exportData);
+  const csv = XLSX.utils.sheet_to_csv(ws);
 
   res.setHeader("Content-Type", "text/csv");
-  res.setHeader("Content-Disposition", "attachment; filename=dl_master_trainer_registrations.csv");
+  res.setHeader("Content-Disposition", 'attachment; filename="dl_master_trainer_registrations.csv"');
   res.send(csv);
 });
 
-// GET /api/registrations/export/xlsx (admin only)
-router.get("/export/xlsx", adminAuth, (req, res) => {
-  const data = getAllForExport();
-  const worksheet = XLSX.utils.json_to_sheet(data);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, "Registrations");
-  const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
+// GET /api/registrations/export/xlsx - export all registrations as Excel
+router.get("/export/xlsx", adminAuth, async (req, res) => {
+  let rows = [];
+  if (supabase) {
+    try {
+      const { data } = await supabase.from("registrations").select("*, cohorts(name)").order("id", { ascending: true });
+      if (data && data.length > 0) {
+        rows = data.map(r => ({
+          ...r,
+          cohort_name: r.cohorts ? r.cohorts.name : (r.cohort_id ? `Cohort ${r.cohort_id}` : "")
+        }));
+      }
+    } catch(e) {}
+  }
 
-  res.setHeader(
-    "Content-Type",
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-  );
-  res.setHeader("Content-Disposition", "attachment; filename=dl_master_trainer_registrations.xlsx");
+  if (rows.length === 0) {
+    rows = db.prepare(`
+      SELECT r.*, c.name as cohort_name
+      FROM registrations r
+      LEFT JOIN cohorts c ON r.cohort_id = c.id
+      ORDER BY r.id ASC
+    `).all();
+  }
+
+  const exportData = rows.map((r) => {
+    let rolesParsed = [];
+    try {
+      rolesParsed = typeof r.roles === "string" ? JSON.parse(r.roles || "[]") : (r.roles || []);
+    } catch(e) {
+      rolesParsed = [r.roles];
+    }
+    return {
+      "Ref Code": generateRefCode(r.id, r.region),
+      "Officer Name": r.officer_name,
+      "Sex": r.sex,
+      "Phone Number": r.phone_number,
+      "Email Address": r.email || "",
+      "Region": r.region,
+      "District": r.district,
+      "Institution / School": r.institution_name,
+      "Nominated Role(s)": rolesParsed.join("; "),
+      "Assigned Cohort": r.cohort_name || (r.cohort_id ? `Cohort ${r.cohort_id}` : "Unassigned"),
+      "Arrival Date": r.arrival_date || "",
+      "Attendance Status": r.attendance_status || "Registered",
+      "Check-in Notes": r.check_in_notes || "",
+      "Submitted At": r.submitted_at,
+    };
+  });
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.json_to_sheet(exportData);
+  XLSX.utils.book_append_sheet(wb, ws, "Registrations");
+  const buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+
+  res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+  res.setHeader("Content-Disposition", 'attachment; filename="dl_master_trainer_registrations.xlsx"');
   res.send(buffer);
 });
 
-// GET /api/registrations/meta/regions - list of valid regions + districts (public)
-router.get("/meta/regions", (req, res) => {
-  const districts = require("../data/districts.json");
-  res.json(districts);
-});
-
 module.exports = router;
-

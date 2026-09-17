@@ -138,7 +138,7 @@ router.get("/stats", adminAuth, (req, res) => {
 });
 
 // PATCH /api/cohorts/attendance/:id - Update attendance status (admin only)
-router.patch("/attendance/:id", adminAuth, (req, res) => {
+router.patch("/attendance/:id", adminAuth, async (req, res) => {
   const id = req.params.id;
   const { status, notes } = req.body;
 
@@ -148,6 +148,20 @@ router.patch("/attendance/:id", adminAuth, (req, res) => {
   }
 
   const attendedAt = status === "Attended" ? new Date().toISOString() : null;
+
+  // Supabase sync
+  const supabase = require("../supabase");
+  if (supabase) {
+    try {
+      await supabase.from("registrations").update({
+        attendance_status: status,
+        checked_in_at: attendedAt,
+        check_in_notes: notes ? notes.trim() : null
+      }).eq("id", id);
+    } catch (e) {
+      console.error("Supabase attendance update error:", e.message);
+    }
+  }
 
   const info = db.prepare(`
     UPDATE registrations
@@ -173,7 +187,7 @@ router.patch("/attendance/:id", adminAuth, (req, res) => {
 });
 
 // PATCH /api/cohorts/allocate/:id - Allocate or reassign a nominee to a cohort (admin only)
-router.patch("/allocate/:id", adminAuth, (req, res) => {
+router.patch("/allocate/:id", adminAuth, async (req, res) => {
   const id = req.params.id;
   const { cohortId } = req.body;
 
@@ -186,6 +200,19 @@ router.patch("/allocate/:id", adminAuth, (req, res) => {
   }
 
   const arrivalDate = cohort ? cohort.arrival_date : null;
+
+  // Supabase sync
+  const supabase = require("../supabase");
+  if (supabase) {
+    try {
+      await supabase.from("registrations").update({
+        cohort_id: cohortId ? Number(cohortId) : null,
+        arrival_date: arrivalDate
+      }).eq("id", id);
+    } catch (e) {
+      console.error("Supabase allocation update error:", e.message);
+    }
+  }
 
   const info = db.prepare(`
     UPDATE registrations
