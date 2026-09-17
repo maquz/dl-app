@@ -1,0 +1,138 @@
+[
+  {
+    "officerName": "Kwame Mensah (Updated)",
+    "sex": "Male",
+    "phoneNumber": "024-498-9910",
+    "email": null,
+    "region": "GREATER ACCRA",
+    "district": "ACCRA METROPOLITAN",
+    "institutionName": "Presby Model School, Osu",
+    "roles": [
+      "DL Master Trainer - Numeracy (Math)"
+    ],
+    "cohortId": null,
+    "arrivalDate": null,
+    "attendanceStatus": "Registered",
+    "checkInNotes": null,
+    "submittedAt": "2026-09-16 12:06:45"
+  },
+  {
+    "officerName": "Mark Anibrika",
+    "sex": "Male",
+    "phoneNumber": "024-459-7593",
+    "email": "anibrika@gmail.com",
+    "region": "GREATER ACCRA",
+    "district": "TEMA METROPOLITAN",
+    "institutionName": "TEMA METRO EDUCATION OFFICE",
+    "roles": [
+      "DL Master Trainer - IT Person (DL Dashboard)"
+    ],
+    "cohortId": null,
+    "arrivalDate": null,
+    "attendanceStatus": "Registered",
+    "checkInNotes": null,
+    "submittedAt": "2026-09-16 13:28:15"
+  },
+  {
+    "officerName": "SOPHIA HARRY-SESHIE",
+    "sex": "Female",
+    "phoneNumber": "024-423-8600",
+    "email": "sophia.seshie@ges.gov.gh",
+    "region": "UPPER EAST",
+    "district": "KASSENA NANKANA WEST",
+    "institutionName": "Navrongo SHS",
+    "roles": [
+      "DL Master Trainer - Literacy (English)"
+    ],
+    "cohortId": null,
+    "arrivalDate": null,
+    "attendanceStatus": "Registered",
+    "checkInNotes": null,
+    "submittedAt": "2026-09-16 13:34:31"
+  },
+  {
+    "officerName": "Kofi Mensah",
+    "sex": "Male",
+    "phoneNumber": "024-555-0199",
+    "email": "kofi.mensah@ges.gov.gh",
+    "region": "GREATER ACCRA",
+    "district": "ACCRA METROPOLITAN",
+    "institutionName": "GES Headquarters",
+    "roles": [
+      "DL Master Trainer - Numeracy (Math)"
+    ],
+    "cohortId": null,
+    "arrivalDate": null,
+    "attendanceStatus": "Registered",
+    "checkInNotes": null,
+    "submittedAt": "2026-09-16 14:18:49"
+  },
+  {
+    "officerName": "Ebenezer Osei Test",
+    "sex": "Male",
+    "phoneNumber": "024-555-8899",
+    "email": "ebenezer.test@ges.gov.gh",
+    "region": "Greater Accra",
+    "district": "Accra Metropolitan",
+    "institutionName": "Accra High School",
+    "roles": [
+      "DL Master Trainer - IT Person (DL Dashboard)"
+    ],
+    "cohortId": 1,
+    "arrivalDate": "Sunday, 20/09/2026",
+    "attendanceStatus": "Registered",
+    "checkInNotes": null,
+    "submittedAt": "2026-09-16 15:30:50"
+  },
+  {
+    "officerName": "Ebenezer Test 9958",
+    "sex": "Male",
+    "phoneNumber": "024-999-9958",
+    "email": "ebenezer.9958@ges.gov.gh",
+    "region": "Greater Accra",
+    "district": "Accra Metropolitan",
+    "institutionName": "Accra High School",
+    "roles": [
+      "DL Master Trainer - IT Person (DL Dashboard)"
+    ],
+    "cohortId": 2,
+    "arrivalDate": "Wednesday, 23/09/2026",
+    "attendanceStatus": "Attended",
+    "checkInNotes": "Verified at registration desk",
+    "submittedAt": "2026-09-16 15:32:03"
+  },
+  {
+    "officerName": "SOPHIA HARRY-SESHIE",
+    "sex": "Female",
+    "phoneNumber": "024-423-8601",
+    "email": "sophia.seshie@ges.gov.gh",
+    "region": "Upper East",
+    "district": "Kassena Nankana",
+    "institutionName": "kasena METRO EDUCATION OFFICE",
+    "roles": [
+      "DL Master Trainer - Literacy (English)"
+    ],
+    "cohortId": 5,
+    "arrivalDate": "Sunday, 04/10/2026",
+    "attendanceStatus": "Registered",
+    "checkInNotes": null,
+    "submittedAt": "2026-09-16 22:45:26"
+  },
+  {
+    "officerName": "TEST OFFICER 8008",
+    "sex": "Male",
+    "phoneNumber": "024-777-8008",
+    "email": "officer_8008@ges.gov.gh",
+    "region": "Central",
+    "district": "Cape Coast Metropolitan",
+    "institutionName": "Adisadel College",
+    "roles": [
+      "DL Master Trainer - Numeracy (Math)"
+    ],
+    "cohortId": 1,
+    "arrivalDate": "Sunday, 20/09/2026",
+    "attendanceStatus": "Registered",
+    "checkInNotes": null,
+    "submittedAt": "2026-09-16 23:38:38"
+  }
+]

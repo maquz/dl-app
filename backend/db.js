@@ -280,5 +280,37 @@ try {
   console.error("Error seeding sample assessments:", err);
 }
 
+// Seed Initial Registrations if empty
+try {
+  const regCount = db.prepare("SELECT COUNT(*) as count FROM registrations").get();
+  if (regCount && regCount.count === 0) {
+    const seedRegistrations = require("./data/seed_registrations.json");
+    const insertReg = db.prepare(`
+      INSERT INTO registrations (officer_name, sex, phone_number, email, region, district, institution_name, roles, cohort_id, arrival_date, attendance_status, check_in_notes, submitted_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    for (const r of seedRegistrations) {
+      insertReg.run(
+        r.officerName,
+        r.sex,
+        r.phoneNumber,
+        r.email || null,
+        r.region,
+        r.district,
+        r.institutionName,
+        JSON.stringify(r.roles),
+        r.cohortId || null,
+        r.arrivalDate || null,
+        r.attendanceStatus || "Registered",
+        r.checkInNotes || null,
+        r.submittedAt || new Date().toISOString()
+      );
+    }
+    console.log(`✓ Seeded ${seedRegistrations.length} Nominee Registrations.`);
+  }
+} catch (err) {
+  console.error("Error seeding registrations:", err);
+}
+
 module.exports = db;
 
