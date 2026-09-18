@@ -932,6 +932,85 @@ export default function AdminDashboard() {
     }
   }
 
+  // ---- Print current filtered nominees table ----
+  function handlePrint() {
+    const printRows = rows;
+    const date = new Date().toLocaleDateString("en-GH", { day: "2-digit", month: "long", year: "numeric" });
+    const tableRows = printRows.map((r) => `
+      <tr>
+        <td>${r.referenceCode || `DL-${r.id}`}</td>
+        <td><strong>${r.officer_name}</strong><br/><small>${r.email || ""}</small></td>
+        <td>${r.sex}</td>
+        <td>${r.phone_number}</td>
+        <td>${r.region}<br/><small>${r.district}</small></td>
+        <td>${r.institution_name}</td>
+        <td>${(r.roles || []).map(role => role.replace("DL Master Trainer - ", "").replace("DL District Trainer - ", "")).join(", ")}</td>
+        <td>${r.cohort_name || (r.cohort_id ? "Cohort " + r.cohort_id : "—")}</td>
+        <td>${r.attendance_status || "Registered"}</td>
+      </tr>`).join("");
+    const html = `<!DOCTYPE html><html><head><title>DL Nominees List – ${date}</title>
+      <style>
+        body { font-family: Arial, sans-serif; font-size: 11px; color: #222; margin: 20px; }
+        h2 { font-size: 15px; margin: 0 0 2px; }
+        .sub { color: #666; font-size: 11px; margin: 0 0 12px; }
+        table { border-collapse: collapse; width: 100%; }
+        th { background: #1a2e4a; color: #fff; padding: 6px 8px; text-align: left; font-size: 10px; }
+        td { padding: 5px 8px; border-bottom: 1px solid #eee; vertical-align: top; }
+        tr:nth-child(even) td { background: #f9f9f9; }
+        small { color: #666; }
+        .footer { margin-top: 16px; font-size: 10px; color: #999; border-top: 1px solid #ddd; padding-top: 8px; }
+      </style></head><body>
+      <h2>Ghana Education Service — Differentiated Learning Programme</h2>
+      <p class="sub">AF2 Nominee Registration List · Printed on ${date} · Total: ${printRows.length} nominee(s)</p>
+      <table>
+        <thead><tr>
+          <th>Ref Code</th><th>Officer Name</th><th>Sex</th><th>Phone</th>
+          <th>Region / District</th><th>Institution</th><th>Role</th><th>Cohort</th><th>Status</th>
+        </tr></thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+      <div class="footer">Generated from GES DL Nomination Portal · Confidential</div>
+      </body></html>`;
+    const win = window.open("", "_blank", "width=1000,height=700");
+    if (!win) { alert("Please allow pop-ups to print."); return; }
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); }, 300);
+  }
+
+  // ---- Share modal state ----
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
+
+  function handleOpenShare() {
+    setShareModalOpen(true);
+    setShareCopied(false);
+  }
+
+  function handleCopyShareLink() {
+    const url = window.location.origin + "/officer/login";
+    navigator.clipboard.writeText(url).then(() => {
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2500);
+    }).catch(() => {
+      prompt("Copy this link:", url);
+    });
+  }
+
+  function handleShareWhatsApp() {
+    const date = new Date().toLocaleDateString("en-GH", { day: "2-digit", month: "long", year: "numeric" });
+    const msg = `📋 *GES DL Nominee Registration Update* (${date})\n\nTotal registered nominees: *${rows.length}*\n\nNominees can check their registration status at:\n${window.location.origin}\n\n_Ghana Education Service · Differentiated Learning Programme_`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank");
+  }
+
+  function handleShareEmail() {
+    const date = new Date().toLocaleDateString("en-GH", { day: "2-digit", month: "long", year: "numeric" });
+    const subject = `GES DL Nominee Registration Update – ${date}`;
+    const body = `Dear Colleague,\n\nPlease find below the current DL Nominee registration update as of ${date}.\n\nTotal Registered Nominees: ${rows.length}\n\nNominees can access the portal at: ${window.location.origin}\n\nBest regards,\nGES DL Programme Secretariat`;
+    window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+  }
+
   function handleLogout() {
     sessionStorage.removeItem("admin_token");
     sessionStorage.removeItem("admin_password");
@@ -1277,6 +1356,24 @@ export default function AdminDashboard() {
                       <line x1="12" y1="15" x2="12" y2="3"></line>
                     </svg>
                     {exporting === "xlsx" ? "Exporting…" : "Excel (.xlsx)"}
+                  </button>
+                  <button className="btn-secondary" onClick={handlePrint} title="Print nominees list">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: "4px" }}>
+                      <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                      <rect x="6" y="14" width="12" height="8"></rect>
+                    </svg>
+                    Print
+                  </button>
+                  <button className="btn-primary" onClick={handleOpenShare} title="Share nominees data">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: "4px" }}>
+                      <circle cx="18" cy="5" r="3"></circle>
+                      <circle cx="6" cy="12" r="3"></circle>
+                      <circle cx="18" cy="19" r="3"></circle>
+                      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                      <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                    </svg>
+                    Share
                   </button>
                 </div>
               </div>
@@ -2945,6 +3042,52 @@ export default function AdminDashboard() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Share Modal */}
+      {shareModalOpen && (
+        <div className="modal-overlay" onClick={() => setShareModalOpen(false)}>
+          <div className="modal-content" style={{ maxWidth: "400px" }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Share Registration Link</h3>
+              <button className="btn-close" onClick={() => setShareModalOpen(false)} aria-label="Close share modal">✕</button>
+            </div>
+            <div className="modal-body" style={{ textAlign: "center", padding: "20px 0" }}>
+              <p style={{ marginBottom: "20px", color: "#666" }}>
+                Distribute the portal link to district officers and nominees.
+              </p>
+              
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                <button className="btn-primary" onClick={handleShareWhatsApp} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", background: "#25D366", borderColor: "#25D366" }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+                  </svg>
+                  Share via WhatsApp
+                </button>
+                
+                <button className="btn-secondary" onClick={handleShareEmail} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                    <polyline points="22,6 12,13 2,6"></polyline>
+                  </svg>
+                  Share via Email
+                </button>
+
+                <button className="btn-secondary" onClick={handleCopyShareLink} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                  </svg>
+                  {shareCopied ? "Link Copied!" : "Copy Portal Link"}
+                </button>
+              </div>
+            </div>
+            <div className="modal-actions">
+              <button type="button" className="btn-secondary" onClick={() => setShareModalOpen(false)}>
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
