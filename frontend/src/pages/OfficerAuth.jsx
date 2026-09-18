@@ -75,7 +75,7 @@ export default function OfficerAuth() {
     const e = {};
     if (viewMode === "login") {
       if (!loginEmail.trim()) {
-        e.email = "Please enter your email address or phone number.";
+        e.email = "Please enter your email address.";
       }
       if (!loginPassword.trim()) {
         e.password = "Please enter your password.";
@@ -97,7 +97,7 @@ export default function OfficerAuth() {
       }
     } else if (viewMode === "forgot") {
       if (!recoveryQuery.trim()) {
-        e.recoveryQuery = "Please enter your registered email address or phone number.";
+        e.recoveryQuery = "Please enter your registered email address.";
       }
     }
     return e;
@@ -287,7 +287,7 @@ export default function OfficerAuth() {
           <p className="auth-eyebrow-subtitle">
             {viewMode === "login" && "LOGIN TO ACCESS YOUR GES DL NOMINATION PORTAL"}
             {viewMode === "register" && "REGISTER TO START YOUR DL DISTRICT TRAINER NOMINATION"}
-            {viewMode === "forgot" && "ENTER YOUR REGISTERED EMAIL OR PHONE NUMBER TO VIEW YOUR PASSWORD"}
+            {viewMode === "forgot" && "ENTER YOUR REGISTERED EMAIL TO VIEW YOUR PASSWORD"}
           </p>
         </div>
 
@@ -310,7 +310,7 @@ export default function OfficerAuth() {
               <form onSubmit={handleSubmit} noValidate className="auth-form-modern">
                 <div className="form-group-modern">
                   <label htmlFor="rec-query" className="label-modern">
-                    Registered Email Address or Phone Number
+                    Registered Email Address
                   </label>
                   <div className={"input-wrapper-modern " + (errors.recoveryQuery ? "input-has-error" : "")}>
                     <input
@@ -434,7 +434,7 @@ export default function OfficerAuth() {
           <form onSubmit={handleSubmit} noValidate className="auth-form-modern">
             <div className="form-group-modern">
               <label htmlFor="login-email" className="label-modern">
-                Email or Phone Number
+                Email
               </label>
               <div className={"input-wrapper-modern " + (errors.email ? "input-has-error" : "")}>
                 <input

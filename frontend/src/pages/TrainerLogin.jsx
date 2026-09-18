@@ -20,7 +20,7 @@ export default function TrainerLogin() {
   function validate() {
     const e = {};
     if (!identifier.trim()) {
-      e.identifier = "Please enter your phone number or email.";
+      e.identifier = "Please enter your email.";
     }
     if (!password.trim()) {
       e.password = "Password is required.";
@@ -79,7 +79,7 @@ export default function TrainerLogin() {
         <form onSubmit={handleSubmit} noValidate className="auth-form-modern">
           <div className="form-group-modern">
             <label htmlFor="trainer-id" className="label-modern">
-              Phone Number or Official Email *
+              Official Email *
             </label>
             <div className={"input-wrapper-modern " + (errors.identifier ? "input-has-error" : "")}>
               <input
