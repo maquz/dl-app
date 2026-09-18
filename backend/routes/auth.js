@@ -28,6 +28,40 @@ async function findSupabaseRegistration(identifier) {
   }
 }
 
+// Safely parse roles — handles both SQLite (JSON string) and Supabase (native array)
+// JSON.parse on an array crashes with SyntaxError causing infinite "Signing in..." spinner
+function parseRoles(rolesField) {
+  if (!rolesField) return [];
+  if (Array.isArray(rolesField)) return rolesField;
+  try { return JSON.parse(rolesField); } catch (e) { return [String(rolesField)]; }
+}
+
+// Build nominee object safely from a registration row (works for both SQLite and Supabase rows)
+function buildNomineeFromRow(regRow, cohort) {
+  if (!regRow) return null;
+  const regCode = (regRow.region || "GES").replace(/[^A-Za-z]/g, "").slice(0, 3).toUpperCase();
+  return {
+    id: regRow.id,
+    referenceCode: `DL-2026-${regCode}-${String(regRow.id).padStart(4, "0")}`,
+    officerName: regRow.officer_name,
+    sex: regRow.sex,
+    phoneNumber: regRow.phone_number,
+    email: regRow.email,
+    region: regRow.region,
+    district: regRow.district,
+    institutionName: regRow.institution_name,
+    roles: parseRoles(regRow.roles),
+    cohortId: regRow.cohort_id,
+    cohortName: cohort ? cohort.name : (regRow.cohort_id ? `Cohort ${regRow.cohort_id}` : "Cohort 1"),
+    arrivalDate: regRow.arrival_date || (cohort ? cohort.arrival_date : "Sunday, 20/09/2026"),
+    startDate: cohort ? cohort.start_date : "Monday, 21/09/2026",
+    endDate: cohort ? cohort.end_date : "Tuesday, 22/09/2026",
+    departureDate: cohort ? cohort.departure_date : "Wednesday, 23/09/2026",
+    attendanceStatus: regRow.attendance_status || "Registered",
+    submittedAt: regRow.submitted_at,
+  };
+}
+
 function hashPassword(password, salt = crypto.randomBytes(16).toString("hex")) {
   const hash = crypto.scryptSync(password, salt, 64).toString("hex");
   return `${salt}:${hash}`;
@@ -83,27 +117,7 @@ router.post("/signup", (req, res) => {
     let hasRegistered = false;
     if (regRow) {
       const cohort = regRow.cohort_id ? db.prepare("SELECT * FROM cohorts WHERE id = ?").get(regRow.cohort_id) : null;
-      const regCode = (regRow.region || "GES").replace(/[^A-Za-z]/g, "").slice(0, 3).toUpperCase();
-      nominee = {
-        id: regRow.id,
-        referenceCode: `DL-2026-${regCode}-${String(regRow.id).padStart(4, "0")}`,
-        officerName: regRow.officer_name,
-        sex: regRow.sex,
-        phoneNumber: regRow.phone_number,
-        email: regRow.email,
-        region: regRow.region,
-        district: regRow.district,
-        institutionName: regRow.institution_name,
-        roles: JSON.parse(regRow.roles || "[]"),
-        cohortId: regRow.cohort_id,
-        cohortName: cohort ? cohort.name : (regRow.cohort_id ? `Cohort ${regRow.cohort_id}` : "Cohort 1"),
-        arrivalDate: regRow.arrival_date || (cohort ? cohort.arrival_date : "Sunday, 20/09/2026"),
-        startDate: cohort ? cohort.start_date : "Monday, 21/09/2026",
-        endDate: cohort ? cohort.end_date : "Tuesday, 22/09/2026",
-        departureDate: cohort ? cohort.departure_date : "Wednesday, 23/09/2026",
-        attendanceStatus: regRow.attendance_status || "Registered",
-        submittedAt: regRow.submitted_at,
-      };
+      nominee = buildNomineeFromRow(regRow, cohort);
       hasRegistered = true;
     }
 
@@ -147,29 +161,10 @@ router.post("/signup", (req, res) => {
   let hasRegistered = false;
   if (regRow) {
     const cohort = regRow.cohort_id ? db.prepare("SELECT * FROM cohorts WHERE id = ?").get(regRow.cohort_id) : null;
-    const regCode = (regRow.region || "GES").replace(/[^A-Za-z]/g, "").slice(0, 3).toUpperCase();
-    nominee = {
-      id: regRow.id,
-      referenceCode: `DL-2026-${regCode}-${String(regRow.id).padStart(4, "0")}`,
-      officerName: regRow.officer_name,
-      sex: regRow.sex,
-      phoneNumber: regRow.phone_number,
-      email: regRow.email,
-      region: regRow.region,
-      district: regRow.district,
-      institutionName: regRow.institution_name,
-      roles: JSON.parse(regRow.roles || "[]"),
-      cohortId: regRow.cohort_id,
-      cohortName: cohort ? cohort.name : (regRow.cohort_id ? `Cohort ${regRow.cohort_id}` : "Cohort 1"),
-      arrivalDate: regRow.arrival_date || (cohort ? cohort.arrival_date : "Sunday, 20/09/2026"),
-      startDate: cohort ? cohort.start_date : "Monday, 21/09/2026",
-      endDate: cohort ? cohort.end_date : "Tuesday, 22/09/2026",
-      departureDate: cohort ? cohort.departure_date : "Wednesday, 23/09/2026",
-      attendanceStatus: regRow.attendance_status || "Registered",
-      submittedAt: regRow.submitted_at,
-    };
+    nominee = buildNomineeFromRow(regRow, cohort);
     hasRegistered = true;
   }
+
 
   return res.status(201).json({
     message: "Officer account created successfully.",
@@ -277,29 +272,10 @@ router.post("/login", async (req, res) => {
   let hasRegistered = false;
   if (regRow) {
     const cohort = regRow.cohort_id ? db.prepare("SELECT * FROM cohorts WHERE id = ?").get(regRow.cohort_id) : null;
-    const regCode = (regRow.region || "GES").replace(/[^A-Za-z]/g, "").slice(0, 3).toUpperCase();
-    nominee = {
-      id: regRow.id,
-      referenceCode: `DL-2026-${regCode}-${String(regRow.id).padStart(4, "0")}`,
-      officerName: regRow.officer_name,
-      sex: regRow.sex,
-      phoneNumber: regRow.phone_number,
-      email: regRow.email,
-      region: regRow.region,
-      district: regRow.district,
-      institutionName: regRow.institution_name,
-      roles: JSON.parse(regRow.roles || "[]"),
-      cohortId: regRow.cohort_id,
-      cohortName: cohort ? cohort.name : (regRow.cohort_id ? `Cohort ${regRow.cohort_id}` : "Cohort 1"),
-      arrivalDate: regRow.arrival_date || (cohort ? cohort.arrival_date : "Sunday, 20/09/2026"),
-      startDate: cohort ? cohort.start_date : "Monday, 21/09/2026",
-      endDate: cohort ? cohort.end_date : "Tuesday, 22/09/2026",
-      departureDate: cohort ? cohort.departure_date : "Wednesday, 23/09/2026",
-      attendanceStatus: regRow.attendance_status || "Registered",
-      submittedAt: regRow.submitted_at,
-    };
+    nominee = buildNomineeFromRow(regRow, cohort);
     hasRegistered = true;
   }
+
 
   return res.json({
     message: "Login successful.",
