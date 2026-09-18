@@ -18,6 +18,7 @@ app.use(express.json());
 
 app.get("/api/health", async (req, res) => {
   const supabase = require("./supabase");
+  const BUILD_VERSION = "2026-09-18-v5";  // bump to force Vercel redeploy
   let supabaseStatus = "not configured";
   let supabaseCount = null;
   if (supabase) {
@@ -38,6 +39,7 @@ app.get("/api/health", async (req, res) => {
   res.json({
     status: "ok",
     service: "DL Master Trainers Registration API",
+    build: BUILD_VERSION,
     supabase: supabaseStatus,
     supabaseRegistrations: supabaseCount,
     env: process.env.VERCEL ? "vercel" : "local",
