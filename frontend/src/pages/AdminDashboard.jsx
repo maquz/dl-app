@@ -30,6 +30,7 @@ import {
   fetchAssessmentSubmissions,
   bulkImportAssessmentQuestions,
   downloadAssessmentTemplateUrl,
+  getAssessmentPptxReportUrl,
   parseDocxQuestions,
 } from "../api.js";
 import { ROLE_OPTIONS } from "../components/RoleCheckboxGroup.jsx";
@@ -1984,6 +1985,14 @@ export default function AdminDashboard() {
                             >
                               Results
                             </button>
+                            <a
+                              href={getAssessmentPptxReportUrl(a.id, cohortFilter || "")}
+                              className="btn-link-action"
+                              style={{ color: "#0ea5e9", fontWeight: 600, textDecoration: "none" }}
+                              title="Download PowerPoint presentation report"
+                            >
+                              PPTX Report
+                            </a>
                             <Link to={`/assessment/${a.id}?bypass=true`} className="btn-link-action" target="_blank" rel="noreferrer" title="Preview candidate test">
                               Preview ↗
                             </Link>

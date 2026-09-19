@@ -10,6 +10,7 @@ import {
   updateAssessment,
   toggleAssessment,
   fetchAssessmentSubmissions,
+  getAssessmentPptxReportUrl,
   fetchAssessmentOverviewStats,
   fetchNationalTrainers,
   updateNationalTrainer,
@@ -620,6 +621,13 @@ export default function TrainerDashboard() {
                   >
                     View Scores ({a.submission_count || 0})
                   </button>
+                  <a
+                    href={getAssessmentPptxReportUrl(a.id, "")}
+                    className="btn-secondary"
+                    style={{ background: "#e0f2fe", color: "#0369a1", borderColor: "#bae6fd", textDecoration: "none" }}
+                  >
+                    PPTX Report
+                  </a>
                   <button
                     type="button"
                     className="btn-link-edit"

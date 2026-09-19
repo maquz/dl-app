@@ -1069,6 +1069,24 @@ router.patch("/:id/toggle", trainerOrAdminAuth, (req, res) => {
   res.json({ message: `Assessment ${nextState ? "activated" : "deactivated"}.`, isActive: nextState });
 });
 
+// GET /api/assessments/:id/report/pptx - Download PPTX report
+router.get("/:id/report/pptx", async (req, res) => {
+  const assessmentId = req.params.id;
+  const cohortId = req.query.cohort_id || null;
+
+  try {
+    const { generateAssessmentReportPptx } = require("../utils/pptxReport");
+    const buffer = await generateAssessmentReportPptx(assessmentId, cohortId);
+    
+    res.setHeader("Content-Disposition", `attachment; filename=Assessment_Report_${assessmentId}.pptx`);
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.presentationml.presentation");
+    res.send(buffer);
+  } catch (err) {
+    console.error("PPTX Generation Error:", err);
+    res.status(500).json({ error: "Failed to generate PowerPoint report." });
+  }
+});
+
 // POST /api/assessments/:id/submit - Submit participant answers & auto-grade
 router.post("/:id/submit", async (req, res) => {
   const assessmentId = req.params.id;

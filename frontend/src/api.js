@@ -399,6 +399,10 @@ export function downloadAssessmentTemplateUrl(type = "pre-test", format = "xlsx"
   return `${API_URL}/assessments/template/download?type=${type}&format=${format}`;
 }
 
+export function getAssessmentPptxReportUrl(id, cohortId = "") {
+  return `${API_URL}/assessments/${id}/report/pptx${cohortId ? `?cohort_id=${cohortId}` : ""}`;
+}
+
 export async function parseDocxQuestions(file) {
   const formData = new FormData();
   formData.append("file", file);
