@@ -634,7 +634,7 @@ router.post("/:id/questions/bulk", trainerOrAdminAuth, async (req, res) => {
       assessment_id: assessmentId,
       question_text: text,
       question_type: qType,
-      options_json: optsJson,
+      options_json: opts, // Pass raw array for Supabase jsonb
       correct_answer: correctAnswer,
       points: points,
       sort_order: startOrder
@@ -685,8 +685,8 @@ router.post("/:id/questions/bulk", trainerOrAdminAuth, async (req, res) => {
         correctAnswer: q.correct_answer,
         points: q.points,
         sortOrder: q.sort_order,
-
-    })),
+      };
+    }),
   });
 });
 
