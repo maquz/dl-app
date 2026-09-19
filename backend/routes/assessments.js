@@ -539,10 +539,11 @@ router.post("/template/parse-docx", upload.single("file"), async (req, res) => {
 
 
 // POST /api/assessments/:id/questions/bulk - Bulk import questions for an assessment
-router.post("/:id/questions/bulk", trainerOrAdminAuth, (req, res) => {
+router.post("/:id/questions/bulk", trainerOrAdminAuth, async (req, res) => {
   const assessmentId = req.params.id;
   const { questions, mode = "replace" } = req.body; // mode: 'replace' | 'append'
 
+  const supabase = require("../supabase");
   const assessment = db.prepare("SELECT * FROM assessments WHERE id = ?").get(assessmentId);
   if (!assessment) {
     return res.status(404).json({ error: "Assessment not found." });
@@ -554,6 +555,9 @@ router.post("/:id/questions/bulk", trainerOrAdminAuth, (req, res) => {
 
   if (mode === "replace") {
     db.prepare("DELETE FROM assessment_questions WHERE assessment_id = ?").run(assessmentId);
+    if (supabase) {
+      await supabase.from("assessment_questions").delete().eq("assessment_id", assessmentId);
+    }
   }
 
   const maxOrderRow = db.prepare("SELECT MAX(sort_order) as maxOrder FROM assessment_questions WHERE assessment_id = ?").get(assessmentId);
@@ -565,6 +569,8 @@ router.post("/:id/questions/bulk", trainerOrAdminAuth, (req, res) => {
   `);
 
   let insertedCount = 0;
+  const supabasePayloads = [];
+
   for (const q of questions) {
     const text = (q.questionText || q.questionPrompt || q["Question Prompt"] || q.question || "").trim();
     if (!text) continue;
@@ -612,37 +618,74 @@ router.post("/:id/questions/bulk", trainerOrAdminAuth, (req, res) => {
     }
 
     const points = Number(q.points || q.Points || q.score || 2) || 2;
+    const optsJson = JSON.stringify(opts);
 
     insertStmt.run(
       assessmentId,
       text,
       qType,
-      JSON.stringify(opts),
+      optsJson,
       correctAnswer,
       points,
-      startOrder++
+      startOrder
     );
+
+    supabasePayloads.push({
+      assessment_id: assessmentId,
+      question_text: text,
+      question_type: qType,
+      options_json: optsJson,
+      correct_answer: correctAnswer,
+      points: points,
+      sort_order: startOrder
+    });
+
+    startOrder++;
     insertedCount++;
   }
 
-  const updatedQuestions = db.prepare(`
-    SELECT * FROM assessment_questions 
-    WHERE assessment_id = ? 
-    ORDER BY sort_order ASC, id ASC
-  `).all(assessmentId);
+  if (supabase && supabasePayloads.length > 0) {
+    try {
+      await supabase.from("assessment_questions").insert(supabasePayloads);
+    } catch (err) {
+      console.error("Supabase bulk questions upload error:", err.message);
+    }
+  }
+
+  let updatedQuestions = [];
+  if (supabase) {
+    try {
+      const { data } = await supabase.from("assessment_questions").select("*").eq("assessment_id", assessmentId).order("sort_order", { ascending: true });
+      if (data && data.length > 0) updatedQuestions = data;
+    } catch (e) {}
+  }
+
+  if (updatedQuestions.length === 0) {
+    updatedQuestions = db.prepare(`
+      SELECT * FROM assessment_questions 
+      WHERE assessment_id = ? 
+      ORDER BY sort_order ASC, id ASC
+    `).all(assessmentId);
+  }
 
   res.json({
     message: `Successfully imported ${insertedCount} questions into "${assessment.title}".`,
     insertedCount,
     totalQuestions: updatedQuestions.length,
-    questions: updatedQuestions.map(q => ({
-      id: q.id,
-      questionText: q.question_text,
-      questionType: q.question_type,
-      options: JSON.parse(q.options_json || "[]"),
-      correctAnswer: q.correct_answer,
-      points: q.points,
-      sortOrder: q.sort_order,
+    questions: updatedQuestions.map(q => {
+      let parsedOpts = [];
+      try {
+        parsedOpts = typeof q.options_json === "string" ? JSON.parse(q.options_json || "[]") : (q.options_json || []);
+      } catch(e) {}
+      return {
+        id: q.id,
+        questionText: q.question_text,
+        questionType: q.question_type,
+        options: parsedOpts,
+        correctAnswer: q.correct_answer,
+        points: q.points,
+        sortOrder: q.sort_order,
+
     })),
   });
 });
