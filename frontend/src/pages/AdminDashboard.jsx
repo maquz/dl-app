@@ -30,6 +30,7 @@ import {
   fetchAssessmentSubmissions,
   bulkImportAssessmentQuestions,
   downloadAssessmentTemplateUrl,
+  parseDocxQuestions,
 } from "../api.js";
 import { ROLE_OPTIONS } from "../components/RoleCheckboxGroup.jsx";
 
@@ -729,13 +730,32 @@ export default function AdminDashboard() {
     handleOpenBulkUpload(post);
   }
 
-  function handleBulkFileChange(e) {
+  async function handleBulkFileChange(e) {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setBulkFileName(file.name);
     setBulkError("");
+    setBulkQuestions([]);
 
+    // Word document — send to backend for parsing
+    if (file.name.toLowerCase().endsWith(".docx")) {
+      try {
+        setBulkError("Parsing Word document…");
+        const result = await parseDocxQuestions(file);
+        if (result.questions && result.questions.length > 0) {
+          setBulkQuestions(result.questions);
+          setBulkError("");
+        } else {
+          setBulkError("No valid question rows found in Word document. Please ensure you used the official Word template and filled in the table correctly.");
+        }
+      } catch (err) {
+        setBulkError((err.body?.error || err.message || "Failed to parse Word document.") + " Try the Excel (.xlsx) template instead.");
+      }
+      return;
+    }
+
+    // Excel / CSV — parse client-side with XLSX
     const reader = new FileReader();
     reader.onload = (evt) => {
       try {
@@ -2478,6 +2498,20 @@ export default function AdminDashboard() {
                 >
                   📥 Post-Test Template (.xlsx)
                 </a>
+                <a
+                  href={downloadAssessmentTemplateUrl("pre-test", "docx")}
+                  className="btn-secondary"
+                  style={{ fontSize: "0.8rem", padding: "0.35rem 0.75rem", textDecoration: "none", background: "#eff6ff", color: "#1d4ed8", borderColor: "#bfdbfe" }}
+                >
+                  📄 Pre-Test Template (.docx)
+                </a>
+                <a
+                  href={downloadAssessmentTemplateUrl("post-test", "docx")}
+                  className="btn-secondary"
+                  style={{ fontSize: "0.8rem", padding: "0.35rem 0.75rem", textDecoration: "none", background: "#f5f3ff", color: "#6d28d9", borderColor: "#ddd6fe" }}
+                >
+                  📄 Post-Test Template (.docx)
+                </a>
               </div>
             </div>
 
@@ -2485,16 +2519,16 @@ export default function AdminDashboard() {
             <div style={{ border: "2px dashed #cbd5e1", borderRadius: "12px", padding: "1.75rem 1.25rem", textAlign: "center", background: "#fcfdfe", marginBottom: "1.25rem" }}>
               <div style={{ fontSize: "2.5rem", marginBottom: "0.5rem" }}>📁</div>
               <h3 style={{ margin: "0 0 0.35rem", fontSize: "1.1rem", color: "var(--navy-900)" }}>
-                {bulkFileName ? `Selected File: ${bulkFileName}` : "Choose or Drag & Drop Excel / CSV file"}
+                {bulkFileName ? `Selected File: ${bulkFileName}` : "Choose or Drag & Drop Excel, CSV or Word file"}
               </h3>
               <p style={{ margin: "0 0 1rem", fontSize: "0.84rem", color: "#64748b" }}>
-                Supports standard .xlsx, .xls, and .csv files with headers (Question Prompt, Option A, Option B, Option C, Option D, Correct Answer, Points)
+                Supports .xlsx, .xls, .csv, and .docx (Word) files with question table headers
               </p>
 
               <input
                 type="file"
                 id="bulk-upload-file"
-                accept=".xlsx,.xls,.csv"
+                accept=".xlsx,.xls,.csv,.docx"
                 onChange={handleBulkFileChange}
                 style={{ display: "none" }}
               />

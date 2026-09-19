@@ -251,17 +251,19 @@ const SAMPLE_POST_TEST_QUESTIONS = [
   }
 ];
 
-// GET /api/assessments/template/download - Download Excel/CSV sample templates
-router.get("/template/download", (req, res) => {
+// GET /api/assessments/template/download - Download Excel/CSV/DOCX sample templates
+router.get("/template/download", async (req, res) => {
   const type = (req.query.type || "pre-test").toLowerCase();
   const format = (req.query.format || "xlsx").toLowerCase();
 
   let data = SAMPLE_PRE_TEST_QUESTIONS;
   let filename = "DL_Pre_Test_Questions_Template";
+  let assessmentLabel = "Pre-Training Assessment";
 
   if (type === "post-test" || type === "post") {
     data = SAMPLE_POST_TEST_QUESTIONS;
     filename = "DL_Post_Test_Questions_Template";
+    assessmentLabel = "Post-Training Assessment";
   } else if (type === "blank") {
     data = [
       {
@@ -278,8 +280,93 @@ router.get("/template/download", (req, res) => {
       }
     ];
     filename = "DL_Assessment_Questions_Blank_Template";
+    assessmentLabel = "Assessment (Blank)";
   }
 
+  // ── Word (.docx) template ──────────────────────────────────────────────────
+  if (format === "docx") {
+    try {
+      const {
+        Document, Packer, Paragraph, Table, TableRow, TableCell,
+        TextRun, HeadingLevel, BorderStyle, AlignmentType, WidthType,
+        ShadingType
+      } = require("docx");
+
+      const HEADERS = [
+        "Question Number", "Question Prompt", "Question Type",
+        "Option A", "Option B", "Option C", "Option D",
+        "Correct Answer", "Points", "Explanation"
+      ];
+
+      // Column widths in DXA (twips, 1440 per inch). Table ~9000 total.
+      const COL_WIDTHS = [1100, 3200, 1400, 1800, 1800, 1800, 1800, 1300, 700, 2200];
+
+      const headerShading = { fill: "1a2e4a", type: ShadingType.SOLID, color: "auto" };
+
+      const makeHeaderCell = (text, width) => new TableCell({
+        width: { size: width, type: WidthType.DXA },
+        shading: headerShading,
+        children: [new Paragraph({
+          children: [new TextRun({ text, bold: true, color: "FFFFFF", size: 17 })],
+          alignment: AlignmentType.CENTER,
+        })],
+      });
+
+      const makeDataCell = (text, width, shade = false) => new TableCell({
+        width: { size: width, type: WidthType.DXA },
+        shading: shade ? { fill: "f1f5f9", type: ShadingType.SOLID, color: "auto" } : undefined,
+        children: [new Paragraph({
+          children: [new TextRun({ text: String(text ?? ""), size: 16 })],
+        })],
+      });
+
+      const tableRows = [
+        // Header row
+        new TableRow({
+          tableHeader: true,
+          children: HEADERS.map((h, i) => makeHeaderCell(h, COL_WIDTHS[i])),
+        }),
+        // Data rows
+        ...data.map((row, idx) => new TableRow({
+          children: HEADERS.map((h, i) => makeDataCell(row[h] ?? "", COL_WIDTHS[i], idx % 2 === 1)),
+        })),
+      ];
+
+      const doc = new Document({
+        sections: [{
+          properties: { page: { size: { width: 19800, height: 12240 }, orientation: "landscape", margin: { top: 720, bottom: 720, left: 720, right: 720 } } },
+          children: [
+            new Paragraph({ heading: HeadingLevel.HEADING_1, alignment: AlignmentType.CENTER,
+              children: [new TextRun({ text: "Ghana Education Service — Differentiated Learning Programme", color: "1a2e4a", size: 28, bold: true })] }),
+            new Paragraph({ alignment: AlignmentType.CENTER,
+              children: [new TextRun({ text: `AF2 DL Workshop ${assessmentLabel} — Bulk Upload Template`, color: "64748b", size: 22, italics: true })] }),
+            new Paragraph({ children: [new TextRun({ text: "" })] }),
+            new Paragraph({ children: [new TextRun({ text: "📋 Instructions:", bold: true, size: 20, color: "1e40af" })] }),
+            new Paragraph({ children: [new TextRun({ text: "1. Do NOT edit, add, or remove column headers in row 1.", size: 18 })] }),
+            new Paragraph({ children: [new TextRun({ text: "2. Question Type must be exactly: multiple_choice  or  true_false", size: 18 })] }),
+            new Paragraph({ children: [new TextRun({ text: "3. Correct Answer: use A, B, C, or D (letter only) for multiple choice. Use True or False for true/false questions.", size: 18 })] }),
+            new Paragraph({ children: [new TextRun({ text: "4. Points: enter a number (e.g. 2). Explanation is optional.", size: 18 })] }),
+            new Paragraph({ children: [new TextRun({ text: "5. Save as .docx, then upload via the Bulk Upload panel in the Admin Dashboard.", size: 18 })] }),
+            new Paragraph({ children: [new TextRun({ text: "" })] }),
+            new Table({ rows: tableRows, width: { size: 100, type: WidthType.PERCENTAGE } }),
+            new Paragraph({ children: [new TextRun({ text: "" })] }),
+            new Paragraph({ alignment: AlignmentType.CENTER,
+              children: [new TextRun({ text: `Generated from GES DL Nomination Portal · Confidential · ${new Date().toLocaleDateString("en-GH")}`, size: 16, color: "94a3b8", italics: true })] }),
+          ],
+        }],
+      });
+
+      const buffer = await Packer.toBuffer(doc);
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}.docx"`);
+      return res.send(buffer);
+    } catch (err) {
+      console.error("DOCX generation error:", err.message);
+      return res.status(500).json({ error: "Failed to generate Word template: " + err.message });
+    }
+  }
+
+  // ── Excel / CSV template ───────────────────────────────────────────────────
   const ws = XLSX.utils.json_to_sheet(data);
   ws["!cols"] = [
     { wch: 16 }, // Q Num
@@ -309,6 +396,106 @@ router.get("/template/download", (req, res) => {
   res.setHeader("Content-Disposition", `attachment; filename="${filename}.xlsx"`);
   return res.send(buffer);
 });
+
+// POST /api/assessments/template/parse-docx - Parse an uploaded Word (.docx) file into questions
+// Accepts multipart/form-data with field "file"
+const multer = require("multer");
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+
+router.post("/template/parse-docx", upload.single("file"), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: "No file uploaded." });
+
+  try {
+    const mammoth = require("mammoth");
+    // Extract raw text preserving newlines
+    const result = await mammoth.extractRawText({ buffer: req.file.buffer });
+    const text = result.value;
+
+    // Split into lines and try to find a table-like structure
+    const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
+
+    // Find header row containing our known column names
+    const EXPECTED_HEADERS = [
+      "Question Number", "Question Prompt", "Question Type",
+      "Option A", "Option B", "Option C", "Option D",
+      "Correct Answer", "Points", "Explanation"
+    ];
+
+    let headerLineIdx = -1;
+    for (let i = 0; i < lines.length; i++) {
+      const matchCount = EXPECTED_HEADERS.filter(h => lines[i].includes(h)).length;
+      if (matchCount >= 5) { headerLineIdx = i; break; }
+    }
+
+    // If we found the header, parse tab or cell-delimited rows after it
+    if (headerLineIdx >= 0) {
+      const headerLine = lines[headerLineIdx];
+      // Detect delimiter (tabs from Word table export, or consecutive spaces)
+      const isTabDelimited = headerLine.includes("\t");
+      const delim = isTabDelimited ? "\t" : /\s{2,}/;
+
+      const headers = isTabDelimited
+        ? headerLine.split("\t").map(h => h.trim())
+        : EXPECTED_HEADERS; // fall back to expected headers in order
+
+      const questions = [];
+      for (let i = headerLineIdx + 1; i < lines.length; i++) {
+        const cells = isTabDelimited
+          ? lines[i].split("\t").map(c => c.trim())
+          : lines[i].split(/\t/).map(c => c.trim());
+
+        if (cells.length < 6) continue; // skip short/empty lines
+        const row = {};
+        headers.forEach((h, idx) => { row[h] = cells[idx] || ""; });
+
+        const questionText = (row["Question Prompt"] || "").trim();
+        if (!questionText || questionText.toLowerCase().startsWith("sample question")) continue;
+
+        let qType = (row["Question Type"] || "multiple_choice").toString().toLowerCase();
+        if (qType.includes("true") || qType.includes("false") || qType.includes("tf")) {
+          qType = "true_false";
+        } else {
+          qType = "multiple_choice";
+        }
+
+        let options = [];
+        if (qType === "true_false") {
+          options = ["True", "False"];
+        } else {
+          options = [row["Option A"], row["Option B"], row["Option C"], row["Option D"]].filter(Boolean);
+          if (options.length === 0) options = ["Option A", "Option B", "Option C", "Option D"];
+        }
+
+        let rawAns = (row["Correct Answer"] || "A").toString().trim().toUpperCase();
+        let correctAnswer = rawAns;
+        if (["A","B","C","D"].includes(rawAns)) {
+          const idx = rawAns.charCodeAt(0) - 65;
+          if (options[idx]) correctAnswer = options[idx];
+        } else if (qType === "true_false") {
+          if (rawAns === "T" || rawAns.includes("TRUE")) correctAnswer = "True";
+          if (rawAns === "F" || rawAns.includes("FALSE")) correctAnswer = "False";
+        }
+
+        const points = Number(row["Points"]) || 2;
+        questions.push({ questionText, questionType: qType, options, correctAnswer, points });
+      }
+
+      if (questions.length > 0) {
+        return res.json({ questions, parsed: questions.length });
+      }
+    }
+
+    // Fallback: Word table not parsed into lines — ask user to use Excel
+    return res.status(422).json({
+      error: "Could not extract questions from this Word document. Please ensure the document uses the official template table format, or use the Excel (.xlsx) template instead.",
+      hint: "The Word document should contain a table with headers: Question Prompt, Option A, Option B, Option C, Option D, Correct Answer, Points."
+    });
+  } catch (err) {
+    console.error("DOCX parse error:", err.message);
+    return res.status(500).json({ error: "Failed to parse Word document: " + err.message });
+  }
+});
+
 
 // POST /api/assessments/:id/questions/bulk - Bulk import questions for an assessment
 router.post("/:id/questions/bulk", trainerOrAdminAuth, (req, res) => {

@@ -398,3 +398,14 @@ export async function bulkImportAssessmentQuestions(authHeader, id, questions, m
 export function downloadAssessmentTemplateUrl(type = "pre-test", format = "xlsx") {
   return `${API_URL}/assessments/template/download?type=${type}&format=${format}`;
 }
+
+export async function parseDocxQuestions(file) {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await fetch(`${API_URL}/assessments/template/parse-docx`, {
+    method: "POST",
+    body: formData,
+    // No Content-Type header — browser sets multipart boundary automatically
+  });
+  return handle(res);
+}
