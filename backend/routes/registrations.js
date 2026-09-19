@@ -255,10 +255,12 @@ router.post("/", async (req, res) => {
   const arrivalDate = allocatedCohort ? allocatedCohort.arrival_date : null;
 
   // Insert to local SQLite
+  const submittedAtIso = new Date().toISOString();
+  
   const stmt = db.prepare(`
     INSERT INTO registrations
-      (officer_name, sex, phone_number, email, region, district, institution_name, roles, cohort_id, arrival_date, attendance_status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Registered')
+      (officer_name, sex, phone_number, email, region, district, institution_name, roles, cohort_id, arrival_date, attendance_status, submitted_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Attended', ?)
   `);
 
   const info = stmt.run(
@@ -271,7 +273,8 @@ router.post("/", async (req, res) => {
     institutionName.trim(),
     JSON.stringify(roles),
     assignedCohortId,
-    arrivalDate
+    arrivalDate,
+    submittedAtIso
   );
 
   let insertedId = Number(info.lastInsertRowid);
@@ -292,7 +295,8 @@ router.post("/", async (req, res) => {
         roles,
         cohort_id: assignedCohortId,
         arrival_date: arrivalDate,
-        attendance_status: "Registered",
+        attendance_status: "Attended",
+        submitted_at: submittedAtIso
       };
 
       // Always get the current max id to use explicit id (bypasses broken sequence)
