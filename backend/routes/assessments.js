@@ -715,7 +715,7 @@ router.get("/:id/take", async (req, res) => {
     `).all(id);
   }
 
-  const parsedQuestions = questions.map((q) => {
+  let parsedQuestions = questions.map((q) => {
     let opts = [];
     try {
       opts = typeof q.options_json === "string" ? JSON.parse(q.options_json || "[]") : (q.options_json || []);
@@ -730,6 +730,17 @@ router.get("/:id/take", async (req, res) => {
       points: q.points || 2,
     };
   });
+
+  // Reshuffle questions (Fisher-Yates) for each person taking the test
+  for (let i = parsedQuestions.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [parsedQuestions[i], parsedQuestions[j]] = [parsedQuestions[j], parsedQuestions[i]];
+  }
+
+  // Cap to 20 questions maximum
+  if (parsedQuestions.length > 20) {
+    parsedQuestions = parsedQuestions.slice(0, 20);
+  }
 
   res.json({
     isLocked: false,
@@ -944,7 +955,7 @@ router.patch("/:id/toggle", trainerOrAdminAuth, (req, res) => {
 });
 
 // POST /api/assessments/:id/submit - Submit participant answers & auto-grade
-router.post("/:id/submit", (req, res) => {
+router.post("/:id/submit", async (req, res) => {
   const assessmentId = req.params.id;
   const officerName = req.body.officerName || req.body.officer_name || req.body.candidateName || req.body.candidate_name;
   const phoneNumber = req.body.phoneNumber || req.body.phone_number || req.body.candidatePhone || req.body.candidate_phone;
@@ -959,7 +970,20 @@ router.post("/:id/submit", (req, res) => {
     return res.status(400).json({ error: "Phone number is required." });
   }
 
-  const assessment = db.prepare("SELECT * FROM assessments WHERE id = ?").get(assessmentId);
+  const supabase = require("../supabase");
+  let assessment = null;
+
+  if (supabase) {
+    try {
+      const { data } = await supabase.from("assessments").select("*").eq("id", assessmentId).maybeSingle();
+      if (data) assessment = data;
+    } catch (e) {}
+  }
+
+  if (!assessment) {
+    assessment = db.prepare("SELECT * FROM assessments WHERE id = ?").get(assessmentId);
+  }
+
   if (!assessment) {
     return res.status(404).json({ error: "Assessment not found." });
   }
@@ -973,7 +997,28 @@ router.post("/:id/submit", (req, res) => {
     });
   }
 
-  const questions = db.prepare("SELECT * FROM assessment_questions WHERE assessment_id = ? ORDER BY sort_order ASC").all(assessmentId);
+  let questions = [];
+  if (supabase) {
+    try {
+      const { data } = await supabase.from("assessment_questions").select("*").eq("assessment_id", assessmentId).order("sort_order", { ascending: true });
+      if (data && data.length > 0) questions = data;
+    } catch (e) {}
+  }
+
+  if (questions.length === 0) {
+    questions = db.prepare("SELECT * FROM assessment_questions WHERE assessment_id = ? ORDER BY sort_order ASC").all(assessmentId);
+  }
+
+  const submittedIds = req.body.questionIds;
+
+  // Filter to only grade the exactly presented questions (for the 20-question reshuffle)
+  if (Array.isArray(submittedIds) && submittedIds.length > 0) {
+    const idsSet = new Set(submittedIds.map(Number));
+    questions = questions.filter(q => idsSet.has(q.id));
+  } else if (questions.length > 20) {
+    // Fallback if legacy client didn't send IDs
+    questions = questions.slice(0, 20);
+  }
 
   let earnedScore = 0;
   let totalPoints = 0;
@@ -998,26 +1043,46 @@ router.post("/:id/submit", (req, res) => {
   }
 
   const percentage = totalPoints > 0 ? Math.round((earnedScore / totalPoints) * 100) : 0;
+  const answersJson = JSON.stringify(answers || {});
+  const regIdParsed = registrationId ? Number(registrationId) : null;
+  const cohortIdParsed = cohortId ? Number(cohortId) : null;
+  const officerNameClean = officerName.trim();
+  const phoneClean = phoneNumber.trim();
+  let submissionId = null;
 
-  const subInfo = db.prepare(`
-    INSERT INTO assessment_submissions 
-      (assessment_id, registration_id, officer_name, phone_number, cohort_id, score, total_points, percentage, answers_json)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    assessmentId,
-    registrationId ? Number(registrationId) : null,
-    officerName.trim(),
-    phoneNumber.trim(),
-    cohortId ? Number(cohortId) : null,
-    earnedScore,
-    totalPoints,
-    percentage,
-    JSON.stringify(answers || {})
-  );
+  try {
+    const subInfo = db.prepare(`
+      INSERT INTO assessment_submissions 
+        (assessment_id, registration_id, officer_name, phone_number, cohort_id, score, total_points, percentage, answers_json)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(assessmentId, regIdParsed, officerNameClean, phoneClean, cohortIdParsed, earnedScore, totalPoints, percentage, answersJson);
+    submissionId = Number(subInfo.lastInsertRowid);
+  } catch (err) {
+    console.error("SQLite submit error:", err);
+  }
+
+  if (supabase) {
+    try {
+      const { data, error } = await supabase.from("assessment_submissions").insert([{
+        assessment_id: assessmentId,
+        registration_id: regIdParsed,
+        officer_name: officerNameClean,
+        phone_number: phoneClean,
+        cohort_id: cohortIdParsed,
+        score: earnedScore,
+        total_points: totalPoints,
+        percentage,
+        answers_json: answersJson,
+      }]).select("id").single();
+      if (data && data.id) submissionId = data.id;
+    } catch (e) {
+      console.error("Supabase submit error:", e.message);
+    }
+  }
 
   res.status(201).json({
     message: "Assessment submitted and graded successfully.",
-    submissionId: Number(subInfo.lastInsertRowid),
+    submissionId,
     score: earnedScore,
     totalPoints,
     percentage,

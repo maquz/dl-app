@@ -100,6 +100,7 @@ export default function AssessmentTake() {
         phoneNumber: phoneNumber.trim(),
         cohortId: nomineeProfile?.cohortId || 1,
         answers,
+        questionIds: questions.map(q => q.id),
       });
       setResult(res);
       window.scrollTo({ top: 0, behavior: "smooth" });
