@@ -92,21 +92,62 @@ function getAssessmentLockStatus(assessment, candidateCohortId = 1) {
 }
 
 // GET /api/assessments - List all assessments (public or facilitator)
-router.get("/", (req, res) => {
+router.get("/", async (req, res) => {
   const cohortId = req.query.cohort_id || req.query.cohortId || 1;
-  const assessments = db.prepare(`
-    SELECT 
-      a.*,
-      c.name as cohort_name,
-      t.name as trainer_name,
-      (SELECT COUNT(*) FROM assessment_questions WHERE assessment_id = a.id) as question_count,
-      (SELECT COUNT(*) FROM assessment_submissions WHERE assessment_id = a.id) as submission_count,
-      (SELECT AVG(percentage) FROM assessment_submissions WHERE assessment_id = a.id) as average_score
-    FROM assessments a
-    LEFT JOIN cohorts c ON a.cohort_id = c.id
-    LEFT JOIN national_trainers t ON a.created_by_trainer_id = t.id
-    ORDER BY a.id ASC
-  `).all();
+  let assessments = [];
+  
+  const supabase = require("../supabase");
+  let fromSupabase = false;
+
+  if (supabase) {
+    try {
+      const { data } = await supabase.from("assessments").select(`
+        *,
+        cohorts ( name ),
+        national_trainers ( name )
+      `).order("id", { ascending: true });
+      
+      if (data && data.length > 0) {
+        fromSupabase = true;
+        // Fetch aggregates manually since Supabase JS doesn't do subqueries easily
+        for (let i = 0; i < data.length; i++) {
+          const a = data[i];
+          a.cohort_name = a.cohorts ? a.cohorts.name : null;
+          a.trainer_name = a.national_trainers ? a.national_trainers.name : null;
+          
+          const { count: qCount } = await supabase.from("assessment_questions").select("*", { count: "exact", head: true }).eq("assessment_id", a.id);
+          a.question_count = qCount || 0;
+
+          const { data: subs } = await supabase.from("assessment_submissions").select("percentage").eq("assessment_id", a.id);
+          a.submission_count = subs ? subs.length : 0;
+          if (a.submission_count > 0) {
+            a.average_score = subs.reduce((sum, s) => sum + (s.percentage || 0), 0) / a.submission_count;
+          } else {
+            a.average_score = null;
+          }
+        }
+        assessments = data;
+      }
+    } catch (e) {
+      console.error("Supabase GET /assessments error:", e.message);
+    }
+  }
+
+  if (!fromSupabase || assessments.length === 0) {
+    assessments = db.prepare(`
+      SELECT 
+        a.*,
+        c.name as cohort_name,
+        t.name as trainer_name,
+        (SELECT COUNT(*) FROM assessment_questions WHERE assessment_id = a.id) as question_count,
+        (SELECT COUNT(*) FROM assessment_submissions WHERE assessment_id = a.id) as submission_count,
+        (SELECT AVG(percentage) FROM assessment_submissions WHERE assessment_id = a.id) as average_score
+      FROM assessments a
+      LEFT JOIN cohorts c ON a.cohort_id = c.id
+      LEFT JOIN national_trainers t ON a.created_by_trainer_id = t.id
+      ORDER BY a.id ASC
+    `).all();
+  }
 
   const enriched = assessments.map((a) => {
     const lockInfo = getAssessmentLockStatus(a, cohortId);
@@ -760,28 +801,59 @@ router.get("/:id/take", async (req, res) => {
 });
 
 // GET /api/assessments/:id - Full details with answers (Facilitator / Admin)
-router.get("/:id", trainerOrAdminAuth, (req, res) => {
+router.get("/:id", trainerOrAdminAuth, async (req, res) => {
   const id = req.params.id;
-  const assessment = db.prepare("SELECT * FROM assessments WHERE id = ?").get(id);
+  const supabase = require("../supabase");
+  let assessment = null;
+
+  if (supabase) {
+    try {
+      const { data } = await supabase.from("assessments").select("*").eq("id", id).maybeSingle();
+      if (data) assessment = data;
+    } catch (e) {}
+  }
+
+  if (!assessment) {
+    assessment = db.prepare("SELECT * FROM assessments WHERE id = ?").get(id);
+  }
+
   if (!assessment) {
     return res.status(404).json({ error: "Assessment not found." });
   }
 
-  const questions = db.prepare(`
-    SELECT * FROM assessment_questions
-    WHERE assessment_id = ?
-    ORDER BY sort_order ASC, id ASC
-  `).all(id);
+  let questions = [];
+  if (supabase) {
+    try {
+      const { data } = await supabase.from("assessment_questions").select("*").eq("assessment_id", id).order("sort_order", { ascending: true });
+      if (data && data.length > 0) questions = data;
+    } catch (e) {}
+  }
 
-  const parsedQuestions = questions.map((q) => ({
-    id: q.id,
-    questionText: q.question_text,
-    questionType: q.question_type,
-    options: JSON.parse(q.options_json || "[]"),
-    correctAnswer: q.correct_answer,
-    points: q.points,
-    sortOrder: q.sort_order,
-  }));
+  if (questions.length === 0) {
+    questions = db.prepare(`
+      SELECT * FROM assessment_questions
+      WHERE assessment_id = ?
+      ORDER BY sort_order ASC, id ASC
+    `).all(id);
+  }
+
+  const parsedQuestions = questions.map((q) => {
+    let opts = [];
+    try {
+      opts = typeof q.options_json === "string" ? JSON.parse(q.options_json || "[]") : (q.options_json || []);
+    } catch (e) {
+      opts = [q.options_json];
+    }
+    return {
+      id: q.id,
+      questionText: q.question_text,
+      questionType: q.question_type,
+      options: opts,
+      correctAnswer: q.correct_answer,
+      points: q.points,
+      sortOrder: q.sort_order,
+    };
+  });
 
   res.json({
     assessment: {
