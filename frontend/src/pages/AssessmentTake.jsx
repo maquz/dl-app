@@ -22,6 +22,9 @@ export default function AssessmentTake() {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
 
+  const [currentPage, setCurrentPage] = useState(0);
+  const QUESTIONS_PER_PAGE = 10;
+
   // Auto-fill from navigation state, recent nominee session, or local profile
   useEffect(() => {
     try {
@@ -71,8 +74,30 @@ export default function AssessmentTake() {
       .finally(() => setLoading(false));
   }, [id, nomineeProfile?.cohortId, isAdmin]);
 
+  const totalPages = Math.ceil(questions.length / QUESTIONS_PER_PAGE);
+  const visibleQuestions = questions.slice(currentPage * QUESTIONS_PER_PAGE, (currentPage + 1) * QUESTIONS_PER_PAGE);
+
   function handleAnswer(questionId, option) {
     setAnswers((prev) => ({ ...prev, [questionId]: option }));
+  }
+
+  function handleNext() {
+    if (currentPage === 0) {
+      if (!officerName.trim()) { alert("Please enter your full name."); return; }
+      if (!phoneNumber.trim()) { alert("Please enter your phone number."); return; }
+    }
+    const unanswered = visibleQuestions.filter(q => !answers[q.id]);
+    if (unanswered.length > 0) {
+      alert(`Please answer all questions on this page before continuing. You missed ${unanswered.length} question(s).`);
+      return;
+    }
+    setCurrentPage(prev => prev + 1);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function handlePrev() {
+    setCurrentPage(prev => prev - 1);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   async function handleSubmit(e) {
@@ -86,11 +111,16 @@ export default function AssessmentTake() {
       return;
     }
 
+    const unanswered = visibleQuestions.filter(q => !answers[q.id]);
+    if (unanswered.length > 0) {
+      alert(`Please answer all questions before submitting. You missed ${unanswered.length} question(s).`);
+      return;
+    }
+
     const answeredCount = Object.keys(answers).length;
     if (answeredCount < questions.length) {
-      if (!window.confirm(`You have answered ${answeredCount} of ${questions.length} questions. Submit anyway?`)) {
-        return;
-      }
+      alert(`You must answer all ${questions.length} questions to complete the assessment.`);
+      return;
     }
 
     setSubmitting(true);
@@ -309,12 +339,17 @@ export default function AssessmentTake() {
           {/* Question List */}
           <div className="questions-container">
             <h3>Assessment Questions ({questions.length} Items · {assessment?.totalPoints} Total Points)</h3>
+            <div style={{ marginBottom: "1.5rem", color: "#64748b", fontWeight: 500 }}>
+              Page {currentPage + 1} of {totalPages || 1}
+            </div>
 
-            {questions.map((q, idx) => (
+            {visibleQuestions.map((q, localIdx) => {
+              const globalIdx = currentPage * QUESTIONS_PER_PAGE + localIdx;
+              return (
               <div key={q.id} className="test-question-card">
                 <div className="question-header">
                   <div className="question-header-left">
-                    <span className="question-number">Question {idx + 1}</span>
+                    <span className="question-number">Question {globalIdx + 1}</span>
                     <span className="question-total-hint">of {questions.length}</span>
                   </div>
                   <span className="question-points-badge">{q.points} {q.points === 1 ? "point" : "points"}</span>
@@ -347,16 +382,30 @@ export default function AssessmentTake() {
                   })}
                 </div>
               </div>
-            ))}
+            )})}
           </div>
 
-          <div className="test-submit-bar">
+          <div className="test-submit-bar" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span className="answered-status">
               Answered <strong>{Object.keys(answers).length}</strong> of <strong>{questions.length}</strong> questions
             </span>
-            <button type="submit" className="btn-primary btn-submit-test" disabled={submitting}>
-              {submitting ? "Grading & Submitting…" : "Submit Assessment →"}
-            </button>
+            <div style={{ display: "flex", gap: "1rem" }}>
+              {currentPage > 0 && (
+                <button type="button" className="btn-secondary" onClick={handlePrev} disabled={submitting}>
+                  ← Previous
+                </button>
+              )}
+              
+              {currentPage < totalPages - 1 ? (
+                <button type="button" className="btn-primary" onClick={handleNext} disabled={submitting}>
+                  Next 10 Questions →
+                </button>
+              ) : (
+                <button type="submit" className="btn-primary btn-submit-test" disabled={submitting}>
+                  {submitting ? "Grading & Submitting…" : "Submit Assessment →"}
+                </button>
+              )}
+            </div>
           </div>
         </form>
       </div>
