@@ -966,8 +966,8 @@ export default function TrainerDashboard() {
 
       {/* EDIT FACILITATOR DETAILS MODAL */}
       {isProfileModalOpen && (
-        <div className="modal-overlay" role="dialog" aria-modal="true" onClick={() => !profileSaving && setIsProfileModalOpen(false)}>
-          <div className="modal-card" style={{ maxWidth: "560px" }} onClick={(e) => e.stopPropagation()}>
+        <div className="modal-backdrop" role="dialog" aria-modal="true" onClick={() => !profileSaving && setIsProfileModalOpen(false)}>
+          <div className="modal-content" style={{ maxWidth: "560px" }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2>Edit Facilitator Details</h2>
               <button

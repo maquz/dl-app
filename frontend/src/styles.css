@@ -42,6 +42,8 @@ html,
 body {
   margin: 0;
   padding: 0;
+  overflow-x: hidden;
+  width: 100%;
 }
 
 body {
@@ -205,8 +207,11 @@ main#main-content {
 }
 
 .page-wide {
+  width: 100%;
   max-width: 1080px;
   margin: 0 auto;
+  padding: 1rem;
+  overflow-x: hidden;
 }
 
 .form-card {
@@ -1115,6 +1120,9 @@ select:focus {
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-card);
+  width: 100%;
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;
 }
 
 table {
@@ -2799,6 +2807,7 @@ tbody tr:hover {
 .admin-main-content {
   flex: 1;
   min-width: 0;
+  max-width: 100%;
 }
 
 /* Master Trainers Table & Actions in Admin */

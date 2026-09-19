@@ -3090,7 +3090,7 @@ export default function AdminDashboard() {
       )}
       {/* Share Modal */}
       {shareModalOpen && (
-        <div className="modal-overlay" onClick={() => setShareModalOpen(false)}>
+        <div className="modal-backdrop" onClick={() => setShareModalOpen(false)}>
           <div className="modal-content" style={{ maxWidth: "400px" }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Share Registration Link</h3>
