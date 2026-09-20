@@ -772,7 +772,9 @@ export default function TrainerDashboard() {
                       </td>
                       <td>
                         <span className="table-date">
-                          {new Date(s.submitted_at + "Z").toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                          {new Date(
+                            s.submitted_at.includes("T") ? s.submitted_at : s.submitted_at.replace(" ", "T") + "Z"
+                          ).toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                         </span>
                       </td>
                     </tr>

@@ -1521,7 +1521,9 @@ export default function AdminDashboard() {
                         </td>
                         <td>
                           <span className="table-date" title={r.submitted_at}>
-                            {new Date(r.submitted_at + "Z").toLocaleDateString(undefined, {
+                            {new Date(
+                              r.submitted_at.includes("T") ? r.submitted_at : r.submitted_at.replace(" ", "T") + "Z"
+                            ).toLocaleDateString(undefined, {
                               month: "short",
                               day: "numeric",
                               year: "numeric",
@@ -2223,7 +2225,9 @@ export default function AdminDashboard() {
                         </td>
                         <td>
                           <span className="table-date">
-                            {new Date(a.created_at + "Z").toLocaleDateString(undefined, {
+                            {new Date(
+                              a.created_at.includes("T") ? a.created_at : a.created_at.replace(" ", "T") + "Z"
+                            ).toLocaleDateString(undefined, {
                               month: "short",
                               day: "numeric",
                               year: "numeric",
@@ -2601,7 +2605,11 @@ export default function AdminDashboard() {
                           </td>
                           <td>
                             <span className="table-date">
-                              {new Date(s.submitted_at + "Z").toLocaleDateString(undefined, {
+                              {new Date(
+                                s.submitted_at.includes("T") 
+                                  ? s.submitted_at 
+                                  : s.submitted_at.replace(" ", "T") + "Z"
+                              ).toLocaleDateString(undefined, {
                                 month: "short",
                                 day: "numeric",
                                 hour: "2-digit",
