@@ -31,7 +31,7 @@ function verifyAdminToken(token) {
   }
 }
 
-function adminAuth(req, res, next) {
+async function adminAuth(req, res, next) {
   let token = req.header("x-admin-token") || req.header("x-admin-password") || "";
   const authHeader = req.header("authorization") || "";
   if (authHeader.startsWith("Bearer ")) {
@@ -46,11 +46,19 @@ function adminAuth(req, res, next) {
     return next();
   }
 
+  const supabase = require("../supabase");
+
   // 2. Check signed token
   if (token && token.includes(".")) {
     const payload = verifyAdminToken(token);
     if (payload && payload.id) {
-      const admin = db.prepare("SELECT id, name, email, phone_number, role, status FROM admins WHERE id = ?").get(payload.id);
+      let admin = db.prepare("SELECT id, name, email, phone_number, role, status FROM admins WHERE id = ?").get(payload.id);
+      if (!admin && supabase) {
+        try {
+          const { data } = await supabase.from("admins").select("*").eq("id", payload.id).maybeSingle();
+          if (data) admin = data;
+        } catch (e) {}
+      }
       if (admin && admin.status === "Active") {
         req.admin = admin;
         return next();
@@ -61,7 +69,13 @@ function adminAuth(req, res, next) {
   // 3. Check admin ID header
   const adminId = req.header("x-admin-id");
   if (adminId) {
-    const admin = db.prepare("SELECT id, name, email, phone_number, role, status FROM admins WHERE id = ?").get(adminId);
+    let admin = db.prepare("SELECT id, name, email, phone_number, role, status FROM admins WHERE id = ?").get(adminId);
+    if (!admin && supabase) {
+      try {
+        const { data } = await supabase.from("admins").select("*").eq("id", adminId).maybeSingle();
+        if (data) admin = data;
+      } catch (e) {}
+    }
     if (admin && admin.status === "Active") {
       req.admin = admin;
       return next();
@@ -70,7 +84,13 @@ function adminAuth(req, res, next) {
 
   // 4. Fallback: check if token matches an active admin email
   if (token) {
-    const admin = db.prepare("SELECT id, name, email, phone_number, role, status FROM admins WHERE LOWER(email) = LOWER(?)").get(token.trim());
+    let admin = db.prepare("SELECT id, name, email, phone_number, role, status FROM admins WHERE LOWER(email) = LOWER(?)").get(token.trim());
+    if (!admin && supabase) {
+      try {
+        const { data } = await supabase.from("admins").select("*").ilike("email", token.trim()).maybeSingle();
+        if (data) admin = data;
+      } catch (e) {}
+    }
     if (admin && admin.status === "Active") {
       req.admin = admin;
       return next();
@@ -95,7 +115,7 @@ function generateTrainerToken(trainer) {
   return `${body}.${signature}`;
 }
 
-function trainerOrAdminAuth(req, res, next) {
+async function trainerOrAdminAuth(req, res, next) {
   let token = req.header("x-admin-token") || req.header("x-admin-password") || req.header("x-trainer-token") || "";
   const authHeader = req.header("authorization") || "";
   if (authHeader.startsWith("Bearer ")) {
@@ -108,18 +128,32 @@ function trainerOrAdminAuth(req, res, next) {
     return next();
   }
 
+  const supabase = require("../supabase");
+
   if (token && token.includes(".")) {
     const payload = verifyAdminToken(token);
     if (payload) {
       if (payload.id) {
-        const admin = db.prepare("SELECT id, name, email, phone_number, role, status FROM admins WHERE id = ?").get(payload.id);
+        let admin = db.prepare("SELECT id, name, email, phone_number, role, status FROM admins WHERE id = ?").get(payload.id);
+        if (!admin && supabase) {
+          try {
+            const { data } = await supabase.from("admins").select("*").eq("id", payload.id).maybeSingle();
+            if (data) admin = data;
+          } catch (e) {}
+        }
         if (admin && admin.status === "Active") {
           req.admin = admin;
           return next();
         }
       }
       if (payload.trainerId) {
-        const trainer = db.prepare("SELECT id, name, place_of_work, schedule_role, contact_number, email, status FROM national_trainers WHERE id = ?").get(payload.trainerId);
+        let trainer = db.prepare("SELECT id, name, place_of_work, schedule_role, contact_number, email, status FROM national_trainers WHERE id = ?").get(payload.trainerId);
+        if (!trainer && supabase) {
+          try {
+            const { data } = await supabase.from("national_trainers").select("*").eq("id", payload.trainerId).maybeSingle();
+            if (data) trainer = data;
+          } catch (e) {}
+        }
         if (trainer && trainer.status === "Active") {
           req.trainer = trainer;
           req.userRole = "National Master Trainer";
@@ -129,13 +163,22 @@ function trainerOrAdminAuth(req, res, next) {
     }
   }
 
-  // Fallback: check admin token
-  adminAuth(req, res, (err) => {
-    if (!err && req.admin) {
+  // Fallback: check admin token matching email
+  if (token) {
+    let admin = db.prepare("SELECT id, name, email, phone_number, role, status FROM admins WHERE LOWER(email) = LOWER(?)").get(token.trim());
+    if (!admin && supabase) {
+      try {
+        const { data } = await supabase.from("admins").select("*").ilike("email", token.trim()).maybeSingle();
+        if (data) admin = data;
+      } catch (e) {}
+    }
+    if (admin && admin.status === "Active") {
+      req.admin = admin;
       return next();
     }
-    return res.status(401).json({ error: "Unauthorized. Facilitator or Administrator access required." });
-  });
+  }
+
+  return res.status(401).json({ error: "Unauthorized. Facilitator or Administrator access required." });
 }
 
 module.exports = adminAuth;
