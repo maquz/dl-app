@@ -169,6 +169,28 @@ export default function RegistrationForm() {
     }
   }
 
+  async function handleQuickAccess() {
+    if (!PHONE_REGEX.test(values.phoneNumber)) {
+      setServerError("Please enter a valid phone number (e.g. 024-498-9910) to access your portal.");
+      return;
+    }
+    setServerError("");
+    try {
+      const res = await fetchMyNomination({ phone: values.phoneNumber });
+      if (res.hasRegistered && res.nominee) {
+        sessionStorage.setItem("recent_nominee", JSON.stringify(res.nominee));
+        navigate("/confirmation", {
+          replace: true,
+          state: { nominee: res.nominee, activeTab: "pre-test" },
+        });
+      } else {
+        setServerError("No registration found for this phone number. Please fill out the form below to register.");
+      }
+    } catch (err) {
+      setServerError("No registration found for this phone number. Please fill out the form below to register.");
+    }
+  }
+
   async function handleEmailBlur() {
     if (values.email && EMAIL_REGEX.test(values.email.trim())) {
       try {
@@ -255,7 +277,27 @@ export default function RegistrationForm() {
           Education Service.
         </p>
 
-
+        <div className="banner banner-info" style={{ marginBottom: "2rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+          <strong style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <span>👋</span> Already registered?
+          </strong>
+          <span style={{ fontSize: "0.9rem", color: "#334155" }}>
+            Enter your registered Phone Number below to instantly access your portal and take tests. No password required!
+          </span>
+          <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}>
+            <input
+              type="tel"
+              placeholder="e.g. 024-498-9910"
+              value={values.phoneNumber}
+              onChange={(e) => set("phoneNumber", formatPhoneAsTyped(e.target.value))}
+              onKeyDown={(e) => e.key === 'Enter' ? handleQuickAccess() : null}
+              style={{ flex: 1, padding: "0.5rem", borderRadius: "6px", border: "1px solid #cbd5e1" }}
+            />
+            <button type="button" className="btn-secondary" onClick={handleQuickAccess}>
+              Access Portal
+            </button>
+          </div>
+        </div>
 
         {serverError && (
           <p className="banner banner-error" role="alert">
