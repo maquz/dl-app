@@ -38,12 +38,29 @@ async function generateAssessmentReportPptx(assessmentId, cohortId) {
   let submissions = [];
   if (supabase) {
     try {
-      let query = supabase.from("assessment_submissions").select("*, registrations(region, sex)");
+      let query = supabase.from("assessment_submissions").select("*").eq("assessment_id", assessmentId);
       if (cohortId) {
         query = query.eq("cohort_id", cohortId);
       }
       const { data } = await query;
       if (data) submissions = data;
+
+      if (submissions.length > 0) {
+         let rQuery = supabase.from("registrations").select("phone_number, region, district, sex");
+         if (cohortId) rQuery = rQuery.eq("cohort_id", cohortId);
+         const { data: regData } = await rQuery;
+         if (regData) {
+           const regMap = {};
+           regData.forEach(r => regMap[r.phone_number] = r);
+           submissions.forEach(s => {
+              if (s.phone_number && regMap[s.phone_number]) {
+                s.region = regMap[s.phone_number].region;
+                s.district = regMap[s.phone_number].district;
+                s.sex = regMap[s.phone_number].sex;
+              }
+           });
+         }
+      }
     } catch (e) {}
   }
 

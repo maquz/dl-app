@@ -806,10 +806,27 @@ router.get("/:id/diagnostics", trainerOrAdminAuth, async (req, res) => {
     // Submissions
     let submissions = [];
     if (supabase) {
-      let query = supabase.from("assessment_submissions").select("*, registrations(region, sex, district)");
+      let query = supabase.from("assessment_submissions").select("*").eq("assessment_id", assessmentId);
       if (cohortId) query = query.eq("cohort_id", cohortId);
       const { data } = await query;
       if (data) submissions = data;
+      
+      if (submissions.length > 0) {
+         let rQuery = supabase.from("registrations").select("phone_number, region, district, sex");
+         if (cohortId) rQuery = rQuery.eq("cohort_id", cohortId);
+         const { data: regData } = await rQuery;
+         if (regData) {
+           const regMap = {};
+           regData.forEach(r => regMap[r.phone_number] = r);
+           submissions.forEach(s => {
+              if (s.phone_number && regMap[s.phone_number]) {
+                s.region = regMap[s.phone_number].region;
+                s.district = regMap[s.phone_number].district;
+                s.sex = regMap[s.phone_number].sex;
+              }
+           });
+         }
+      }
     }
     if (submissions.length === 0) {
       let sql = "SELECT s.*, r.region, r.sex, r.district FROM assessment_submissions s LEFT JOIN registrations r ON s.registration_id = r.id WHERE s.assessment_id = ?";
@@ -924,6 +941,94 @@ router.get("/:id/diagnostics", trainerOrAdminAuth, async (req, res) => {
   } catch (err) {
     console.error("Diagnostics API error:", err);
     res.status(500).json({ error: "Failed to generate diagnostics" });
+  }
+});
+
+// GET /api/assessments/:id/export/xlsx - Export all submissions for an assessment to Excel
+router.get("/:id/export/xlsx", async (req, res) => {
+  const assessmentId = req.params.id;
+  const cohortId = req.query.cohort_id || null;
+
+  try {
+    const db = require("../db");
+    const supabase = require("../supabase");
+    
+    let assessment = null;
+    if (supabase) {
+      const { data } = await supabase.from("assessments").select("*").eq("id", assessmentId).single();
+      if (data) assessment = data;
+    }
+    if (!assessment) assessment = db.prepare("SELECT * FROM assessments WHERE id = ?").get(assessmentId);
+    if (!assessment) return res.status(404).json({ error: "Assessment not found" });
+
+    let submissions = [];
+    if (supabase) {
+      let query = supabase.from("assessment_submissions").select("*").eq("assessment_id", assessmentId);
+      if (cohortId) query = query.eq("cohort_id", cohortId);
+      const { data } = await query;
+      if (data) submissions = data;
+      
+      if (submissions.length > 0) {
+         let rQuery = supabase.from("registrations").select("phone_number, region, district, sex");
+         if (cohortId) rQuery = rQuery.eq("cohort_id", cohortId);
+         const { data: regData } = await rQuery;
+         if (regData) {
+           const regMap = {};
+           regData.forEach(r => regMap[r.phone_number] = r);
+           submissions.forEach(s => {
+              if (s.phone_number && regMap[s.phone_number]) {
+                s.region = regMap[s.phone_number].region;
+                s.district = regMap[s.phone_number].district;
+                s.sex = regMap[s.phone_number].sex;
+              }
+           });
+         }
+      }
+    }
+    if (submissions.length === 0) {
+      let sql = "SELECT s.*, r.region, r.sex, r.district FROM assessment_submissions s LEFT JOIN registrations r ON s.registration_id = r.id WHERE s.assessment_id = ?";
+      const params = [assessmentId];
+      if (cohortId) { sql += " AND s.cohort_id = ?"; params.push(cohortId); }
+      submissions = db.prepare(sql).all(...params);
+    }
+
+    const exportData = submissions.map(sub => {
+      const row = {
+        "Officer Name": sub.officer_name || "Unknown",
+        "Phone Number": sub.phone_number || "Unknown",
+        "Region": sub.region || "Unknown",
+        "District": sub.district || "Unknown",
+        "Gender": sub.sex || "Unknown",
+        "Cohort": `Cohort ${sub.cohort_id || 1}`,
+        "Total Score": `${sub.score || 0} / ${sub.total_points || 0}`,
+        "Percentage": `${sub.percentage || 0}%`,
+        "Submitted At": sub.submitted_at ? new Date(sub.submitted_at).toLocaleString() : "Unknown"
+      };
+
+      let ansObj = {};
+      try { ansObj = typeof sub.answers_json === "string" ? JSON.parse(sub.answers_json) : (sub.answers_json || {}); } catch(e){}
+      
+      Object.keys(ansObj).forEach(qId => {
+        row[`Q${qId} Answer`] = ansObj[qId];
+      });
+
+      return row;
+    });
+
+    const XLSX = require("xlsx");
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Submissions");
+
+    const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+
+    res.setHeader("Content-Disposition", `attachment; filename=Assessment_${assessmentId}_Data.xlsx`);
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.send(buf);
+
+  } catch (err) {
+    console.error("Excel Export Error:", err);
+    res.status(500).json({ error: "Failed to generate Excel file" });
   }
 });
 

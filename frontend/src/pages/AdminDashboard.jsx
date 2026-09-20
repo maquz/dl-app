@@ -2196,16 +2196,31 @@ export default function AdminDashboard() {
               <div className="admin-card" style={{ padding: "2rem", marginTop: "2rem" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem", borderBottom: "1px solid #e2e8f0", paddingBottom: "1rem" }}>
                   <h3 style={{ fontSize: "1.2rem", color: "#1e293b", margin: 0 }}>Deep-Dive Diagnostic Reports</h3>
-                  <select 
-                    value={selectedDiagnosticAssessment}
-                    onChange={(e) => setSelectedDiagnosticAssessment(e.target.value)}
-                    style={{ padding: "0.5rem", borderRadius: "8px", border: "1px solid #cbd5e1" }}
-                  >
-                    <option value="">-- Select an Assessment to Analyze --</option>
-                    {assessmentsList.map(a => (
-                      <option key={a.id} value={a.id}>{a.title} ({a.type})</option>
-                    ))}
-                  </select>
+                  <div style={{ display: "flex", gap: "1rem" }}>
+                    <select 
+                      value={selectedDiagnosticAssessment}
+                      onChange={(e) => setSelectedDiagnosticAssessment(e.target.value)}
+                      style={{ padding: "0.5rem", borderRadius: "8px", border: "1px solid #cbd5e1" }}
+                    >
+                      <option value="">-- Select an Assessment to Analyze --</option>
+                      {assessmentsList.map(a => (
+                        <option key={a.id} value={a.id}>{a.title} ({a.type})</option>
+                      ))}
+                    </select>
+                    {selectedDiagnosticAssessment && (
+                      <button 
+                        className="btn-secondary"
+                        onClick={() => window.open(`/api/assessments/${selectedDiagnosticAssessment}/export/xlsx?cohort_id=${cohortFilter || ""}`, '_blank')}
+                      >
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: "4px" }}>
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                          <polyline points="7 10 12 15 17 10" />
+                          <line x1="12" y1="15" x2="12" y2="3" />
+                        </svg>
+                        Export Excel
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {diagnosticLoading ? (
