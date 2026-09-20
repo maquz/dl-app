@@ -34,6 +34,9 @@ export default function Confirmation() {
     }
   }, [nominee]);
 
+  const [showPromptOverlay, setShowPromptOverlay] = useState(false);
+  const [promptTarget, setPromptTarget] = useState(null);
+
   useEffect(() => {
     const cohortId = nominee?.cohortId || 1;
     Promise.all([
@@ -41,8 +44,28 @@ export default function Confirmation() {
       import("../api").then(api => api.fetchMySubmissions(nominee?.phoneNumber, nominee?.id).catch(() => ({ submissions: [] })))
     ])
       .then(([aData, sData]) => {
-        setAssessments(aData.assessments || []);
-        setMySubmissions(sData.submissions || []);
+        const fetchedAssessments = aData.assessments || [];
+        const fetchedSubmissions = sData.submissions || [];
+        setAssessments(fetchedAssessments);
+        setMySubmissions(fetchedSubmissions);
+
+        if (location.state?.justRegistered || location.state?.justLoggedIn) {
+          if (!sessionStorage.getItem("assessment_prompt_shown")) {
+            const _preTest = fetchedAssessments.find((a) => a.type === "Pre-Test" || a.id === 1);
+            const _postTest = fetchedAssessments.find((a) => a.type === "Post-Test" || a.id === 2);
+            const _preSub = fetchedSubmissions.find(s => s.type === "Pre-Test" || s.assessment_id === 1);
+            const _postSub = fetchedSubmissions.find(s => String(s.type).toLowerCase() === "post-test" || s.assessment_id === 2);
+
+            if (_preTest && !_preTest.isLocked && !_preSub) {
+              setPromptTarget("pre-test");
+              setShowPromptOverlay(true);
+            } else if (_postTest && !_postTest.isLocked && !_postSub) {
+              setPromptTarget("post-test");
+              setShowPromptOverlay(true);
+            }
+            sessionStorage.setItem("assessment_prompt_shown", "true");
+          }
+        }
       })
       .catch((err) => {
         console.error("Failed to fetch dashboard data:", err);
@@ -50,7 +73,7 @@ export default function Confirmation() {
       .finally(() => {
         setLoadingAssessments(false);
       });
-  }, [nominee?.cohortId, nominee?.phoneNumber, nominee?.id]);
+  }, [nominee?.cohortId, nominee?.phoneNumber, nominee?.id, location.state]);
 
   useEffect(() => {
     if (!nominee) {
@@ -595,6 +618,41 @@ export default function Confirmation() {
           )}
         </main>
       </div>
+
+      {/* Glassmorphism Popup Overlay */}
+      {showPromptOverlay && (
+        <div className="glass-overlay">
+          <div className="glass-modal">
+            <h2 style={{ color: "var(--navy-900)", marginBottom: "1rem", fontSize: "1.75rem", fontWeight: 700 }}>
+              {location.state?.justRegistered ? "Registration Successful!" : "Welcome Back!"}
+            </h2>
+            <p style={{ color: "var(--navy-800)", marginBottom: "1.5rem", fontSize: "1.05rem", lineHeight: 1.5 }}>
+              Please take a moment to complete your mandatory <strong>{promptTarget === 'pre-test' ? 'Pre-Training' : 'Post-Training'} Assessment</strong>. This evaluation is required before you proceed with the workshop activities.
+            </p>
+            <div style={{ display: "flex", gap: "1rem", justifyContent: "center" }}>
+              <button 
+                type="button" 
+                className="btn-primary" 
+                onClick={() => {
+                  setActiveTab(promptTarget);
+                  setShowPromptOverlay(false);
+                }}
+                style={{ padding: "0.75rem 1.5rem", fontSize: "1.05rem", borderRadius: "10px" }}
+              >
+                Take Assessment Now →
+              </button>
+              <button 
+                type="button" 
+                className="btn-secondary" 
+                onClick={() => setShowPromptOverlay(false)}
+                style={{ padding: "0.75rem 1.5rem", fontSize: "1.05rem", borderRadius: "10px" }}
+              >
+                Skip for Later
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

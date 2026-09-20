@@ -168,7 +168,7 @@ export default function RegistrationForm() {
           sessionStorage.setItem("recent_nominee", JSON.stringify(res.nominee));
           navigate("/confirmation", {
             replace: true,
-            state: { nominee: res.nominee, activeTab: "pre-test" },
+            state: { nominee: res.nominee, activeTab: "pre-test", justLoggedIn: true },
           });
         }
       } catch (err) {}
@@ -188,7 +188,7 @@ export default function RegistrationForm() {
         sessionStorage.setItem("recent_nominee", JSON.stringify(res.nominee));
         navigate("/confirmation", {
           replace: true,
-          state: { nominee: res.nominee, activeTab: "pre-test" },
+          state: { nominee: res.nominee, activeTab: "pre-test", justLoggedIn: true },
         });
       } else {
         setAuthPopupError("No registration found. Please register as a new nominee.");
@@ -210,7 +210,7 @@ export default function RegistrationForm() {
           sessionStorage.setItem("recent_nominee", JSON.stringify(res.nominee));
           navigate("/confirmation", {
             replace: true,
-            state: { nominee: res.nominee, activeTab: "pre-test" },
+            state: { nominee: res.nominee, activeTab: "pre-test", justLoggedIn: true },
           });
         }
       } catch (err) {}
@@ -241,13 +241,13 @@ export default function RegistrationForm() {
       if (!localStorage.getItem("officer_profile")) {
         sessionStorage.setItem("officer_profile", JSON.stringify(nomineeData));
       }
-      navigate("/confirmation", { state: { nominee: nomineeData } });
+      navigate("/confirmation", { state: { nominee: nomineeData, justRegistered: true } });
     } catch (err) {
       if (err.body?.hasRegistered && err.body?.nominee) {
         sessionStorage.setItem("recent_nominee", JSON.stringify(err.body.nominee));
         navigate("/confirmation", {
           replace: true,
-          state: { nominee: err.body.nominee, activeTab: "pre-test" },
+          state: { nominee: err.body.nominee, activeTab: "pre-test", justLoggedIn: true },
         });
         return;
       } else if (err.body?.errors) {
