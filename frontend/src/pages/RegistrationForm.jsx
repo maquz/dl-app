@@ -77,11 +77,6 @@ export default function RegistrationForm() {
       }
     } catch {}
 
-    if (!candidate?.officerName && !candidate?.phoneNumber) {
-      navigate("/signup", { replace: true });
-      return;
-    }
-
     // Check if this candidate already registered in backend
     const phone = candidate.phoneNumber || candidate.phone;
     const email = candidate.email;
@@ -160,6 +155,36 @@ export default function RegistrationForm() {
     return e;
   }
 
+  async function handlePhoneBlur() {
+    if (PHONE_REGEX.test(values.phoneNumber)) {
+      try {
+        const res = await fetchMyNomination({ phone: values.phoneNumber });
+        if (res.hasRegistered && res.nominee) {
+          sessionStorage.setItem("recent_nominee", JSON.stringify(res.nominee));
+          navigate("/confirmation", {
+            replace: true,
+            state: { nominee: res.nominee, activeTab: "pre-test" },
+          });
+        }
+      } catch (err) {}
+    }
+  }
+
+  async function handleEmailBlur() {
+    if (values.email && EMAIL_REGEX.test(values.email.trim())) {
+      try {
+        const res = await fetchMyNomination({ email: values.email.trim() });
+        if (res.hasRegistered && res.nominee) {
+          sessionStorage.setItem("recent_nominee", JSON.stringify(res.nominee));
+          navigate("/confirmation", {
+            replace: true,
+            state: { nominee: res.nominee, activeTab: "pre-test" },
+          });
+        }
+      } catch (err) {}
+    }
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     setServerError("");
@@ -231,24 +256,7 @@ export default function RegistrationForm() {
           Education Service.
         </p>
 
-        {values.officerName ? (
-          <div className="officer-session-pill">
-            <span className="officer-session-dot"></span>
-            <span>
-              Officer: <strong>{values.officerName}</strong> ({values.email ? `${values.email} • ` : ""}{values.phoneNumber || "No phone"})
-            </span>
-            <Link to="/signup" className="officer-switch-link">
-              Switch Officer / Sign Out
-            </Link>
-          </div>
-        ) : (
-          <div className="officer-prompt-pill">
-            <span>Have an account?</span>
-            <Link to="/signup" className="officer-prompt-link">
-              Sign Up or Sign In to auto-fill your details →
-            </Link>
-          </div>
-        )}
+
 
         {serverError && (
           <p className="banner banner-error" role="alert">
@@ -314,6 +322,7 @@ export default function RegistrationForm() {
               placeholder="024-498-9910"
               value={values.phoneNumber}
               onChange={(e) => set("phoneNumber", formatPhoneAsTyped(e.target.value))}
+              onBlur={handlePhoneBlur}
               aria-invalid={!!errors.phoneNumber}
               autoComplete="tel"
             />
@@ -331,6 +340,7 @@ export default function RegistrationForm() {
               placeholder="officer@ges.gov.gh"
               value={values.email}
               onChange={(e) => set("email", e.target.value)}
+              onBlur={handleEmailBlur}
               aria-invalid={!!errors.email}
               autoComplete="email"
             />

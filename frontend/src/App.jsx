@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { Routes, Route, Link, useLocation, useNavigate } from "react-router-dom";
-import OfficerAuth from "./pages/OfficerAuth.jsx";
 import RegistrationForm from "./pages/RegistrationForm.jsx";
 import Confirmation from "./pages/Confirmation.jsx";
 import AdminLogin from "./pages/AdminLogin.jsx";
@@ -110,8 +109,8 @@ export default function App() {
   return (
     <Shell>
       <Routes>
-        <Route path="/" element={<OfficerAuth />} />
-        <Route path="/signup" element={<OfficerAuth />} />
+        <Route path="/" element={<RegistrationForm />} />
+        <Route path="/signup" element={<RegistrationForm />} />
         <Route path="/register" element={<RegistrationForm />} />
         <Route path="/confirmation" element={<Confirmation />} />
         <Route path="/admin" element={<AdminLogin />} />
