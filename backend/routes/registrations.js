@@ -248,7 +248,7 @@ router.post("/", async (req, res) => {
     allocatedCohort = findCohortForDistrict(region, district);
   }
   if (!allocatedCohort) {
-    allocatedCohort = findNextAvailableCohort();
+    allocatedCohort = await findNextAvailableCohort();
   }
 
   const assignedCohortId = allocatedCohort ? allocatedCohort.id : null;

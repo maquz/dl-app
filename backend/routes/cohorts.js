@@ -26,15 +26,39 @@ function findCohortForDistrict(region, district) {
 }
 
 // Helper to calculate next available cohort based on capacities
-function findNextAvailableCohort() {
+async function findNextAvailableCohort() {
   const cohorts = db.prepare("SELECT * FROM cohorts ORDER BY id ASC").all();
+  const supabase = require("../supabase");
+  
+  let useSupabase = false;
+  let counts = {};
+
+  if (supabase) {
+    try {
+      const { data, error } = await supabase.from("registrations").select("cohort_id");
+      if (data && !error) {
+        useSupabase = true;
+        for (const r of data) {
+          if (r.cohort_id) counts[r.cohort_id] = (counts[r.cohort_id] || 0) + 1;
+        }
+      }
+    } catch(e) {}
+  }
+
+  if (!useSupabase) {
+    const regCounts = db.prepare("SELECT cohort_id, COUNT(*) as count FROM registrations WHERE cohort_id IS NOT NULL GROUP BY cohort_id").all();
+    for (const r of regCounts) {
+      counts[r.cohort_id] = r.count;
+    }
+  }
+
   for (const c of cohorts) {
-    const countRow = db.prepare("SELECT COUNT(*) as count FROM registrations WHERE cohort_id = ?").get(c.id);
-    const count = countRow ? countRow.count : 0;
+    const count = counts[c.id] || 0;
     if (count < c.expected_participants) {
       return c;
     }
   }
+
   // If all filled, return last cohort as fallback
   return cohorts[cohorts.length - 1] || null;
 }
@@ -56,19 +80,57 @@ router.get("/district-map", (req, res) => {
 });
 
 // GET /api/cohorts/stats - Detailed cohort KPIs, capacity, and attendance (admin only)
-router.get("/stats", adminAuth, (req, res) => {
+router.get("/stats", adminAuth, async (req, res) => {
   const cohorts = db.prepare("SELECT * FROM cohorts ORDER BY id ASC").all();
-  const regCounts = db.prepare(`
-    SELECT 
-      cohort_id,
-      COUNT(*) as allocated_count,
-      SUM(CASE WHEN attendance_status = 'Attended' THEN 1 ELSE 0 END) as attended_count,
-      SUM(CASE WHEN attendance_status = 'Absent' THEN 1 ELSE 0 END) as absent_count,
-      SUM(CASE WHEN attendance_status = 'Registered' OR attendance_status IS NULL THEN 1 ELSE 0 END) as pending_count
-    FROM registrations
-    WHERE cohort_id IS NOT NULL
-    GROUP BY cohort_id
-  `).all();
+  
+  const supabase = require("../supabase");
+  let regCounts = [];
+  let unassignedCount = 0;
+  let useSupabase = false;
+
+  if (supabase) {
+    try {
+      const { data, error } = await supabase.from("registrations").select("cohort_id, attendance_status");
+      if (data && !error) {
+        useSupabase = true;
+        const countsMap = {};
+        for (const r of data) {
+          if (!r.cohort_id) {
+            unassignedCount++;
+            continue;
+          }
+          if (!countsMap[r.cohort_id]) {
+            countsMap[r.cohort_id] = { cohort_id: r.cohort_id, allocated_count: 0, attended_count: 0, absent_count: 0, pending_count: 0 };
+          }
+          const cm = countsMap[r.cohort_id];
+          cm.allocated_count++;
+          if (r.attendance_status === 'Attended') cm.attended_count++;
+          else if (r.attendance_status === 'Absent') cm.absent_count++;
+          else cm.pending_count++;
+        }
+        regCounts = Object.values(countsMap);
+      }
+    } catch (e) {
+      console.error("Supabase cohort stats error:", e);
+    }
+  }
+
+  if (!useSupabase) {
+    regCounts = db.prepare(`
+      SELECT 
+        cohort_id,
+        COUNT(*) as allocated_count,
+        SUM(CASE WHEN attendance_status = 'Attended' THEN 1 ELSE 0 END) as attended_count,
+        SUM(CASE WHEN attendance_status = 'Absent' THEN 1 ELSE 0 END) as absent_count,
+        SUM(CASE WHEN attendance_status = 'Registered' OR attendance_status IS NULL THEN 1 ELSE 0 END) as pending_count
+      FROM registrations
+      WHERE cohort_id IS NOT NULL
+      GROUP BY cohort_id
+    `).all();
+
+    const unassignedRow = db.prepare("SELECT COUNT(*) as count FROM registrations WHERE cohort_id IS NULL").get();
+    unassignedCount = unassignedRow ? unassignedRow.count : 0;
+  }
 
   const countsMap = {};
   for (const r of regCounts) {
@@ -79,10 +141,6 @@ router.get("/stats", adminAuth, (req, res) => {
       pending: r.pending_count || 0,
     };
   }
-
-  // Unassigned registrations count
-  const unassignedRow = db.prepare("SELECT COUNT(*) as count FROM registrations WHERE cohort_id IS NULL").get();
-  const unassignedCount = unassignedRow ? unassignedRow.count : 0;
 
   let grandExpected = 0;
   let grandAllocated = 0;
