@@ -148,28 +148,6 @@ export default function AdminLogin() {
           <span>🔒 Authorized personnel only. New administrator accounts are created and managed by logged-in System Administrators.</span>
         </div>
 
-        <div style={{ marginTop: "1rem", textAlign: "center" }}>
-          <details style={{ cursor: "pointer" }}>
-            <summary style={{ fontSize: "0.83rem", color: "#64748b", userSelect: "none", listStyle: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: "4px" }}>
-              <span style={{ color: "#2563eb", fontWeight: 600 }}>🔑 Forgot your password?</span>
-            </summary>
-            <div style={{ marginTop: "0.75rem", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "0.9rem 1rem", textAlign: "left", fontSize: "0.82rem", color: "#475569" }}>
-              <p style={{ margin: "0 0 0.5rem", fontWeight: 600, color: "#1e3a5f" }}>Recovery Options:</p>
-              <p style={{ margin: "0 0 0.4rem" }}>
-                <strong>Option 1 — Default Master Password:</strong><br />
-                Enter your email above and use the password: <code style={{ background: "#e0f2fe", padding: "1px 5px", borderRadius: "3px", color: "#0369a1", fontWeight: 700 }}>change-me-please</code>
-              </p>
-              <p style={{ margin: "0 0 0.4rem" }}>
-                <strong>Option 2 — Alternative Master Password:</strong><br />
-                Try: <code style={{ background: "#f0fdf4", padding: "1px 5px", borderRadius: "3px", color: "#166534", fontWeight: 700 }}>GES-DL-Admin-2026</code>
-              </p>
-              <p style={{ margin: "0" }}>
-                <strong>Option 3 — Contact Super Admin:</strong><br />
-                Contact the GES DL Programme Secretariat to reset your account password.
-              </p>
-            </div>
-          </details>
-        </div>
 
         <div className="auth-footer-links" style={{ marginTop: "1rem" }}>
           <Link to="/" className="back-portal-link">

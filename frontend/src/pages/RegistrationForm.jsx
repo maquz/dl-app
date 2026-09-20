@@ -58,6 +58,12 @@ export default function RegistrationForm() {
   const [serverError, setServerError] = useState("");
   const [checkingExisting, setCheckingExisting] = useState(true);
 
+  // Popup state
+  const [showAuthPopup, setShowAuthPopup] = useState(true);
+  const [authPopupStep, setAuthPopupStep] = useState("ask");
+  const [authPopupPhone, setAuthPopupPhone] = useState("");
+  const [authPopupError, setAuthPopupError] = useState("");
+  const [authPopupLoading, setAuthPopupLoading] = useState(false);
   useEffect(() => {
     let candidate = null;
     try {
@@ -169,14 +175,15 @@ export default function RegistrationForm() {
     }
   }
 
-  async function handleQuickAccess() {
-    if (!PHONE_REGEX.test(values.phoneNumber)) {
-      setServerError("Please enter a valid phone number (e.g. 024-498-9910) to access your portal.");
+  async function handlePopupSubmit() {
+    if (!PHONE_REGEX.test(authPopupPhone)) {
+      setAuthPopupError("Please enter a valid phone number (e.g. 024-498-9910).");
       return;
     }
-    setServerError("");
+    setAuthPopupError("");
+    setAuthPopupLoading(true);
     try {
-      const res = await fetchMyNomination({ phone: values.phoneNumber });
+      const res = await fetchMyNomination({ phone: authPopupPhone });
       if (res.hasRegistered && res.nominee) {
         sessionStorage.setItem("recent_nominee", JSON.stringify(res.nominee));
         navigate("/confirmation", {
@@ -184,10 +191,14 @@ export default function RegistrationForm() {
           state: { nominee: res.nominee, activeTab: "pre-test" },
         });
       } else {
-        setServerError("No registration found for this phone number. Please fill out the form below to register.");
+        setAuthPopupError("No registration found. Please register as a new nominee.");
+        setTimeout(() => setShowAuthPopup(false), 2500);
       }
     } catch (err) {
-      setServerError("No registration found for this phone number. Please fill out the form below to register.");
+      setAuthPopupError("No registration found. Please register as a new nominee.");
+      setTimeout(() => setShowAuthPopup(false), 2500);
+    } finally {
+      setAuthPopupLoading(false);
     }
   }
 
@@ -269,6 +280,77 @@ export default function RegistrationForm() {
 
   return (
     <div className="page-narrow">
+      {showAuthPopup && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
+          background: "rgba(15, 23, 42, 0.4)", backdropFilter: "blur(12px)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          zIndex: 9999, padding: "1rem"
+        }}>
+          <div style={{
+            background: "rgba(255, 255, 255, 0.95)", backdropFilter: "blur(16px)",
+            borderRadius: "16px", padding: "2.5rem 2rem", width: "100%", maxWidth: "420px",
+            boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)", border: "1px solid rgba(255, 255, 255, 0.4)",
+            textAlign: "center"
+          }}>
+            {authPopupStep === "ask" ? (
+              <>
+                <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>👋</div>
+                <h2 style={{ fontSize: "1.5rem", color: "var(--navy-900)", marginBottom: "1rem", fontWeight: 800 }}>
+                  Welcome to the Portal
+                </h2>
+                <p style={{ color: "#475569", marginBottom: "2rem", lineHeight: 1.5 }}>
+                  Are you already a registered nominee looking to access your dashboard and take tests?
+                </p>
+                <div style={{ display: "flex", gap: "1rem", justifyContent: "center" }}>
+                  <button type="button" className="btn-secondary" style={{ flex: 1 }} onClick={() => setShowAuthPopup(false)}>
+                    No, I need to register
+                  </button>
+                  <button type="button" className="btn-primary" style={{ flex: 1 }} onClick={() => setAuthPopupStep("login")}>
+                    Yes, log me in
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h2 style={{ fontSize: "1.5rem", color: "var(--navy-900)", marginBottom: "0.5rem", fontWeight: 800 }}>
+                  Access Your Portal
+                </h2>
+                <p style={{ color: "#475569", marginBottom: "1.5rem", fontSize: "0.9rem" }}>
+                  Enter your registered phone number to authenticate securely. No password needed.
+                </p>
+                {authPopupError && (
+                  <div className="banner banner-error" style={{ marginBottom: "1rem", padding: "0.75rem", fontSize: "0.85rem" }}>
+                    {authPopupError}
+                  </div>
+                )}
+                <div style={{ textAlign: "left", marginBottom: "1.5rem" }}>
+                  <label htmlFor="popupPhone" style={{ display: "block", marginBottom: "0.5rem", fontWeight: 600, color: "#1e293b", fontSize: "0.85rem" }}>Phone Number</label>
+                  <input
+                    id="popupPhone"
+                    type="tel"
+                    placeholder="e.g. 024-498-9910"
+                    value={authPopupPhone}
+                    onChange={(e) => setAuthPopupPhone(formatPhoneAsTyped(e.target.value))}
+                    onKeyDown={(e) => e.key === 'Enter' ? handlePopupSubmit() : null}
+                    style={{ width: "100%", padding: "0.75rem", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "1rem" }}
+                    autoFocus
+                  />
+                </div>
+                <div style={{ display: "flex", gap: "1rem", justifyContent: "center" }}>
+                  <button type="button" className="btn-secondary" onClick={() => setShowAuthPopup(false)}>
+                    Cancel
+                  </button>
+                  <button type="button" className="btn-primary" style={{ flex: 1 }} onClick={handlePopupSubmit} disabled={authPopupLoading}>
+                    {authPopupLoading ? "Verifying..." : "Verify & Access"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="form-card">
         <p className="form-eyebrow">Background Details of Nominees for DL District Trainers</p>
         <h1>Registration Form for Nominees (2026)</h1>
@@ -276,28 +358,6 @@ export default function RegistrationForm() {
           Use this form to register a nominee for the Differentiated Learning (DL) District Trainer programme, Ghana
           Education Service.
         </p>
-
-        <div className="banner banner-info" style={{ marginBottom: "2rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-          <strong style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <span>👋</span> Already registered?
-          </strong>
-          <span style={{ fontSize: "0.9rem", color: "#334155" }}>
-            Enter your registered Phone Number below to instantly access your portal and take tests. No password required!
-          </span>
-          <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}>
-            <input
-              type="tel"
-              placeholder="e.g. 024-498-9910"
-              value={values.phoneNumber}
-              onChange={(e) => set("phoneNumber", formatPhoneAsTyped(e.target.value))}
-              onKeyDown={(e) => e.key === 'Enter' ? handleQuickAccess() : null}
-              style={{ flex: 1, padding: "0.5rem", borderRadius: "6px", border: "1px solid #cbd5e1" }}
-            />
-            <button type="button" className="btn-secondary" onClick={handleQuickAccess}>
-              Access Portal
-            </button>
-          </div>
-        </div>
 
         {serverError && (
           <p className="banner banner-error" role="alert">
