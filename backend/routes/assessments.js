@@ -945,12 +945,35 @@ router.post("/", trainerOrAdminAuth, (req, res) => {
 
   const aId = Number(aInfo.lastInsertRowid);
 
+  const supabase = require("../supabase");
+  if (supabase) {
+    supabase.from("assessments").insert({
+      id: aId,
+      title: title.trim(),
+      type,
+      description: description ? description.trim() : null,
+      time_limit_minutes: timeLimitMinutes ? Number(timeLimitMinutes) : 20,
+      is_active: 1,
+      cohort_id: cohortId ? Number(cohortId) : null,
+      created_by_trainer_id: trainerId,
+      unlock_time: unlockTime || "19:00",
+      unlock_date_type: unlockDateType || (type === "Post-Test" ? "end_date" : "arrival_date"),
+      custom_unlock_datetime: customUnlockDatetime || null,
+      custom_close_datetime: customCloseDatetime || null,
+      lock_mode: lockMode || "scheduled"
+    }).then(({ error }) => {
+      if (error) console.error("Supabase assessment insert error:", error);
+    });
+  }
+
   if (Array.isArray(questions)) {
     const insertQ = db.prepare(`
       INSERT INTO assessment_questions (assessment_id, question_text, question_type, options_json, correct_answer, points, sort_order)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
     let order = 1;
+    const supaQuestions = [];
+    
     for (const q of questions) {
       const qText = q.questionText || q.question_text;
       const qType = q.questionType || q.question_type || "multiple_choice";
@@ -959,16 +982,26 @@ router.post("/", trainerOrAdminAuth, (req, res) => {
       const qPts = q.points !== undefined ? Number(q.points) : 1;
 
       if (qText && qText.trim()) {
-        insertQ.run(
-          aId,
-          qText.trim(),
-          qType,
-          typeof qOpts === "string" ? qOpts : JSON.stringify(qOpts),
-          qAns,
-          qPts,
-          order++
-        );
+        const parsedOpts = typeof qOpts === "string" ? JSON.parse(qOpts) : qOpts;
+        insertQ.run(aId, qText.trim(), qType, JSON.stringify(parsedOpts), qAns, qPts, order);
+        
+        supaQuestions.push({
+          assessment_id: aId,
+          question_text: qText.trim(),
+          question_type: qType,
+          options_json: parsedOpts,
+          correct_answer: qAns,
+          points: qPts,
+          sort_order: order
+        });
+        order++;
       }
+    }
+    
+    if (supabase && supaQuestions.length > 0) {
+      supabase.from("assessment_questions").insert(supaQuestions).then(({ error: insertErr }) => {
+        if (insertErr) console.error("Supabase new questions insert error:", insertErr);
+      });
     }
   }
 
@@ -1002,6 +1035,20 @@ router.put("/:id", trainerOrAdminAuth, (req, res) => {
     return res.status(404).json({ error: "Assessment not found." });
   }
 
+  const updateValues = {
+    title: title !== undefined ? title.trim() : existing.title,
+    type: type !== undefined ? type : existing.type,
+    description: description !== undefined ? (description ? description.trim() : null) : existing.description,
+    time_limit_minutes: timeLimitMinutes !== undefined ? Number(timeLimitMinutes) : existing.time_limit_minutes,
+    is_active: isActive !== undefined ? (isActive ? 1 : 0) : existing.is_active,
+    cohort_id: cohortId !== undefined ? (cohortId ? Number(cohortId) : null) : existing.cohort_id,
+    unlock_time: unlockTime !== undefined ? unlockTime : (existing.unlock_time || "19:00"),
+    unlock_date_type: unlockDateType !== undefined ? unlockDateType : (existing.unlock_date_type || "arrival_date"),
+    custom_unlock_datetime: customUnlockDatetime !== undefined ? customUnlockDatetime : existing.custom_unlock_datetime,
+    custom_close_datetime: customCloseDatetime !== undefined ? customCloseDatetime : existing.custom_close_datetime,
+    lock_mode: lockMode !== undefined ? lockMode : (existing.lock_mode || "scheduled"),
+  };
+
   db.prepare(`
     UPDATE assessments
     SET 
@@ -1018,19 +1065,26 @@ router.put("/:id", trainerOrAdminAuth, (req, res) => {
       lock_mode = ?
     WHERE id = ?
   `).run(
-    title !== undefined ? title.trim() : existing.title,
-    type !== undefined ? type : existing.type,
-    description !== undefined ? (description ? description.trim() : null) : existing.description,
-    timeLimitMinutes !== undefined ? Number(timeLimitMinutes) : existing.time_limit_minutes,
-    isActive !== undefined ? (isActive ? 1 : 0) : existing.is_active,
-    cohortId !== undefined ? (cohortId ? Number(cohortId) : null) : existing.cohort_id,
-    unlockTime !== undefined ? unlockTime : (existing.unlock_time || "19:00"),
-    unlockDateType !== undefined ? unlockDateType : (existing.unlock_date_type || "arrival_date"),
-    customUnlockDatetime !== undefined ? customUnlockDatetime : existing.custom_unlock_datetime,
-    customCloseDatetime !== undefined ? customCloseDatetime : existing.custom_close_datetime,
-    lockMode !== undefined ? lockMode : (existing.lock_mode || "scheduled"),
+    updateValues.title,
+    updateValues.type,
+    updateValues.description,
+    updateValues.time_limit_minutes,
+    updateValues.is_active,
+    updateValues.cohort_id,
+    updateValues.unlock_time,
+    updateValues.unlock_date_type,
+    updateValues.custom_unlock_datetime,
+    updateValues.custom_close_datetime,
+    updateValues.lock_mode,
     id
   );
+
+  const supabase = require("../supabase");
+  if (supabase) {
+    supabase.from("assessments").update(updateValues).eq("id", id).then(({ error }) => {
+      if (error) console.error("Supabase assessment update error:", error);
+    });
+  }
 
   if (Array.isArray(questions)) {
     // Delete existing questions and replace
@@ -1039,19 +1093,41 @@ router.put("/:id", trainerOrAdminAuth, (req, res) => {
       INSERT INTO assessment_questions (assessment_id, question_text, question_type, options_json, correct_answer, points, sort_order)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
+    
     let order = 1;
+    const supaQuestions = [];
+    
     for (const q of questions) {
       if (q.questionText && q.questionText.trim()) {
-        insertQ.run(
-          id,
-          q.questionText.trim(),
-          q.questionType || "multiple_choice",
-          JSON.stringify(q.options || []),
-          q.correctAnswer || "",
-          q.points || 1,
-          order++
-        );
+        const qText = q.questionText.trim();
+        const qType = q.questionType || "multiple_choice";
+        const qOpts = q.options || [];
+        const qAns = q.correctAnswer || "";
+        const qPts = q.points || 1;
+        
+        insertQ.run(id, qText, qType, JSON.stringify(qOpts), qAns, qPts, order);
+        
+        supaQuestions.push({
+          assessment_id: id,
+          question_text: qText,
+          question_type: qType,
+          options_json: qOpts, // Supabase jsonb array
+          correct_answer: qAns,
+          points: qPts,
+          sort_order: order
+        });
+        order++;
       }
+    }
+    
+    if (supabase && supaQuestions.length > 0) {
+      supabase.from("assessment_questions").delete().eq("assessment_id", id).then(({ error }) => {
+        if (!error) {
+          supabase.from("assessment_questions").insert(supaQuestions).then(({ error: insertErr }) => {
+            if (insertErr) console.error("Supabase questions update error:", insertErr);
+          });
+        }
+      });
     }
   }
 
@@ -1066,6 +1142,14 @@ router.patch("/:id/toggle", trainerOrAdminAuth, (req, res) => {
 
   const nextState = a.is_active ? 0 : 1;
   db.prepare("UPDATE assessments SET is_active = ? WHERE id = ?").run(nextState, id);
+  
+  const supabase = require("../supabase");
+  if (supabase) {
+    supabase.from("assessments").update({ is_active: nextState }).eq("id", id).then(({ error }) => {
+      if (error) console.error("Supabase assessment toggle error:", error);
+    });
+  }
+  
   res.json({ message: `Assessment ${nextState ? "activated" : "deactivated"}.`, isActive: nextState });
 });
 
