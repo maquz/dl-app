@@ -858,16 +858,8 @@ router.get("/:id/take", async (req, res) => {
     };
   });
 
-  // Reshuffle questions (Fisher-Yates) for each person taking the test
-  for (let i = parsedQuestions.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [parsedQuestions[i], parsedQuestions[j]] = [parsedQuestions[j], parsedQuestions[i]];
-  }
-
-  // Cap to 20 questions maximum
-  if (parsedQuestions.length > 20) {
-    parsedQuestions = parsedQuestions.slice(0, 20);
-  }
+  const { getSeededCohortQuestions } = require("../utils/questionShuffle");
+  parsedQuestions = getSeededCohortQuestions(parsedQuestions, id, cohortId);
 
   res.json({
     isLocked: false,
@@ -1271,13 +1263,15 @@ router.post("/:id/submit", async (req, res) => {
 
   const submittedIds = req.body.questionIds;
 
+  const { getSeededCohortQuestions } = require("../utils/questionShuffle");
+
   // Filter to only grade the exactly presented questions (for the 20-question reshuffle)
   if (Array.isArray(submittedIds) && submittedIds.length > 0) {
     const idsSet = new Set(submittedIds.map(Number));
     questions = questions.filter(q => idsSet.has(q.id));
   } else if (questions.length > 20) {
     // Fallback if legacy client didn't send IDs
-    questions = questions.slice(0, 20);
+    questions = getSeededCohortQuestions(questions, assessmentId, cohortId);
   }
 
   let earnedScore = 0;

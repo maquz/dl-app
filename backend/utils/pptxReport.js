@@ -31,6 +31,9 @@ async function generateAssessmentReportPptx(assessmentId, cohortId) {
     questions = db.prepare("SELECT * FROM assessment_questions WHERE assessment_id = ? ORDER BY sort_order ASC").all(assessmentId);
   }
 
+  const { getSeededCohortQuestions } = require("./questionShuffle");
+  questions = getSeededCohortQuestions(questions, assessmentId, cohortId);
+
   // Fetch Submissions
   let submissions = [];
   if (supabase) {

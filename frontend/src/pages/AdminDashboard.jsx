@@ -2002,14 +2002,21 @@ export default function AdminDashboard() {
                             >
                               Results
                             </button>
-                            <a
-                              href={getAssessmentPptxReportUrl(a.id, cohortFilter || "")}
+                            <button
+                              type="button"
                               className="btn-link-action"
                               style={{ color: "#0ea5e9", fontWeight: 600, textDecoration: "none" }}
                               title="Download PowerPoint presentation report"
+                              onClick={() => {
+                                if (!cohortFilter) {
+                                  alert("Please select a specific Cohort from the global filter dropdown at the top of the page to generate a precise 20-question PPTX report for that cohort.");
+                                  return;
+                                }
+                                window.location.href = getAssessmentPptxReportUrl(a.id, cohortFilter);
+                              }}
                             >
                               PPTX Report
-                            </a>
+                            </button>
                             <Link to={`/assessment/${a.id}?bypass=true`} className="btn-link-action" target="_blank" rel="noreferrer" title="Preview candidate test">
                               Preview ↗
                             </Link>
