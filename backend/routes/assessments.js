@@ -691,45 +691,88 @@ router.post("/:id/questions/bulk", trainerOrAdminAuth, async (req, res) => {
 });
 
 // GET /api/assessments/stats/overview - High-level test analytics
-router.get("/stats/overview", (req, res) => {
-  const totalSubmissions = db.prepare("SELECT COUNT(*) as count FROM assessment_submissions").get()?.count || 0;
-  const preTestStats = db.prepare(`
-    SELECT 
-      COUNT(*) as count, 
-      AVG(percentage) as avg_score,
-      MAX(percentage) as max_score,
-      MIN(percentage) as min_score
-    FROM assessment_submissions sub
-    JOIN assessments a ON sub.assessment_id = a.id
-    WHERE a.type = 'Pre-Test'
-  `).get();
+router.get("/stats/overview", async (req, res) => {
+  let totalSubmissions = 0;
+  let preTestStats = { count: 0, avgScore: 0, maxScore: 0, minScore: 0 };
+  let postTestStats = { count: 0, avgScore: 0, maxScore: 0, minScore: 0 };
 
-  const postTestStats = db.prepare(`
-    SELECT 
-      COUNT(*) as count, 
-      AVG(percentage) as avg_score,
-      MAX(percentage) as max_score,
-      MIN(percentage) as min_score
-    FROM assessment_submissions sub
-    JOIN assessments a ON sub.assessment_id = a.id
-    WHERE a.type = 'Post-Test'
-  `).get();
+  const supabase = require("../supabase");
+  let fromSupabase = false;
+
+  if (supabase) {
+    try {
+      const { data: subs } = await supabase.from("assessment_submissions").select("percentage, assessments(type)");
+      if (subs) {
+        fromSupabase = true;
+        totalSubmissions = subs.length;
+        
+        const preSubs = subs.filter(s => s.assessments && s.assessments.type === 'Pre-Test');
+        if (preSubs.length > 0) {
+          const preScores = preSubs.map(s => s.percentage || 0);
+          preTestStats.count = preScores.length;
+          preTestStats.avgScore = Math.round(preScores.reduce((a,b)=>a+b,0) / preScores.length);
+          preTestStats.maxScore = Math.round(Math.max(...preScores));
+          preTestStats.minScore = Math.round(Math.min(...preScores));
+        }
+
+        const postSubs = subs.filter(s => s.assessments && (s.assessments.type === 'Post-Test' || s.assessments.type === 'post-test'));
+        if (postSubs.length > 0) {
+          const postScores = postSubs.map(s => s.percentage || 0);
+          postTestStats.count = postScores.length;
+          postTestStats.avgScore = Math.round(postScores.reduce((a,b)=>a+b,0) / postScores.length);
+          postTestStats.maxScore = Math.round(Math.max(...postScores));
+          postTestStats.minScore = Math.round(Math.min(...postScores));
+        }
+      }
+    } catch (e) {
+      console.error("Supabase stats error:", e.message);
+    }
+  }
+
+  if (!fromSupabase) {
+    totalSubmissions = db.prepare("SELECT COUNT(*) as count FROM assessment_submissions").get()?.count || 0;
+    
+    const preDbStats = db.prepare(`
+      SELECT 
+        COUNT(*) as count, 
+        AVG(percentage) as avg_score,
+        MAX(percentage) as max_score,
+        MIN(percentage) as min_score
+      FROM assessment_submissions sub
+      JOIN assessments a ON sub.assessment_id = a.id
+      WHERE a.type = 'Pre-Test'
+    `).get();
+
+    const postDbStats = db.prepare(`
+      SELECT 
+        COUNT(*) as count, 
+        AVG(percentage) as avg_score,
+        MAX(percentage) as max_score,
+        MIN(percentage) as min_score
+      FROM assessment_submissions sub
+      JOIN assessments a ON sub.assessment_id = a.id
+      WHERE a.type = 'Post-Test'
+    `).get();
+
+    preTestStats = {
+      count: preDbStats.count || 0,
+      avgScore: Math.round(preDbStats.avg_score || 0),
+      maxScore: Math.round(preDbStats.max_score || 0),
+      minScore: Math.round(preDbStats.min_score || 0),
+    };
+    postTestStats = {
+      count: postDbStats.count || 0,
+      avgScore: Math.round(postDbStats.avg_score || 0),
+      maxScore: Math.round(postDbStats.max_score || 0),
+      minScore: Math.round(postDbStats.min_score || 0),
+    };
+  }
 
   res.json({
     totalSubmissions,
-    preTest: {
-      count: preTestStats.count || 0,
-      avgScore: Math.round(preTestStats.avg_score || 0),
-      maxScore: Math.round(preTestStats.max_score || 0),
-      minScore: Math.round(preTestStats.min_score || 0),
-    },
-    postTest: {
-      count: postTestStats.count || 0,
-      avgScore: Math.round(postTestStats.avg_score || 0),
-      maxScore: Math.round(postTestStats.max_score || 0),
-      minScore: Math.round(postTestStats.min_score || 0),
-    },
-    learningGain: Math.max(0, Math.round((postTestStats.avg_score || 0) - (preTestStats.avg_score || 0))),
+    preTest: preTestStats,
+    postTest: postTestStats,
+    learningGain: Math.max(0, postTestStats.avgScore - preTestStats.avgScore),
   });
 });
 
@@ -1289,7 +1332,7 @@ router.post("/:id/submit", async (req, res) => {
         score: earnedScore,
         total_points: totalPoints,
         percentage,
-        answers_json: answersJson,
+        answers_json: answers || {},
       }]).select("id").single();
       if (data && data.id) submissionId = data.id;
     } catch (e) {

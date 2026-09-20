@@ -94,22 +94,22 @@ async function generateAssessmentReportPptx(assessmentId, cohortId) {
   // Slide 1: Title
   let slide1 = pres.addSlide({ masterName: "MASTER_SLIDE" });
   slide1.addText("DIFFERENTIATED LEARNING (DL)\nFOCAL PERSONS REFRESHER\nTRAINING", {
-    x: 1, y: 1.5, w: "80%", align: "center", fontSize: 44, bold: true, color: "000000"
+    x: 1, y: 1.5, w: 8, h: 2, align: "center", fontSize: 44, bold: true, color: "000000", valign: "middle"
   });
   slide1.addText(cohortName.toUpperCase(), {
-    x: 1, y: 3.8, w: "80%", align: "center", fontSize: 50, bold: true, color: "000000"
+    x: 1, y: 3.8, w: 8, h: 0.8, align: "center", fontSize: 50, bold: true, color: "000000", valign: "middle"
   });
   slide1.addShape(pres.ShapeType.rect, { x: 2, y: 4.8, w: 6, h: 1.2, fill: { color: "99C2E1" }, line: { color: "005BBB", width: 4 } });
   slide1.addText(assessment.title, {
-    x: 2, y: 4.8, w: 6, h: 1.2, align: "center", fontSize: 36, bold: true, color: "C00000"
+    x: 2, y: 4.8, w: 6, h: 1.2, align: "center", fontSize: 36, bold: true, color: "C00000", valign: "middle"
   });
 
   // Slide 2: Overview
   let slide2 = pres.addSlide({ masterName: "MASTER_SLIDE" });
-  slide2.addText("Overview", { x: 0.5, y: 0.3, w: 9, fontSize: 40, bold: true, align: "center" });
+  slide2.addText("Overview", { x: 0.5, y: 0.3, w: 9, h: 0.6, fontSize: 40, bold: true, align: "center", valign: "top" });
   
   slide2.addText(`• Training covered ${Object.keys(regionCounts).length} regions.\n• Total Number of Respondents: ${totalRespondents}\n• Male: ${male} (${malePct}%), Female: ${female} (${femalePct}%)`, {
-    x: 0.5, y: 1.2, w: 9, fontSize: 20, bullet: true, lineSpacing: 35
+    x: 0.5, y: 1.2, w: 9, h: 1.5, fontSize: 20, bullet: true, valign: "top"
   });
 
   // Simple horizontal bar chart for regions
@@ -120,7 +120,7 @@ async function generateAssessmentReportPptx(assessmentId, cohortId) {
 
   if (chartData.length > 0) {
     slide2.addChart(pres.ChartType.bar, chartData, {
-      x: 1, y: 3, w: 8, h: 4,
+      x: 1, y: 2.8, w: 8, h: 4,
       barDir: "bar",
       showValue: true,
       showLegend: false,
@@ -135,20 +135,20 @@ async function generateAssessmentReportPptx(assessmentId, cohortId) {
 
   // Slide 3: Objective
   let slide3 = pres.addSlide({ masterName: "MASTER_SLIDE" });
-  slide3.addText("Objective of the Training for DL Focal Persons:", { x: 0.5, y: 0.5, w: 9, fontSize: 32, bold: true, underline: true });
+  slide3.addText("Objective of the Training for DL Focal Persons:", { x: 0.5, y: 0.5, w: 9, h: 0.6, fontSize: 32, bold: true, underline: true, valign: "top" });
   slide3.addText("To empower Differentiated Learning Focal Persons (DLFP) with the essential knowledge, concepts, and skills necessary to champion and effectively implement DL initiatives across districts in Ghana.", {
-    x: 0.5, y: 1.2, w: 9, fontSize: 24, bullet: true, bold: true, lineSpacing: 35
+    x: 0.5, y: 1.2, w: 9, h: 1.5, fontSize: 24, bullet: true, bold: true, valign: "top"
   });
-  slide3.addText("The evaluation itself", { x: 0.5, y: 3.5, w: 9, fontSize: 32, bold: true, underline: true });
+  slide3.addText("The evaluation itself", { x: 0.5, y: 3.0, w: 9, h: 0.6, fontSize: 32, bold: true, underline: true, valign: "top" });
   slide3.addText("From the analysis of the data, it is clear some participants got the answers wrong for some of the questions, which were on the high side.", {
-    x: 0.5, y: 4.2, w: 9, fontSize: 24, bold: true, lineSpacing: 35
+    x: 0.5, y: 3.7, w: 9, h: 1.5, fontSize: 24, bold: true, valign: "top"
   });
   
   // Slide 4: Tips
   let slide4 = pres.addSlide({ masterName: "MASTER_SLIDE" });
-  slide4.addText("Tips to read the slides:", { x: 0.5, y: 0.5, w: 9, fontSize: 32, bold: true, underline: true });
+  slide4.addText("Tips to read the slides:", { x: 0.5, y: 0.5, w: 9, h: 0.6, fontSize: 32, bold: true, underline: true, valign: "top" });
   slide4.addText("• Analysis of the results for each question of the survey, desegregated per region.\n• The results for each question are presented on 2 slide\n• For each question, before presenting the results per region, one slide presents the overall results and recommendations .\n• Some district did not submitted the assessment; therefore, they do not show in the analysis (-).", {
-    x: 0.5, y: 1.5, w: 9, fontSize: 22, bullet: true, lineSpacing: 35
+    x: 0.5, y: 1.2, w: 9, h: 3.5, fontSize: 22, bullet: true, valign: "top"
   });
 
   // Calculate Region Stats per question
@@ -207,10 +207,10 @@ async function generateAssessmentReportPptx(assessmentId, cohortId) {
     
     // Slide A: Key Takeaway
     let slideA = pres.addSlide({ masterName: "MASTER_SLIDE" });
-    slideA.addText("DL Focal Persons Pre-Training Assessment", { x: 0.5, y: 0.3, w: 9, fontSize: 32, bold: true, align: "center" });
-    slideA.addText(`${qNum}. ${q.question_text}`, { x: 0.5, y: 0.9, w: 9, fontSize: 20, italic: true, bold: true, align: "center" });
+    slideA.addText("DL Focal Persons Pre-Training Assessment", { x: 0.5, y: 0.3, w: 9, h: 0.6, fontSize: 32, bold: true, align: "center", valign: "top" });
+    slideA.addText(`${qNum}. ${q.question_text}`, { x: 0.5, y: 0.9, w: 9, h: 1.0, fontSize: 20, italic: true, bold: true, align: "center", valign: "top" });
     
-    slideA.addText("Key takeaways:", { x: 0.5, y: 2.5, w: 9, fontSize: 36, bold: true });
+    slideA.addText("Key takeaways:", { x: 0.5, y: 2.2, w: 9, h: 0.6, fontSize: 36, bold: true, valign: "top" });
     
     let takeawayFormatting = [
       { text: `${takeawayText} (${majorityPct}%) `, options: { color: takeawayText === "Majority" ? "00B050" : "FF0000", italic: true } },
@@ -219,12 +219,13 @@ async function generateAssessmentReportPptx(assessmentId, cohortId) {
       { text: `, which indicates that ${takeawayText === "Majority" ? "most" : "less than half"} of the participants understand this concept.`, options: { color: "000000", italic: true } }
     ];
     
-    slideA.addText(takeawayFormatting, { x: 0.5, y: 3.5, w: 9, fontSize: 24, lineSpacing: 35 });
+    slideA.addText(takeawayFormatting, { x: 0.5, y: 2.8, w: 9, h: 2, fontSize: 24, valign: "top" });
 
     // Slide B: Table
     let slideB = pres.addSlide({ masterName: "MASTER_SLIDE" });
-    slideB.addText("DL Focal Persons Pre-Training Assessment", { x: 0.5, y: 0.3, w: 9, fontSize: 32, bold: true, align: "center" });
-    slideB.addText(`${qNum}. ${q.question_text}`, { x: 0.5, y: 0.9, w: 9, fontSize: 20, italic: true, bold: true, align: "center" });
+    slideB.addText("DL Focal Persons Pre-Training Assessment", { x: 0.5, y: 0.3, w: 9, h: 0.6, fontSize: 32, bold: true, align: "center", valign: "top" });
+    slideB.addText(`${qNum}. ${q.question_text}`, { x: 0.5, y: 0.9, w: 9, h: 1.0, fontSize: 20, italic: true, bold: true, align: "center", valign: "top" });
+
     
     // Build table array
     let tableData = [];

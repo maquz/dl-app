@@ -1187,6 +1187,23 @@ export default function AdminDashboard() {
                 </div>
                 <span className="admin-nav-item-badge">{assessmentsList.length}</span>
               </button>
+
+              <button
+                type="button"
+                className={`admin-nav-item ${activeTab === "reports" ? "active" : ""}`}
+                onClick={() => {
+                  setActiveTab("reports");
+                  loadAssessmentsData();
+                }}
+              >
+                <div className="admin-nav-item-left">
+                  <span className="admin-nav-item-icon">📈</span>
+                  <div className="admin-nav-item-text">
+                    <span>Reports & Analytics</span>
+                    <span className="admin-nav-item-sub">Charts and Metrics</span>
+                  </div>
+                </div>
+              </button>
             </nav>
           </div>
 
@@ -2002,6 +2019,118 @@ export default function AdminDashboard() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </div>
+          )}
+
+          {/* VIEW X: REPORTS & ANALYTICS */}
+          {activeTab === "reports" && (
+            <div className="reports-section">
+              <div className="dashboard-header">
+                <div>
+                  <h2 className="dashboard-title">Performance Analytics</h2>
+                  <p className="dashboard-subtitle">Visualize test performance and learning gains.</p>
+                </div>
+                <button className="btn-secondary" onClick={loadAssessmentsData}>
+                  ↻ Refresh Data
+                </button>
+              </div>
+
+              <div className="stats-cards">
+                <div className="stat-card">
+                  <div className="stat-title">TOTAL ASSESSMENTS TAKEN</div>
+                  <div className="stat-value">{assessmentStats.totalSubmissions || 0}</div>
+                  <div className="stat-sub">Across all regions and cohorts</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-title">PRE-TEST AVERAGE</div>
+                  <div className="stat-value" style={{ color: "#F39200" }}>{assessmentStats.preTest?.avgScore || 0}%</div>
+                  <div className="stat-sub">Baseline diagnostics</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-title">POST-TEST AVERAGE</div>
+                  <div className="stat-value" style={{ color: "#00B050" }}>{assessmentStats.postTest?.avgScore || 0}%</div>
+                  <div className="stat-sub">Post-training mastery</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-title">OVERALL LEARNING GAIN</div>
+                  <div className="stat-value" style={{ color: "#0F172A" }}>+{assessmentStats.learningGain || 0}%</div>
+                  <div className="stat-sub">Knowledge improvement</div>
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(400px, 1fr))", gap: "2rem", marginTop: "2rem" }}>
+                {/* Chart 1: Pre-Test vs Post-Test Comparison */}
+                <div className="admin-card" style={{ padding: "2rem" }}>
+                  <h3 style={{ marginBottom: "2rem", fontSize: "1.1rem", color: "#1e293b", borderBottom: "1px solid #e2e8f0", paddingBottom: "1rem" }}>Pre-Test vs Post-Test Performance</h3>
+                  
+                  <div style={{ display: "flex", alignItems: "flex-end", height: "250px", gap: "3rem", paddingBottom: "1rem", borderBottom: "2px solid #cbd5e1", marginTop: "2rem" }}>
+                    
+                    {/* Pre-Test Bar */}
+                    <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", height: "100%" }}>
+                      <div style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "0.5rem", color: "#F39200" }}>
+                        {assessmentStats.preTest?.avgScore || 0}%
+                      </div>
+                      <div style={{ 
+                        width: "100%", 
+                        maxWidth: "120px", 
+                        height: `${Math.max(2, assessmentStats.preTest?.avgScore || 0)}%`, 
+                        backgroundColor: "#F39200", 
+                        borderRadius: "8px 8px 0 0",
+                        transition: "height 1s ease" 
+                      }}></div>
+                      <div style={{ marginTop: "1rem", fontWeight: 600, color: "#475569", textAlign: "center" }}>Pre-Test Avg</div>
+                    </div>
+
+                    {/* Post-Test Bar */}
+                    <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", height: "100%" }}>
+                      <div style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: "0.5rem", color: "#00B050" }}>
+                        {assessmentStats.postTest?.avgScore || 0}%
+                      </div>
+                      <div style={{ 
+                        width: "100%", 
+                        maxWidth: "120px", 
+                        height: `${Math.max(2, assessmentStats.postTest?.avgScore || 0)}%`, 
+                        backgroundColor: "#00B050", 
+                        borderRadius: "8px 8px 0 0",
+                        transition: "height 1s ease" 
+                      }}></div>
+                      <div style={{ marginTop: "1rem", fontWeight: 600, color: "#475569", textAlign: "center" }}>Post-Test Avg</div>
+                    </div>
+
+                  </div>
+                </div>
+
+                {/* Chart 2: Submissions by Assessment */}
+                <div className="admin-card" style={{ padding: "2rem" }}>
+                  <h3 style={{ marginBottom: "2rem", fontSize: "1.1rem", color: "#1e293b", borderBottom: "1px solid #e2e8f0", paddingBottom: "1rem" }}>Submissions per Assessment</h3>
+                  
+                  <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem", maxHeight: "300px", overflowY: "auto", paddingRight: "0.5rem" }}>
+                    {assessmentsList.filter(a => a.submission_count > 0).length === 0 && (
+                      <p style={{ color: "#64748b", fontStyle: "italic", textAlign: "center", marginTop: "2rem" }}>No submissions recorded yet.</p>
+                    )}
+                    {assessmentsList.filter(a => a.submission_count > 0).map(a => {
+                      const maxSubs = Math.max(...assessmentsList.map(x => x.submission_count));
+                      const pct = maxSubs > 0 ? (a.submission_count / maxSubs) * 100 : 0;
+                      return (
+                        <div key={a.id} style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.9rem", fontWeight: 600, color: "#334155" }}>
+                            <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "80%" }}>{a.title}</span>
+                            <span>{a.submission_count} ({Math.round(a.average_score || 0)}% avg)</span>
+                          </div>
+                          <div style={{ width: "100%", height: "12px", backgroundColor: "#f1f5f9", borderRadius: "6px", overflow: "hidden" }}>
+                            <div style={{ 
+                              height: "100%", 
+                              width: `${pct}%`, 
+                              backgroundColor: a.type === "Pre-Test" ? "#F39200" : (a.type === "Post-Test" ? "#00B050" : "#3b82f6"),
+                              borderRadius: "6px"
+                            }}></div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
               </div>
             </div>
           )}
