@@ -172,6 +172,9 @@ export default function AdminDashboard() {
   const [viewingSubmissionsId, setViewingSubmissionsId] = useState(null);
   const [submissionsData, setSubmissionsData] = useState({ summary: {}, submissions: [] });
   const [submissionsLoading, setSubmissionsLoading] = useState(false);
+  
+  // District Stats Modal State
+  const [viewingDistrictStatsId, setViewingDistrictStatsId] = useState(null);
 
   useEffect(() => {
     if (!password) navigate("/admin");
@@ -1666,7 +1669,7 @@ export default function AdminDashboard() {
                       </div>
                     </div>
 
-                    <div className="cohort-card-footer">
+                    <div className="cohort-card-footer" style={{ display: "flex", gap: "10px", flexDirection: "column" }}>
                       <button
                         type="button"
                         className="btn-secondary cohort-filter-btn"
@@ -1676,6 +1679,14 @@ export default function AdminDashboard() {
                         }}
                       >
                         View Registrations ({c.allocatedCount}) →
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-link"
+                        onClick={() => setViewingDistrictStatsId(c.id)}
+                        style={{ fontSize: "0.9rem", color: "var(--navy-600)", padding: "0.5rem", border: "1px solid #e2e8f0", borderRadius: "8px", textDecoration: "none", backgroundColor: "#f8fafc" }}
+                      >
+                        View District Breakdown
                       </button>
                     </div>
                   </div>
@@ -3265,6 +3276,69 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+      {/* District Breakdown Modal */}
+      {viewingDistrictStatsId && (
+        <div className="modal-backdrop" onClick={() => setViewingDistrictStatsId(null)}>
+          <div className="modal-content" style={{ maxWidth: "800px" }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>District Breakdown — {cohortStatsData?.cohorts?.find(c => c.id === viewingDistrictStatsId)?.name}</h3>
+              <button className="btn-close" onClick={() => setViewingDistrictStatsId(null)} aria-label="Close modal">✕</button>
+            </div>
+            <div className="modal-body" style={{ maxHeight: "60vh", overflowY: "auto" }}>
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>District</th>
+                    <th>Region</th>
+                    <th>Expected</th>
+                    <th>Registered</th>
+                    <th>Attended</th>
+                    <th>Remaining Seats</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cohortStatsData?.cohorts?.find(c => c.id === viewingDistrictStatsId)?.districtBreakdown?.map((d, idx) => (
+                    <tr key={idx}>
+                      <td style={{ fontWeight: 600 }}>{d.district}</td>
+                      <td>{d.region}</td>
+                      <td>{d.expected}</td>
+                      <td>
+                        <span style={{ color: d.registered === 0 ? "#ef4444" : "inherit" }}>
+                          {d.registered}
+                        </span>
+                      </td>
+                      <td>
+                        <span style={{ color: d.attended === d.expected ? "#16a34a" : "inherit" }}>
+                          {d.attended}
+                        </span>
+                      </td>
+                      <td>
+                        <span style={{ 
+                          fontWeight: 600, 
+                          color: d.remainingSeats > 0 ? "#ef4444" : "#16a34a",
+                          padding: "2px 6px",
+                          borderRadius: "4px",
+                          backgroundColor: d.remainingSeats > 0 ? "#fef2f2" : "#f0fdf4"
+                        }}>
+                          {d.remainingSeats > 0 ? `${d.remainingSeats} Seats` : "Filled"}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                  {(!cohortStatsData?.cohorts?.find(c => c.id === viewingDistrictStatsId)?.districtBreakdown || cohortStatsData?.cohorts?.find(c => c.id === viewingDistrictStatsId)?.districtBreakdown?.length === 0) && (
+                    <tr>
+                      <td colSpan="6" style={{ textAlign: "center", padding: "2rem", color: "#64748b" }}>
+                        No district data available for this cohort.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Share Modal */}
       {shareModalOpen && (
         <div className="modal-backdrop" onClick={() => setShareModalOpen(false)}>

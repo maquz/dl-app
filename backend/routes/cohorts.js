@@ -83,32 +83,22 @@ router.get("/district-map", (req, res) => {
 router.get("/stats", adminAuth, async (req, res) => {
   const cohorts = db.prepare("SELECT * FROM cohorts ORDER BY id ASC").all();
   
+  let cohortDistricts = {};
+  try {
+    cohortDistricts = require("../data/cohort_districts.json");
+  } catch (e) {}
+
   const supabase = require("../supabase");
-  let regCounts = [];
+  let registrationsData = [];
   let unassignedCount = 0;
   let useSupabase = false;
 
   if (supabase) {
     try {
-      const { data, error } = await supabase.from("registrations").select("cohort_id, attendance_status");
+      const { data, error } = await supabase.from("registrations").select("cohort_id, attendance_status, region, district");
       if (data && !error) {
         useSupabase = true;
-        const countsMap = {};
-        for (const r of data) {
-          if (!r.cohort_id) {
-            unassignedCount++;
-            continue;
-          }
-          if (!countsMap[r.cohort_id]) {
-            countsMap[r.cohort_id] = { cohort_id: r.cohort_id, allocated_count: 0, attended_count: 0, absent_count: 0, pending_count: 0 };
-          }
-          const cm = countsMap[r.cohort_id];
-          cm.allocated_count++;
-          if (r.attendance_status === 'Attended') cm.attended_count++;
-          else if (r.attendance_status === 'Absent') cm.absent_count++;
-          else cm.pending_count++;
-        }
-        regCounts = Object.values(countsMap);
+        registrationsData = data;
       }
     } catch (e) {
       console.error("Supabase cohort stats error:", e);
@@ -116,30 +106,68 @@ router.get("/stats", adminAuth, async (req, res) => {
   }
 
   if (!useSupabase) {
-    regCounts = db.prepare(`
-      SELECT 
-        cohort_id,
-        COUNT(*) as allocated_count,
-        SUM(CASE WHEN attendance_status = 'Attended' THEN 1 ELSE 0 END) as attended_count,
-        SUM(CASE WHEN attendance_status = 'Absent' THEN 1 ELSE 0 END) as absent_count,
-        SUM(CASE WHEN attendance_status = 'Registered' OR attendance_status IS NULL THEN 1 ELSE 0 END) as pending_count
-      FROM registrations
-      WHERE cohort_id IS NOT NULL
-      GROUP BY cohort_id
-    `).all();
-
-    const unassignedRow = db.prepare("SELECT COUNT(*) as count FROM registrations WHERE cohort_id IS NULL").get();
-    unassignedCount = unassignedRow ? unassignedRow.count : 0;
+    registrationsData = db.prepare("SELECT cohort_id, attendance_status, region, district FROM registrations").all();
   }
 
   const countsMap = {};
-  for (const r of regCounts) {
-    countsMap[r.cohort_id] = {
-      allocated: r.allocated_count || 0,
-      attended: r.attended_count || 0,
-      absent: r.absent_count || 0,
-      pending: r.pending_count || 0,
-    };
+  const districtStatsMap = {};
+
+  // Initialize district stats for each cohort based on official mapping
+  for (const c of cohorts) {
+    countsMap[c.id] = { allocated: 0, attended: 0, absent: 0, pending: 0 };
+    districtStatsMap[c.id] = {};
+    
+    if (cohortDistricts[c.id]) {
+      for (const d of cohortDistricts[c.id].districts) {
+        const key = `${d.region.trim().toLowerCase()}|${d.district.trim().toLowerCase()}`;
+        districtStatsMap[c.id][key] = {
+          region: d.region,
+          district: d.district,
+          expected: 3,
+          registered: 0,
+          attended: 0
+        };
+      }
+    }
+  }
+
+  for (const r of registrationsData) {
+    if (!r.cohort_id) {
+      unassignedCount++;
+      continue;
+    }
+
+    if (!countsMap[r.cohort_id]) {
+      countsMap[r.cohort_id] = { allocated: 0, attended: 0, absent: 0, pending: 0 };
+    }
+    const cm = countsMap[r.cohort_id];
+    cm.allocated++;
+    if (r.attendance_status === 'Attended') cm.attended++;
+    else if (r.attendance_status === 'Absent') cm.absent++;
+    else cm.pending++;
+
+    // Update district breakdown
+    if (!districtStatsMap[r.cohort_id]) districtStatsMap[r.cohort_id] = {};
+    const dMap = districtStatsMap[r.cohort_id];
+    
+    const regNorm = (r.region || "").trim().toLowerCase();
+    const distNorm = (r.district || "").trim().toLowerCase();
+    const key = `${regNorm}|${distNorm}`;
+    
+    if (!dMap[key]) {
+       dMap[key] = {
+         region: r.region || "Unknown",
+         district: r.district || "Unknown",
+         expected: 3, 
+         registered: 0,
+         attended: 0
+       };
+    }
+    
+    dMap[key].registered++;
+    if (r.attendance_status === 'Attended') {
+       dMap[key].attended++;
+    }
   }
 
   let grandExpected = 0;
@@ -158,6 +186,11 @@ router.get("/stats", adminAuth, async (req, res) => {
     grandExpected += expected;
     grandAllocated += allocated;
     grandAttended += attended;
+
+    const districtBreakdown = Object.values(districtStatsMap[c.id] || {}).map(d => ({
+      ...d,
+      remainingSeats: Math.max(0, d.expected - d.registered)
+    })).sort((a, b) => a.district.localeCompare(b.district));
 
     return {
       id: c.id,
@@ -178,6 +211,7 @@ router.get("/stats", adminAuth, async (req, res) => {
       absentCount: stats.absent,
       pendingCount: stats.pending,
       attendancePercent,
+      districtBreakdown
     };
   });
 
