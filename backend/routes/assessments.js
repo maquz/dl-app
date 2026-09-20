@@ -878,6 +878,54 @@ router.get("/:id/take", async (req, res) => {
   });
 });
 
+// GET /api/assessments/my-submissions - Fetch a candidate's own submissions
+router.get("/my-submissions", async (req, res) => {
+  const phone = (req.query.phone || req.query.phoneNumber || "").trim();
+  const name = (req.query.name || req.query.officerName || "").trim();
+  const registrationId = req.query.registrationId || null;
+
+  if (!phone && !registrationId) {
+    return res.status(400).json({ error: "Phone number or Registration ID is required." });
+  }
+
+  const supabase = require("../supabase");
+  let submissions = [];
+
+  if (supabase) {
+    try {
+      let query = supabase.from("assessment_submissions").select("*, assessments(title, type)");
+      if (registrationId) {
+        query = query.eq("registration_id", registrationId);
+      } else if (phone) {
+        query = query.eq("phone_number", phone);
+      }
+      const { data } = await query;
+      if (data && data.length > 0) submissions = data;
+    } catch(e) {}
+  }
+
+  if (submissions.length === 0) {
+    if (registrationId) {
+      submissions = db.prepare(`
+        SELECT sub.*, a.title, a.type 
+        FROM assessment_submissions sub
+        LEFT JOIN assessments a ON sub.assessment_id = a.id
+        WHERE sub.registration_id = ?
+      `).all(registrationId);
+    } else if (phone) {
+      submissions = db.prepare(`
+        SELECT sub.*, a.title, a.type 
+        FROM assessment_submissions sub
+        LEFT JOIN assessments a ON sub.assessment_id = a.id
+        WHERE sub.phone_number = ?
+      `).all(phone);
+    }
+  }
+
+  res.json({ submissions });
+});
+
+
 // GET /api/assessments/:id - Full details with answers (Facilitator / Admin)
 router.get("/:id", trainerOrAdminAuth, async (req, res) => {
   const id = req.params.id;

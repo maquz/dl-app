@@ -17,6 +17,7 @@ export default function Confirmation() {
   const [activeTab, setActiveTab] = useState(location.state?.activeTab || "pre-test");
   const [assessments, setAssessments] = useState([]);
   const [loadingAssessments, setLoadingAssessments] = useState(true);
+  const [mySubmissions, setMySubmissions] = useState([]);
 
   const officerName = nominee?.officerName || nominee?.fullName || location.state?.officerName || "Officer";
   const initials = officerName
@@ -35,17 +36,21 @@ export default function Confirmation() {
 
   useEffect(() => {
     const cohortId = nominee?.cohortId || 1;
-    fetchAssessments({ candidateCohortId: cohortId })
-      .then((data) => {
-        setAssessments(data.assessments || []);
+    Promise.all([
+      fetchAssessments({ candidateCohortId: cohortId }),
+      import("../api").then(api => api.fetchMySubmissions(nominee?.phoneNumber, nominee?.id).catch(() => ({ submissions: [] })))
+    ])
+      .then(([aData, sData]) => {
+        setAssessments(aData.assessments || []);
+        setMySubmissions(sData.submissions || []);
       })
       .catch((err) => {
-        console.error("Failed to fetch assessments status:", err);
+        console.error("Failed to fetch dashboard data:", err);
       })
       .finally(() => {
         setLoadingAssessments(false);
       });
-  }, [nominee?.cohortId]);
+  }, [nominee?.cohortId, nominee?.phoneNumber, nominee?.id]);
 
   useEffect(() => {
     if (!nominee) {
@@ -67,6 +72,9 @@ export default function Confirmation() {
 
   const preTest = assessments.find((a) => a.type === "Pre-Test" || a.id === 1);
   const postTest = assessments.find((a) => a.type === "Post-Test" || a.id === 2);
+
+  const preTestSub = mySubmissions.find(s => s.type === "Pre-Test" || s.assessment_id === 1);
+  const postTestSub = mySubmissions.find(s => String(s.type).toLowerCase() === "post-test" || s.assessment_id === 2);
 
   const isPreLocked = preTest ? preTest.isLocked : true;
   const preLockInfo = preTest?.lockInfo || {
@@ -260,33 +268,50 @@ export default function Confirmation() {
                 </ul>
               </div>
 
-              <div className="hero-action-row">
-                {isPreLocked ? (
-                  <Link
-                    to="/assessment/1"
-                    state={{ nominee }}
-                    className="btn-hero-take-test"
-                    style={{ background: "#475569", borderColor: "#334155" }}
+              {preTestSub ? (
+                <div className="banner" style={{ background: "#f0fdf4", border: "1.5px solid #bbf7d0", color: "#166534", borderRadius: "10px", padding: "1.5rem", marginBottom: "1.25rem" }}>
+                  <h3 style={{ fontSize: "1.1rem", margin: "0 0 0.5rem 0" }}>✅ Pre-Test Completed</h3>
+                  <p style={{ margin: "0 0 1rem 0" }}>You have successfully submitted your Pre-Training Assessment.</p>
+                  <div style={{ display: "flex", gap: "1.5rem", alignItems: "center" }}>
+                    <div style={{ fontSize: "2rem", fontWeight: "700", color: "#15803d" }}>
+                      {Math.round(preTestSub.percentage)}%
+                    </div>
+                    <div style={{ fontSize: "0.9rem", color: "#166534" }}>
+                      <strong>Score:</strong> {preTestSub.score} / {preTestSub.total_points}
+                      <br/>
+                      <strong>Date:</strong> {new Date(preTestSub.submitted_at).toLocaleString()}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="hero-action-row">
+                  {isPreLocked ? (
+                    <Link
+                      to="/assessment/1"
+                      state={{ nominee }}
+                      className="btn-hero-take-test"
+                      style={{ background: "#475569", borderColor: "#334155" }}
+                    >
+                      🔒 View Unlock Schedule & Details
+                    </Link>
+                  ) : (
+                    <Link
+                      to="/assessment/1"
+                      state={{ nominee }}
+                      className="btn-hero-take-test"
+                    >
+                      Take Pre-Training Assessment Now →
+                    </Link>
+                  )}
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={() => setActiveTab("slip")}
                   >
-                    🔒 View Unlock Schedule & Details
-                  </Link>
-                ) : (
-                  <Link
-                    to="/assessment/1"
-                    state={{ nominee }}
-                    className="btn-hero-take-test"
-                  >
-                    Take Pre-Training Assessment Now →
-                  </Link>
-                )}
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={() => setActiveTab("slip")}
-                >
-                  View My Registration Slip
-                </button>
-              </div>
+                    View My Registration Slip
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -356,33 +381,50 @@ export default function Confirmation() {
                 </ul>
               </div>
 
-              <div className="hero-action-row">
-                {isPostLocked ? (
-                  <Link
-                    to="/assessment/2"
-                    state={{ nominee }}
-                    className="btn-hero-take-test btn-hero-post-test"
-                    style={{ background: "#475569", borderColor: "#334155" }}
+              {postTestSub ? (
+                <div className="banner" style={{ background: "#f0fdf4", border: "1.5px solid #bbf7d0", color: "#166534", borderRadius: "10px", padding: "1.5rem", marginBottom: "1.25rem" }}>
+                  <h3 style={{ fontSize: "1.1rem", margin: "0 0 0.5rem 0" }}>✅ Post-Test Completed</h3>
+                  <p style={{ margin: "0 0 1rem 0" }}>You have successfully submitted your Post-Training Assessment.</p>
+                  <div style={{ display: "flex", gap: "1.5rem", alignItems: "center" }}>
+                    <div style={{ fontSize: "2rem", fontWeight: "700", color: "#15803d" }}>
+                      {Math.round(postTestSub.percentage)}%
+                    </div>
+                    <div style={{ fontSize: "0.9rem", color: "#166534" }}>
+                      <strong>Score:</strong> {postTestSub.score} / {postTestSub.total_points}
+                      <br/>
+                      <strong>Date:</strong> {new Date(postTestSub.submitted_at).toLocaleString()}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="hero-action-row">
+                  {isPostLocked ? (
+                    <Link
+                      to="/assessment/2"
+                      state={{ nominee }}
+                      className="btn-hero-take-test btn-hero-post-test"
+                      style={{ background: "#475569", borderColor: "#334155" }}
+                    >
+                      🔒 View Unlock Schedule & Details
+                    </Link>
+                  ) : (
+                    <Link
+                      to="/assessment/2"
+                      state={{ nominee }}
+                      className="btn-hero-take-test btn-hero-post-test"
+                    >
+                      Take Post-Training Assessment Now →
+                    </Link>
+                  )}
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={() => setActiveTab("slip")}
                   >
-                    🔒 View Unlock Schedule & Details
-                  </Link>
-                ) : (
-                  <Link
-                    to="/assessment/2"
-                    state={{ nominee }}
-                    className="btn-hero-take-test btn-hero-post-test"
-                  >
-                    Take Post-Training Assessment Now →
-                  </Link>
-                )}
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={() => setActiveTab("pre-test")}
-                >
-                  Back to Pre-Test
-                </button>
-              </div>
+                    View My Registration Slip
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

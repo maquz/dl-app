@@ -395,6 +395,13 @@ export async function bulkImportAssessmentQuestions(authHeader, id, questions, m
   return handle(res);
 }
 
+export async function fetchMySubmissions(phone, registrationId) {
+  let query = `?phone=${encodeURIComponent(phone || "")}`;
+  if (registrationId) query += `&registrationId=${registrationId}`;
+  const res = await fetch(`${API_URL}/assessments/my-submissions${query}`);
+  return handle(res);
+}
+
 export function downloadAssessmentTemplateUrl(type = "pre-test", format = "xlsx") {
   return `${API_URL}/assessments/template/download?type=${type}&format=${format}`;
 }
