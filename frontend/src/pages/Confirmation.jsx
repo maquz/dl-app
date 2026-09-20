@@ -35,7 +35,6 @@ export default function Confirmation() {
   }, [nominee]);
 
   const [showPromptOverlay, setShowPromptOverlay] = useState(false);
-  const [promptTarget, setPromptTarget] = useState(null);
 
   useEffect(() => {
     const cohortId = nominee?.cohortId || 1;
@@ -51,18 +50,7 @@ export default function Confirmation() {
 
         if (location.state?.justRegistered || location.state?.justLoggedIn) {
           if (!sessionStorage.getItem("assessment_prompt_shown")) {
-            const _preTest = fetchedAssessments.find((a) => a.type === "Pre-Test" || a.id === 1);
-            const _postTest = fetchedAssessments.find((a) => a.type === "Post-Test" || a.id === 2);
-            const _preSub = fetchedSubmissions.find(s => s.type === "Pre-Test" || s.assessment_id === 1);
-            const _postSub = fetchedSubmissions.find(s => String(s.type).toLowerCase() === "post-test" || s.assessment_id === 2);
-
-            if (_preTest && !_preTest.isLocked && !_preSub) {
-              setPromptTarget("pre-test");
-              setShowPromptOverlay(true);
-            } else if (_postTest && !_postTest.isLocked && !_postSub) {
-              setPromptTarget("post-test");
-              setShowPromptOverlay(true);
-            }
+            setShowPromptOverlay(true);
             sessionStorage.setItem("assessment_prompt_shown", "true");
           }
         }
@@ -641,29 +629,40 @@ export default function Confirmation() {
               {location.state?.justRegistered ? "Registration Successful" : "Welcome to the Portal"}
             </h2>
             <p style={{ color: "#475569", marginBottom: "2rem", lineHeight: 1.5 }}>
-              Are you ready to take your mandatory <strong>{promptTarget === 'pre-test' ? 'Pre-Training' : 'Post-Training'} Assessment</strong>? This evaluation is required before proceeding.
+              Are you here to take an assessment? Please select which mandatory test you would like to complete now.
             </p>
-            <div style={{ display: "flex", gap: "1rem", justifyContent: "center" }}>
+            <div style={{ display: "flex", gap: "1rem", justifyContent: "center", marginBottom: "1rem" }}>
               <button 
                 type="button" 
                 className="btn-secondary" 
-                onClick={() => setShowPromptOverlay(false)}
-                style={{ flex: 1 }}
+                onClick={() => {
+                  setActiveTab("pre-test");
+                  setShowPromptOverlay(false);
+                }}
+                style={{ flex: 1, padding: "0.75rem 0.5rem" }}
               >
-                Skip for later
+                Pre-Training
               </button>
               <button 
                 type="button" 
                 className="btn-primary" 
                 onClick={() => {
-                  setActiveTab(promptTarget);
+                  setActiveTab("post-test");
                   setShowPromptOverlay(false);
                 }}
-                style={{ flex: 1 }}
+                style={{ flex: 1, padding: "0.75rem 0.5rem" }}
               >
-                Yes, start test
+                Post-Training
               </button>
             </div>
+            <button 
+              type="button" 
+              className="btn-link-highlight" 
+              onClick={() => setShowPromptOverlay(false)}
+              style={{ fontSize: "0.9rem", color: "#64748b", textDecoration: "underline", background: "none", border: "none", cursor: "pointer" }}
+            >
+              Skip for later
+            </button>
           </div>
         </div>
       )}
