@@ -621,15 +621,37 @@ export default function Confirmation() {
 
       {/* Glassmorphism Popup Overlay */}
       {showPromptOverlay && (
-        <div className="glass-overlay">
-          <div className="glass-modal">
-            <h2 style={{ color: "var(--navy-900)", marginBottom: "1rem", fontSize: "1.75rem", fontWeight: 700 }}>
-              {location.state?.justRegistered ? "Registration Successful!" : "Welcome Back!"}
+        <div style={{
+          position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
+          background: "rgba(15, 23, 42, 0.4)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          zIndex: 9999, padding: "1rem",
+          animation: "fadeIn 0.3s ease-out forwards"
+        }}>
+          <div style={{
+            background: "rgba(255, 255, 255, 0.95)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
+            borderRadius: "16px", padding: "2.5rem 2rem", width: "100%", maxWidth: "420px",
+            boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)", border: "1px solid rgba(255, 255, 255, 0.4)",
+            textAlign: "center",
+            transform: "translateY(20px)",
+            animation: "slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards"
+          }}>
+            <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>{location.state?.justRegistered ? "🎉" : "👋"}</div>
+            <h2 style={{ fontSize: "1.5rem", color: "var(--navy-900)", marginBottom: "1rem", fontWeight: 800 }}>
+              {location.state?.justRegistered ? "Registration Successful" : "Welcome to the Portal"}
             </h2>
-            <p style={{ color: "var(--navy-800)", marginBottom: "1.5rem", fontSize: "1.05rem", lineHeight: 1.5 }}>
-              Please take a moment to complete your mandatory <strong>{promptTarget === 'pre-test' ? 'Pre-Training' : 'Post-Training'} Assessment</strong>. This evaluation is required before you proceed with the workshop activities.
+            <p style={{ color: "#475569", marginBottom: "2rem", lineHeight: 1.5 }}>
+              Are you ready to take your mandatory <strong>{promptTarget === 'pre-test' ? 'Pre-Training' : 'Post-Training'} Assessment</strong>? This evaluation is required before proceeding.
             </p>
             <div style={{ display: "flex", gap: "1rem", justifyContent: "center" }}>
+              <button 
+                type="button" 
+                className="btn-secondary" 
+                onClick={() => setShowPromptOverlay(false)}
+                style={{ flex: 1 }}
+              >
+                Skip for later
+              </button>
               <button 
                 type="button" 
                 className="btn-primary" 
@@ -637,17 +659,9 @@ export default function Confirmation() {
                   setActiveTab(promptTarget);
                   setShowPromptOverlay(false);
                 }}
-                style={{ padding: "0.75rem 1.5rem", fontSize: "1.05rem", borderRadius: "10px" }}
+                style={{ flex: 1 }}
               >
-                Take Assessment Now →
-              </button>
-              <button 
-                type="button" 
-                className="btn-secondary" 
-                onClick={() => setShowPromptOverlay(false)}
-                style={{ padding: "0.75rem 1.5rem", fontSize: "1.05rem", borderRadius: "10px" }}
-              >
-                Skip for Later
+                Yes, start test
               </button>
             </div>
           </div>
