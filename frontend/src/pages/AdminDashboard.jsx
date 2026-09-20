@@ -176,6 +176,24 @@ export default function AdminDashboard() {
   // District Stats Modal State
   const [viewingDistrictStatsId, setViewingDistrictStatsId] = useState(null);
 
+  // Diagnostics State
+  const [selectedDiagnosticAssessment, setSelectedDiagnosticAssessment] = useState("");
+  const [diagnosticData, setDiagnosticData] = useState(null);
+  const [diagnosticLoading, setDiagnosticLoading] = useState(false);
+
+  useEffect(() => {
+    if (selectedDiagnosticAssessment && activeTab === "reports") {
+      setDiagnosticLoading(true);
+      fetch(`/api/assessments/${selectedDiagnosticAssessment}/diagnostics?cohort_id=${cohortFilter || ""}`, {
+        headers: { "x-admin-password": password }
+      })
+      .then(res => res.json())
+      .then(data => setDiagnosticData(data))
+      .catch(e => console.error(e))
+      .finally(() => setDiagnosticLoading(false));
+    }
+  }, [selectedDiagnosticAssessment, cohortFilter, activeTab, password]);
+
   useEffect(() => {
     if (!password) navigate("/admin");
   }, [password, navigate]);
@@ -2173,6 +2191,128 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               </div>
+
+              {/* DETAILED DIAGNOSTICS SECTION */}
+              <div className="admin-card" style={{ padding: "2rem", marginTop: "2rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem", borderBottom: "1px solid #e2e8f0", paddingBottom: "1rem" }}>
+                  <h3 style={{ fontSize: "1.2rem", color: "#1e293b", margin: 0 }}>Deep-Dive Diagnostic Reports</h3>
+                  <select 
+                    value={selectedDiagnosticAssessment}
+                    onChange={(e) => setSelectedDiagnosticAssessment(e.target.value)}
+                    style={{ padding: "0.5rem", borderRadius: "8px", border: "1px solid #cbd5e1" }}
+                  >
+                    <option value="">-- Select an Assessment to Analyze --</option>
+                    {assessmentsList.map(a => (
+                      <option key={a.id} value={a.id}>{a.title} ({a.type})</option>
+                    ))}
+                  </select>
+                </div>
+
+                {diagnosticLoading ? (
+                  <p style={{ textAlign: "center", padding: "2rem", color: "#64748b" }}>Loading diagnostics...</p>
+                ) : !selectedDiagnosticAssessment ? (
+                  <p style={{ textAlign: "center", padding: "2rem", color: "#64748b" }}>Select an assessment above to view detailed participation, mastery, and regional analytics.</p>
+                ) : diagnosticData && !diagnosticData.error ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
+                    
+                    {/* 1. Participation / Coverage */}
+                    <div style={{ backgroundColor: "#f8fafc", padding: "1.5rem", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
+                      <h4 style={{ fontSize: "1.1rem", color: "#334155", marginBottom: "1rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                        <span>👥</span> Participation & Coverage
+                      </h4>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
+                        <div style={{ backgroundColor: "#fff", padding: "1rem", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                          <div style={{ fontSize: "0.85rem", color: "#64748b", textTransform: "uppercase", fontWeight: 600 }}>Total Respondents</div>
+                          <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "#1e293b" }}>{diagnosticData.participation.totalRespondents}</div>
+                        </div>
+                        <div style={{ backgroundColor: "#fff", padding: "1rem", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                          <div style={{ fontSize: "0.85rem", color: "#64748b", textTransform: "uppercase", fontWeight: 600 }}>Gender Breakdown</div>
+                          <div style={{ fontSize: "1rem", fontWeight: 600, color: "#1e293b", marginTop: "0.2rem" }}>
+                            Male: {diagnosticData.participation.male} ({diagnosticData.participation.malePct}%)<br/>
+                            Female: {diagnosticData.participation.female} ({diagnosticData.participation.femalePct}%)
+                          </div>
+                        </div>
+                        <div style={{ backgroundColor: "#fff", padding: "1rem", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                          <div style={{ fontSize: "0.85rem", color: "#64748b", textTransform: "uppercase", fontWeight: 600 }}>Regions Covered</div>
+                          <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "#1e293b" }}>{diagnosticData.participation.regionsCovered}</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 4. Aggregate / Diagnostic */}
+                    <div style={{ backgroundColor: "#fff0f2", padding: "1.5rem", borderRadius: "12px", border: "1px solid #fecdd3" }}>
+                      <h4 style={{ fontSize: "1.1rem", color: "#9f1239", marginBottom: "1rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                        <span>⚠️</span> Critical Areas for Review
+                      </h4>
+                      <p style={{ fontSize: "0.9rem", color: "#be123c", marginBottom: "1rem" }}>
+                        Less than 50% of respondents answered these questions correctly. Facilitators must follow up on these concepts:
+                      </p>
+                      {diagnosticData.aggregate.criticalAreas.length === 0 ? (
+                        <div style={{ padding: "1rem", backgroundColor: "#fff", borderRadius: "8px", color: "#16a34a", fontWeight: 600 }}>
+                          ✓ No critical areas identified. Majority understood all key concepts!
+                        </div>
+                      ) : (
+                        <ul style={{ listStyleType: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                          {diagnosticData.aggregate.criticalAreas.map((area, i) => (
+                            <li key={i} style={{ padding: "0.75rem 1rem", backgroundColor: "#fff", borderRadius: "8px", border: "1px solid #fecdd3", color: "#881337", fontWeight: 500, fontSize: "0.95rem" }}>
+                              {area}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+
+                    {/* 2 & 3. Question-Level & Regional */}
+                    <div>
+                      <h4 style={{ fontSize: "1.1rem", color: "#334155", marginBottom: "1rem", borderBottom: "2px solid #e2e8f0", paddingBottom: "0.5rem" }}>
+                        Question-by-Question Mastery & Regional Breakdown
+                      </h4>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+                        {diagnosticData.questionLevel.map(q => (
+                          <div key={q.questionId} style={{ backgroundColor: "#fff", border: "1px solid #e2e8f0", borderRadius: "12px", overflow: "hidden" }}>
+                            <div style={{ padding: "1rem 1.5rem", backgroundColor: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
+                              <div style={{ fontWeight: 600, color: "#1e293b", marginBottom: "0.5rem" }}>Q{q.questionNumber}. {q.text}</div>
+                              <div style={{ fontSize: "0.9rem", color: q.takeawayText === "Majority" ? "#16a34a" : "#ef4444", fontWeight: 500 }}>
+                                Key Takeaway: {q.takeawayText} ({q.majorityPct}%) selected the most common option.
+                              </div>
+                            </div>
+                            <div style={{ padding: "0", overflowX: "auto" }}>
+                              <table className="admin-table" style={{ margin: 0, border: "none" }}>
+                                <thead>
+                                  <tr>
+                                    <th style={{ backgroundColor: "#fff" }}>Option</th>
+                                    <th style={{ backgroundColor: "#fff", textAlign: "center" }}>Overall %</th>
+                                    {diagnosticData.participation.regions.map(r => (
+                                      <th key={r} style={{ backgroundColor: "#fff", textAlign: "center" }}>{r}</th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {q.optionsBreakdown.map((opt, i) => (
+                                    <tr key={i} style={{ backgroundColor: opt.isCorrect ? "#f0fdf4" : "transparent" }}>
+                                      <td style={{ fontWeight: opt.isCorrect ? 600 : 400, color: opt.isCorrect ? "#16a34a" : "inherit" }}>
+                                        {opt.isCorrect && "✓ "}{opt.option}
+                                      </td>
+                                      <td style={{ textAlign: "center", fontWeight: 600 }}>{opt.percentage}%</td>
+                                      {diagnosticData.participation.regions.map(r => (
+                                        <td key={r} style={{ textAlign: "center", color: "#64748b" }}>{opt.regionBreakdown[r]}%</td>
+                                      ))}
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                  </div>
+                ) : (
+                  <p style={{ color: "#ef4444", textAlign: "center", padding: "2rem" }}>Failed to load diagnostics.</p>
+                )}
+              </div>
+
             </div>
           )}
 

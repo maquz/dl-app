@@ -776,6 +776,157 @@ router.get("/stats/overview", async (req, res) => {
   });
 });
 
+// GET /api/assessments/:id/diagnostics - Detailed assessment diagnostic report (PPTX data in JSON format)
+router.get("/:id/diagnostics", trainerOrAdminAuth, async (req, res) => {
+  const assessmentId = req.params.id;
+  const cohortId = req.query.cohort_id || null;
+
+  try {
+    const db = require("../db");
+    const supabase = require("../supabase");
+    
+    let assessment = null;
+    if (supabase) {
+      const { data } = await supabase.from("assessments").select("*, cohorts(name)").eq("id", assessmentId).single();
+      if (data) assessment = data;
+    }
+    if (!assessment) assessment = db.prepare("SELECT a.*, c.name as cohort_name FROM assessments a LEFT JOIN cohorts c ON a.cohort_id = c.id WHERE a.id = ?").get(assessmentId);
+    if (!assessment) return res.status(404).json({ error: "Assessment not found" });
+
+    // Questions
+    let questions = [];
+    if (supabase) {
+      const { data } = await supabase.from("assessment_questions").select("*").eq("assessment_id", assessmentId).order("sort_order", { ascending: true });
+      if (data) questions = data;
+    }
+    if (questions.length === 0) questions = db.prepare("SELECT * FROM assessment_questions WHERE assessment_id = ? ORDER BY sort_order ASC").all(assessmentId);
+    const { getSeededCohortQuestions } = require("../utils/questionShuffle");
+    questions = getSeededCohortQuestions(questions, assessmentId, cohortId);
+
+    // Submissions
+    let submissions = [];
+    if (supabase) {
+      let query = supabase.from("assessment_submissions").select("*, registrations(region, sex, district)");
+      if (cohortId) query = query.eq("cohort_id", cohortId);
+      const { data } = await query;
+      if (data) submissions = data;
+    }
+    if (submissions.length === 0) {
+      let sql = "SELECT s.*, r.region, r.sex, r.district FROM assessment_submissions s LEFT JOIN registrations r ON s.registration_id = r.id WHERE s.assessment_id = ?";
+      const params = [assessmentId];
+      if (cohortId) { sql += " AND s.cohort_id = ?"; params.push(cohortId); }
+      submissions = db.prepare(sql).all(...params);
+    }
+
+    const cohortName = assessment.cohorts?.name || assessment.cohort_name || (cohortId ? `Cohort ${cohortId}` : "All Cohorts");
+    const totalRespondents = submissions.length;
+    let male = 0, female = 0;
+    const regionCounts = {};
+    const nonResponders = []; // Mock logic for district non-response
+
+    submissions.forEach(sub => {
+      const sex = (sub.registrations?.sex || sub.sex || "").toLowerCase();
+      if (sex === "male") male++;
+      else if (sex === "female") female++;
+      const region = sub.registrations?.region || sub.region || "Unknown";
+      regionCounts[region] = (regionCounts[region] || 0) + 1;
+    });
+
+    const uniqueRegions = Object.keys(regionCounts).sort();
+    const criticalAreas = [];
+    
+    const questionLevel = questions.map((q, idx) => {
+      let opts = [];
+      try { opts = typeof q.options_json === "string" ? JSON.parse(q.options_json) : (q.options_json || []); } catch(e){}
+      
+      const answerCounts = {};
+      const regionalCounts = {};
+      uniqueRegions.forEach(r => regionalCounts[r] = {});
+
+      submissions.forEach(sub => {
+        const r = sub.registrations?.region || sub.region || "Unknown";
+        let ansObj = {};
+        try { ansObj = typeof sub.answers_json === "string" ? JSON.parse(sub.answers_json) : (sub.answers_json || {}); } catch(e){}
+        const chosenOpt = ansObj[q.id];
+        if (chosenOpt) {
+          answerCounts[chosenOpt] = (answerCounts[chosenOpt] || 0) + 1;
+          regionalCounts[r][chosenOpt] = (regionalCounts[r][chosenOpt] || 0) + 1;
+        }
+      });
+
+      let mostSelectedOpt = null;
+      let mostSelectedCount = 0;
+      Object.keys(answerCounts).forEach(opt => {
+        if (answerCounts[opt] > mostSelectedCount) {
+          mostSelectedCount = answerCounts[opt];
+          mostSelectedOpt = opt;
+        }
+      });
+
+      const majorityPct = totalRespondents ? ((mostSelectedCount / totalRespondents) * 100).toFixed(2) : 0;
+      const takeawayText = majorityPct >= 50 ? "Majority" : "Less than half";
+      if (takeawayText === "Less than half") criticalAreas.push(`Q${idx + 1}: ${q.question_text}`);
+
+      const optionsBreakdown = opts.map(opt => {
+        const count = answerCounts[opt] || 0;
+        const pct = totalRespondents ? ((count / totalRespondents) * 100).toFixed(1) : 0;
+        
+        const regionBreakdown = {};
+        uniqueRegions.forEach(r => {
+           const rCount = regionalCounts[r][opt] || 0;
+           const rTotal = regionCounts[r] || 1;
+           regionBreakdown[r] = ((rCount / rTotal) * 100).toFixed(1);
+        });
+
+        return {
+          option: opt,
+          isCorrect: String(opt).trim().toLowerCase() === String(q.correct_answer).trim().toLowerCase(),
+          count,
+          percentage: pct,
+          regionBreakdown
+        };
+      });
+
+      return {
+        questionId: q.id,
+        questionNumber: idx + 1,
+        text: q.question_text,
+        mostSelectedOpt,
+        majorityPct,
+        takeawayText,
+        optionsBreakdown
+      };
+    });
+
+    res.json({
+      metadata: {
+        assessmentId,
+        title: assessment.title,
+        type: assessment.type,
+        cohortId,
+        cohortName
+      },
+      participation: {
+        regionsCovered: uniqueRegions.length,
+        totalRespondents,
+        male,
+        malePct: totalRespondents ? ((male / totalRespondents) * 100).toFixed(1) : 0,
+        female,
+        femalePct: totalRespondents ? ((female / totalRespondents) * 100).toFixed(1) : 0,
+        regions: uniqueRegions,
+        regionCounts
+      },
+      questionLevel,
+      aggregate: {
+        criticalAreas
+      }
+    });
+  } catch (err) {
+    console.error("Diagnostics API error:", err);
+    res.status(500).json({ error: "Failed to generate diagnostics" });
+  }
+});
+
 // GET /api/assessments/:id/take - Public / Participant test taking (Enforces Date/Time Lock for participants, allows instant access for signed-in admins)
 router.get("/:id/take", async (req, res) => {
   const id = req.params.id;
