@@ -846,6 +846,20 @@ export default function AdminDashboard() {
     }
   }
 
+  async function handleViewAllSubmissions() {
+    setViewingSubmissionsId("ALL");
+    setSubmissionsLoading(true);
+    try {
+      const { fetchAllSubmissions } = await import("../api.js");
+      const data = await fetchAllSubmissions(password);
+      setSubmissionsData(data);
+    } catch {
+      alert("Failed to load all submissions.");
+    } finally {
+      setSubmissionsLoading(false);
+    }
+  }
+
   // ---------------------------------------------------
   // Admin Management Actions
   // ---------------------------------------------------
@@ -1851,7 +1865,14 @@ export default function AdminDashboard() {
 
               {/* Stats Overview */}
               <div className="analytics-grid" style={{ marginBottom: "1.5rem" }}>
-                <div className="kpi-card">
+                <div 
+                  className="kpi-card" 
+                  onClick={handleViewAllSubmissions} 
+                  style={{ cursor: "pointer", transition: "transform 0.15s ease", border: "1px solid #e2e8f0" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 10px 15px -3px rgba(0, 0, 0, 0.1)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "0 1px 3px rgba(0, 0, 0, 0.1)"; }}
+                  title="Click to view all test submissions"
+                >
                   <span className="kpi-label">Total Submissions</span>
                   <span className="kpi-val text-navy">{assessmentStats?.totalSubmissions || 0}</span>
                   <span className="kpi-hint">Completed participant tests</span>
@@ -2508,9 +2529,11 @@ export default function AdminDashboard() {
       {/* SUBMISSIONS RESULTS DRILLDOWN MODAL */}
       {viewingSubmissionsId && (
         <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="subs-modal-title">
-          <div className="modal-content" style={{ maxWidth: "850px" }}>
+          <div className="modal-content" style={{ maxWidth: "950px" }}>
             <div className="modal-header">
-              <h2 id="subs-modal-title">Assessment Candidate Submissions</h2>
+              <h2 id="subs-modal-title">
+                {viewingSubmissionsId === "ALL" ? "All Submitted Tests (Global)" : "Assessment Candidate Submissions"}
+              </h2>
               <button className="modal-close-btn" onClick={() => setViewingSubmissionsId(null)} aria-label="Close submissions modal">
                 &times;
               </button>
@@ -2520,25 +2543,28 @@ export default function AdminDashboard() {
               <div className="banner banner-info">Loading submissions…</div>
             ) : (
               <>
-                <div className="analytics-grid" style={{ marginBottom: "1.25rem" }}>
-                  <div className="kpi-card">
-                    <span className="kpi-label">Submissions</span>
-                    <span className="kpi-val text-navy">{submissionsData.summary?.totalSubmissions || 0}</span>
+                {viewingSubmissionsId !== "ALL" && (
+                  <div className="analytics-grid" style={{ marginBottom: "1.25rem" }}>
+                    <div className="kpi-card">
+                      <span className="kpi-label">Submissions</span>
+                      <span className="kpi-val text-navy">{submissionsData.summary?.totalSubmissions || 0}</span>
+                    </div>
+                    <div className="kpi-card">
+                      <span className="kpi-label">Average Score</span>
+                      <span className="kpi-val text-navy">{submissionsData.summary?.averagePercentage || 0}%</span>
+                    </div>
+                    <div className="kpi-card">
+                      <span className="kpi-label">Pass Threshold</span>
+                      <span className="kpi-val text-orange">50%</span>
+                    </div>
                   </div>
-                  <div className="kpi-card">
-                    <span className="kpi-label">Average Score</span>
-                    <span className="kpi-val text-navy">{submissionsData.summary?.averagePercentage || 0}%</span>
-                  </div>
-                  <div className="kpi-card">
-                    <span className="kpi-label">Pass Threshold</span>
-                    <span className="kpi-val text-orange">50%</span>
-                  </div>
-                </div>
+                )}
 
                 <div className="table-wrap">
                   <table>
                     <thead>
                       <tr>
+                        {viewingSubmissionsId === "ALL" && <th scope="col">Assessment</th>}
                         <th scope="col">Candidate Name</th>
                         <th scope="col">Phone Number</th>
                         <th scope="col">Score</th>
@@ -2550,16 +2576,23 @@ export default function AdminDashboard() {
                     <tbody>
                       {submissionsData.submissions?.length === 0 && (
                         <tr>
-                          <td colSpan={6} className="empty-row">
-                            No submissions recorded for this assessment yet.
+                          <td colSpan={viewingSubmissionsId === "ALL" ? 7 : 6} className="empty-row">
+                            No submissions recorded{viewingSubmissionsId !== "ALL" ? " for this assessment" : ""} yet.
                           </td>
                         </tr>
                       )}
                       {submissionsData.submissions?.map((s) => (
                         <tr key={s.id}>
-                          <td><strong>{s.officer_name}</strong></td>
-                          <td>{s.phone_number}</td>
-                          <td><strong>{s.score} / {s.total_points}</strong></td>
+                          {viewingSubmissionsId === "ALL" && (
+                            <td className="text-sm">
+                              <strong>{s.assessment_type}</strong>
+                              <br/>
+                              <span className="text-muted" style={{ fontSize: '0.8rem' }}>{s.assessment_title}</span>
+                            </td>
+                          )}
+                          <td className="text-bold">{s.officer_name || "Unknown"}</td>
+                          <td>{s.phone_number || "—"}</td>
+                          <td>{s.score} / {s.total_points} pts</td>
                           <td><strong>{s.percentage}%</strong></td>
                           <td>
                             <span className={`review-badge ${s.percentage >= 50 ? "correct" : "incorrect"}`}>

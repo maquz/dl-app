@@ -379,6 +379,13 @@ export async function fetchAssessmentSubmissions(authHeader, id, filters = {}) {
   return handle(res);
 }
 
+export async function fetchAllSubmissions(authHeader) {
+  const res = await fetch(`${API_URL}/assessments/submissions/all`, {
+    headers: { ...getAdminAuthHeaders(authHeader) },
+  });
+  return handle(res);
+}
+
 export async function bulkImportAssessmentQuestions(authHeader, id, questions, mode = "replace") {
   const res = await fetch(`${API_URL}/assessments/${id}/questions/bulk`, {
     method: "POST",

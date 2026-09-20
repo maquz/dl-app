@@ -1484,4 +1484,50 @@ router.get("/:id/submissions", trainerOrAdminAuth, async (req, res) => {
   });
 });
 
+// GET /api/assessments/submissions/all - View all submissions across all assessments (Admin)
+router.get("/submissions/all", trainerOrAdminAuth, async (req, res) => {
+  const supabase = require("../supabase");
+  let submissions = [];
+  let fromSupabase = false;
+
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from("assessment_submissions")
+        .select("*, assessments(title, type), cohorts(name)")
+        .order("submitted_at", { ascending: false })
+        .limit(100);
+
+      if (data) {
+        fromSupabase = true;
+        submissions = data.map(sub => ({
+          ...sub,
+          assessment_title: sub.assessments ? sub.assessments.title : "Unknown",
+          assessment_type: sub.assessments ? sub.assessments.type : "",
+          cohort_name: sub.cohorts ? sub.cohorts.name : null
+        }));
+      }
+    } catch (e) {
+      console.error("Supabase GET /submissions/all error:", e.message);
+    }
+  }
+
+  if (!fromSupabase) {
+    const sql = `
+      SELECT sub.*, a.title as assessment_title, a.type as assessment_type, c.name as cohort_name
+      FROM assessment_submissions sub
+      LEFT JOIN assessments a ON sub.assessment_id = a.id
+      LEFT JOIN cohorts c ON sub.cohort_id = c.id
+      ORDER BY sub.submitted_at DESC
+      LIMIT 100
+    `;
+    submissions = db.prepare(sql).all();
+  }
+
+  res.json({
+    count: submissions.length,
+    submissions,
+  });
+});
+
 module.exports = router;
