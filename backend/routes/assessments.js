@@ -782,7 +782,7 @@ router.get("/:id/take", async (req, res) => {
   const cohortId = req.query.cohort_id || req.query.cohortId || 1;
   const adminToken = req.headers["x-admin-token"] || req.headers["x-admin-password"] || req.headers["authorization"] || "";
   const trainerToken = req.headers["x-trainer-token"] || "";
-  const bypass = req.query.bypass === "true" || req.query.preview === "true" || Boolean(adminToken && adminToken.length > 3) || Boolean(trainerToken && trainerToken.length > 3);
+  const bypass = req.query.bypass === "true" || req.query.preview === "true";
 
   const supabase = require("../supabase");
   let assessment = null;

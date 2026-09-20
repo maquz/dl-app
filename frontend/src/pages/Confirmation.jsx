@@ -37,7 +37,7 @@ export default function Confirmation() {
   useEffect(() => {
     const cohortId = nominee?.cohortId || 1;
     Promise.all([
-      fetchAssessments({ candidateCohortId: cohortId }),
+      fetchAssessments({ cohortId }),
       import("../api").then(api => api.fetchMySubmissions(nominee?.phoneNumber, nominee?.id).catch(() => ({ submissions: [] })))
     ])
       .then(([aData, sData]) => {

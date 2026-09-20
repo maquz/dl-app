@@ -43,17 +43,14 @@ export default function AssessmentTake() {
     } catch {}
   }, [location.state]);
 
-  const isAdmin = Boolean(
-    sessionStorage.getItem("admin_token") ||
-    sessionStorage.getItem("admin_password") ||
-    sessionStorage.getItem("trainer_token") ||
+  const isAdmin = (
     location.search.includes("bypass=true") ||
     location.search.includes("preview=true")
   );
 
   useEffect(() => {
-    const candidateCohortId = nomineeProfile?.cohortId || 1;
-    const params = { candidateCohortId };
+    const cohortId = nomineeProfile?.cohortId || 1;
+    const params = { cohortId };
     if (isAdmin) {
       params.bypass = "true";
     }

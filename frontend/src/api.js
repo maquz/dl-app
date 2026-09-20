@@ -316,11 +316,7 @@ export async function fetchAssessmentOverviewStats() {
 
 export async function fetchAssessmentForTest(id, params = {}) {
   const token = sessionStorage.getItem("admin_token") || sessionStorage.getItem("admin_password") || sessionStorage.getItem("trainer_token") || "";
-  const queryObj = { ...params };
-  if (token && !queryObj.bypass) {
-    queryObj.bypass = "true";
-  }
-  const query = new URLSearchParams(queryObj).toString();
+  const query = new URLSearchParams(params).toString();
   const res = await fetch(`${API_URL}/assessments/${id}/take${query ? `?${query}` : ""}`, {
     headers: { ...getAdminAuthHeaders(token) },
   });

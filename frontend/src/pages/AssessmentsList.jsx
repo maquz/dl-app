@@ -17,11 +17,12 @@ export default function AssessmentsList() {
   })();
 
   useEffect(() => {
-    fetchAssessments()
+    const cohortId = recentNominee?.cohortId || 1;
+    fetchAssessments({ cohortId })
       .then((data) => setAssessments(data.assessments || []))
       .catch((err) => setError(err.message || "Failed to load assessments."))
       .finally(() => setLoading(false));
-  }, []);
+  }, [recentNominee?.cohortId]);
 
   return (
     <div className="page-wide">
@@ -109,8 +110,8 @@ export default function AssessmentsList() {
                 </div>
                 <div className="a-meta-item">
                   <span className="a-meta-label">Status</span>
-                  <strong className="a-meta-val" style={{ color: a.is_active ? "#16a34a" : "#dc2626" }}>
-                    {a.is_active ? "● Open Now" : "○ Closed"}
+                  <strong className="a-meta-val" style={{ color: a.isLocked ? "#dc2626" : (a.is_active ? "#16a34a" : "#dc2626") }}>
+                    {a.isLocked ? "🔒 Locked" : (a.is_active ? "● Open Now" : "○ Closed")}
                   </strong>
                 </div>
               </div>
@@ -120,10 +121,10 @@ export default function AssessmentsList() {
               <button
                 type="button"
                 className="btn-primary btn-take-test"
-                disabled={!a.is_active}
+                disabled={!a.is_active || a.isLocked}
                 onClick={() => navigate(`/assessment/${a.id}`)}
               >
-                {a.is_active ? "Start Assessment →" : "Assessment Closed"}
+                {a.isLocked ? "Assessment Locked" : (a.is_active ? "Start Assessment →" : "Assessment Closed")}
               </button>
             </div>
           </div>
