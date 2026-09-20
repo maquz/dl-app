@@ -894,9 +894,7 @@ router.get("/my-submissions", async (req, res) => {
   if (supabase) {
     try {
       let query = supabase.from("assessment_submissions").select("*, assessments(title, type)");
-      if (registrationId) {
-        query = query.eq("registration_id", registrationId);
-      } else if (phone) {
+      if (phone) {
         query = query.eq("phone_number", phone);
       }
       const { data } = await query;
@@ -1367,7 +1365,6 @@ router.post("/:id/submit", async (req, res) => {
     try {
       const { data, error } = await supabase.from("assessment_submissions").insert([{
         assessment_id: assessmentId,
-        registration_id: regIdParsed,
         officer_name: officerNameClean,
         phone_number: phoneClean,
         cohort_id: cohortIdParsed,
@@ -1376,6 +1373,10 @@ router.post("/:id/submit", async (req, res) => {
         percentage,
         answers_json: answers || {},
       }]).select("id").single();
+      
+      if (error) {
+        console.error("Supabase insert error details:", error);
+      }
       if (data && data.id) submissionId = data.id;
     } catch (e) {
       console.error("Supabase submit error:", e.message);
@@ -1394,46 +1395,92 @@ router.post("/:id/submit", async (req, res) => {
 });
 
 // GET /api/assessments/:id/submissions - View all submissions for an assessment (Facilitator / Admin)
-router.get("/:id/submissions", trainerOrAdminAuth, (req, res) => {
+router.get("/:id/submissions", trainerOrAdminAuth, async (req, res) => {
   const id = req.params.id;
   const { cohort_id, q } = req.query;
 
-  let sql = `
-    SELECT sub.*, c.name as cohort_name
-    FROM assessment_submissions sub
-    LEFT JOIN cohorts c ON sub.cohort_id = c.id
-    WHERE sub.assessment_id = ?
-  `;
-  const params = [id];
+  const supabase = require("../supabase");
+  let submissions = [];
+  let summary = { totalSubmissions: 0, averagePercentage: 0, averageScore: 0 };
+  let fromSupabase = false;
 
-  if (cohort_id) {
-    sql += " AND sub.cohort_id = ?";
-    params.push(cohort_id);
+  if (supabase) {
+    try {
+      let query = supabase.from("assessment_submissions")
+        .select("*, cohorts(name)")
+        .eq("assessment_id", id)
+        .order("submitted_at", { ascending: false });
+        
+      if (cohort_id) {
+        query = query.eq("cohort_id", cohort_id);
+      }
+      
+      // Supabase JS doesn't have a clean OR like across multiple text columns without string formats
+      if (q) {
+        query = query.or(`officer_name.ilike.%${q}%,phone_number.ilike.%${q}%`);
+      }
+
+      const { data, error } = await query;
+      
+      if (data) {
+        fromSupabase = true;
+        submissions = data.map(sub => ({
+          ...sub,
+          cohort_name: sub.cohorts ? sub.cohorts.name : null
+        }));
+        
+        if (submissions.length > 0) {
+          summary.totalSubmissions = submissions.length;
+          const totalPct = submissions.reduce((sum, s) => sum + (s.percentage || 0), 0);
+          const totalSc = submissions.reduce((sum, s) => sum + (s.score || 0), 0);
+          summary.averagePercentage = Math.round(totalPct / submissions.length);
+          summary.averageScore = Math.round((totalSc / submissions.length) * 10) / 10;
+        }
+      }
+    } catch (e) {
+      console.error("Supabase GET /submissions error:", e.message);
+    }
   }
 
-  if (q) {
-    sql += " AND (sub.officer_name LIKE ? OR sub.phone_number LIKE ?)";
-    const like = `%${q}%`;
-    params.push(like, like);
-  }
+  if (!fromSupabase) {
+    let sql = `
+      SELECT sub.*, c.name as cohort_name
+      FROM assessment_submissions sub
+      LEFT JOIN cohorts c ON sub.cohort_id = c.id
+      WHERE sub.assessment_id = ?
+    `;
+    const params = [id];
 
-  sql += " ORDER BY sub.submitted_at DESC";
+    if (cohort_id) {
+      sql += " AND sub.cohort_id = ?";
+      params.push(cohort_id);
+    }
 
-  const rows = db.prepare(sql).all(...params);
+    if (q) {
+      sql += " AND (sub.officer_name LIKE ? OR sub.phone_number LIKE ?)";
+      const like = `%${q}%`;
+      params.push(like, like);
+    }
 
-  const avgRow = db.prepare(`
-    SELECT AVG(percentage) as avg_percent, AVG(score) as avg_score, COUNT(*) as count
-    FROM assessment_submissions WHERE assessment_id = ?
-  `).get(id);
+    sql += " ORDER BY sub.submitted_at DESC";
+    submissions = db.prepare(sql).all(...params);
 
-  res.json({
-    count: rows.length,
-    summary: {
+    const avgRow = db.prepare(`
+      SELECT AVG(percentage) as avg_percent, AVG(score) as avg_score, COUNT(*) as count
+      FROM assessment_submissions WHERE assessment_id = ?
+    `).get(id);
+
+    summary = {
       totalSubmissions: avgRow?.count || 0,
       averagePercentage: Math.round(avgRow?.avg_percent || 0),
       averageScore: Math.round((avgRow?.avg_score || 0) * 10) / 10,
-    },
-    submissions: rows,
+    };
+  }
+
+  res.json({
+    count: submissions.length,
+    summary,
+    submissions,
   });
 });
 
