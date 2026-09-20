@@ -77,9 +77,8 @@ export default function RegistrationForm() {
       }
     } catch {}
 
-    // Check if this candidate already registered in backend
-    const phone = candidate.phoneNumber || candidate.phone;
-    const email = candidate.email;
+    const phone = candidate?.phoneNumber || candidate?.phone;
+    const email = candidate?.email;
     if (phone || email) {
       fetchMyNomination({ phone, email })
         .then((res) => {
