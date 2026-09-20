@@ -96,13 +96,32 @@ router.post("/register", (req, res) => {
 });
 
 // GET /api/admin/users - List all Admins (adminAuth required)
-router.get("/users", adminAuth, (req, res) => {
-  const admins = db.prepare("SELECT id, name, email, phone_number, role, status, created_at FROM admins ORDER BY created_at DESC").all();
+router.get("/users", adminAuth, async (req, res) => {
+  const supabase = require("../supabase");
+  let admins = [];
+  let fromSupabase = false;
+
+  if (supabase) {
+    try {
+      const { data, error } = await supabase.from("admins").select("id, name, email, phone_number, role, status, created_at").order("created_at", { ascending: false });
+      if (data) {
+        admins = data;
+        fromSupabase = true;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  if (!fromSupabase) {
+    admins = db.prepare("SELECT id, name, email, phone_number, role, status, created_at FROM admins ORDER BY created_at DESC").all();
+  }
+
   return res.json({ admins });
 });
 
 // POST /api/admin/users - Super Admin creates a new Admin directly
-router.post("/users", adminAuth, (req, res) => {
+router.post("/users", adminAuth, async (req, res) => {
   const { name, email, phoneNumber, role, password } = req.body;
   const errors = {};
 
@@ -114,25 +133,55 @@ router.post("/users", adminAuth, (req, res) => {
     return res.status(400).json({ errors });
   }
 
-  const existing = db.prepare("SELECT id FROM admins WHERE LOWER(email) = LOWER(?)").get(email.trim());
+  const supabase = require("../supabase");
+  const assignedRole = ["Super Admin", "Admin", "Reviewer"].includes(role) ? role : "Admin";
+  const passwordHash = hashPassword(password.trim());
+  let adminId = null;
+
+  // Validate existence via Supabase first, then SQLite
+  let existing = false;
+  if (supabase) {
+    const { data } = await supabase.from("admins").select("id").ilike("email", email.trim()).maybeSingle();
+    if (data) existing = true;
+  }
+  if (!existing) {
+    const local = db.prepare("SELECT id FROM admins WHERE LOWER(email) = LOWER(?)").get(email.trim());
+    if (local) existing = true;
+  }
+
   if (existing) {
     return res.status(409).json({ error: "An administrator with this email already exists." });
   }
 
-  const assignedRole = ["Super Admin", "Admin", "Reviewer"].includes(role) ? role : "Admin";
-  const passwordHash = hashPassword(password.trim());
+  try {
+    const stmt = db.prepare(`
+      INSERT INTO admins (name, email, phone_number, role, status, password_hash)
+      VALUES (?, ?, ?, ?, 'Active', ?)
+    `);
+    const info = stmt.run(name.trim(), email.trim(), phoneNumber ? phoneNumber.trim() : null, assignedRole, passwordHash);
+    adminId = info.lastInsertRowid;
+  } catch (err) {}
 
-  const stmt = db.prepare(`
-    INSERT INTO admins (name, email, phone_number, role, status, password_hash)
-    VALUES (?, ?, ?, ?, 'Active', ?)
-  `);
-
-  const info = stmt.run(name.trim(), email.trim(), phoneNumber ? phoneNumber.trim() : null, assignedRole, passwordHash);
+  if (supabase) {
+    try {
+      const { data } = await supabase.from("admins").insert([{
+        name: name.trim(),
+        email: email.trim(),
+        phone_number: phoneNumber ? phoneNumber.trim() : null,
+        role: assignedRole,
+        status: 'Active',
+        password_hash: passwordHash,
+      }]).select("id").single();
+      if (data) adminId = data.id;
+    } catch (e) {
+      console.error(e);
+    }
+  }
 
   return res.status(201).json({
     message: "Admin created successfully.",
     admin: {
-      id: info.lastInsertRowid,
+      id: adminId,
       name: name.trim(),
       email: email.trim(),
       phoneNumber: phoneNumber ? phoneNumber.trim() : null,
@@ -144,11 +193,20 @@ router.post("/users", adminAuth, (req, res) => {
 });
 
 // PUT /api/admin/users/:id - Super Admin updates an Admin's Role or Status
-router.put("/users/:id", adminAuth, (req, res) => {
+router.put("/users/:id", adminAuth, async (req, res) => {
   const id = req.params.id;
   const { name, email, phoneNumber, role, status, password } = req.body;
+  const supabase = require("../supabase");
 
-  const current = db.prepare("SELECT * FROM admins WHERE id = ?").get(id);
+  let current = null;
+  if (supabase) {
+    const { data } = await supabase.from("admins").select("*").eq("id", id).maybeSingle();
+    if (data) current = data;
+  }
+  if (!current) {
+    current = db.prepare("SELECT * FROM admins WHERE id = ?").get(id);
+  }
+
   if (!current) {
     return res.status(404).json({ error: "Admin not found." });
   }
@@ -160,11 +218,26 @@ router.put("/users/:id", adminAuth, (req, res) => {
   const newStatus = ["Active", "Disabled"].includes(status) ? status : current.status;
   const newPasswordHash = password && password.trim().length >= 6 ? hashPassword(password.trim()) : current.password_hash;
 
-  db.prepare(`
-    UPDATE admins
-    SET name = ?, email = ?, phone_number = ?, role = ?, status = ?, password_hash = ?
-    WHERE id = ?
-  `).run(newName, newEmail, newPhone, newRole, newStatus, newPasswordHash, id);
+  try {
+    db.prepare(`
+      UPDATE admins
+      SET name = ?, email = ?, phone_number = ?, role = ?, status = ?, password_hash = ?
+      WHERE id = ?
+    `).run(newName, newEmail, newPhone, newRole, newStatus, newPasswordHash, id);
+  } catch (e) {}
+
+  if (supabase) {
+    try {
+      await supabase.from("admins").update({
+        name: newName,
+        email: newEmail,
+        phone_number: newPhone,
+        role: newRole,
+        status: newStatus,
+        password_hash: newPasswordHash,
+      }).eq("id", id);
+    } catch(e) {}
+  }
 
   return res.json({
     message: "Admin updated successfully.",
@@ -180,22 +253,46 @@ router.put("/users/:id", adminAuth, (req, res) => {
 });
 
 // DELETE /api/admin/users/:id - Super Admin deletes an Admin
-router.delete("/users/:id", adminAuth, (req, res) => {
+router.delete("/users/:id", adminAuth, async (req, res) => {
   const id = req.params.id;
+  const supabase = require("../supabase");
   
-  // Guard: ensure at least one Super Admin remains
-  const superAdminCount = db.prepare("SELECT COUNT(*) as count FROM admins WHERE role = 'Super Admin'").get();
-  const target = db.prepare("SELECT * FROM admins WHERE id = ?").get(id);
+  let superAdminCount = 1;
+  let target = null;
+
+  if (supabase) {
+    const { data: countData } = await supabase.from("admins").select("id", { count: 'exact' }).eq("role", "Super Admin");
+    if (countData) superAdminCount = countData.length;
+
+    const { data: targetData } = await supabase.from("admins").select("*").eq("id", id).maybeSingle();
+    if (targetData) target = targetData;
+  }
+
+  if (!target) {
+    const localTarget = db.prepare("SELECT * FROM admins WHERE id = ?").get(id);
+    if (localTarget) target = localTarget;
+    const localCount = db.prepare("SELECT COUNT(*) as count FROM admins WHERE role = 'Super Admin'").get();
+    if (localCount) superAdminCount = localCount.count;
+  }
 
   if (!target) {
     return res.status(404).json({ error: "Admin not found." });
   }
 
-  if (target.role === "Super Admin" && superAdminCount.count <= 1) {
+  if (target.role === "Super Admin" && superAdminCount <= 1) {
     return res.status(400).json({ error: "Cannot delete the only remaining Super Administrator." });
   }
 
-  db.prepare("DELETE FROM admins WHERE id = ?").run(id);
+  try {
+    db.prepare("DELETE FROM admins WHERE id = ?").run(id);
+  } catch (e) {}
+
+  if (supabase) {
+    try {
+      await supabase.from("admins").delete().eq("id", id);
+    } catch (e) {}
+  }
+
   return res.json({ message: "Administrator deleted successfully." });
 });
 
