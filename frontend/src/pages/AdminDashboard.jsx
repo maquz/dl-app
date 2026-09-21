@@ -1097,7 +1097,6 @@ export default function AdminDashboard() {
       // If the user cancelled the share, do nothing
       if (err.name === "AbortError") return;
       
-      alert("Failed to share PDF. Your device or browser may not support file sharing. Downloading instead...");
       try {
         const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
         
