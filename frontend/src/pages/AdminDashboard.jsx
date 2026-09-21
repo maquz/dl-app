@@ -1,4 +1,6 @@
 import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import "jspdf-autotable";
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import {
@@ -1041,35 +1043,58 @@ export default function AdminDashboard() {
   }
 
   // ---- Share modal state ----
-  const [shareModalOpen, setShareModalOpen] = useState(false);
-  const [shareCopied, setShareCopied] = useState(false);
 
-  function handleOpenShare() {
-    setShareModalOpen(true);
-    setShareCopied(false);
-  }
 
-  function handleCopyShareLink() {
-    const url = window.location.origin + "/officer/login";
-    navigator.clipboard.writeText(url).then(() => {
-      setShareCopied(true);
-      setTimeout(() => setShareCopied(false), 2500);
-    }).catch(() => {
-      prompt("Copy this link:", url);
-    });
-  }
+  async function handleOpenShare() {
+    try {
+      const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+      
+      const title = "GES DL Programme - Nominee Registrations";
+      const filterText = `Filters: Region=${regionFilter || "All"}, District=${districtFilter || "All"}, Cohort=${cohortFilter || "All"}, Attendance=${attendanceFilter || "All"}`;
+      
+      doc.setFontSize(16);
+      doc.text(title, 40, 40);
+      doc.setFontSize(10);
+      doc.text(filterText, 40, 55);
 
-  function handleShareWhatsApp() {
-    const date = new Date().toLocaleDateString("en-GH", { day: "2-digit", month: "long", year: "numeric" });
-    const msg = `📋 *GES DL Nominee Registration Update* (${date})\n\nTotal registered nominees: *${rows.length}*\n\nNominees can check their registration status at:\n${window.location.origin}\n\n_Ghana Education Service · Differentiated Learning Programme_`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank");
-  }
+      const tableData = rows.map(r => [
+        r.officer_name,
+        r.sex,
+        formatPhoneAsTyped(r.phone_number),
+        `${r.region} / ${r.district}`,
+        r.institution_name,
+        r.schedule_role,
+        r.cohort_id ? `Cohort ${r.cohort_id}` : "Pending",
+        r.attendance_status
+      ]);
 
-  function handleShareEmail() {
-    const date = new Date().toLocaleDateString("en-GH", { day: "2-digit", month: "long", year: "numeric" });
-    const subject = `GES DL Nominee Registration Update – ${date}`;
-    const body = `Dear Colleague,\n\nPlease find below the current DL Nominee registration update as of ${date}.\n\nTotal Registered Nominees: ${rows.length}\n\nNominees can access the portal at: ${window.location.origin}\n\nBest regards,\nGES DL Programme Secretariat`;
-    window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+      doc.autoTable({
+        startY: 70,
+        head: [["Officer Name", "Sex", "Phone", "Region / District", "Institution", "Role", "Cohort", "Status"]],
+        body: tableData,
+        theme: 'striped',
+        headStyles: { fillColor: [15, 23, 42] }, // var(--navy-900)
+        margin: { top: 70 },
+        showHead: 'everyPage' // This ensures the heading is on each page produced
+      });
+
+      const pdfBlob = doc.output('blob');
+      const file = new File([pdfBlob], "DL_Nominees_Report.pdf", { type: "application/pdf" });
+
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          title: "GES DL Nominees Report",
+          text: "Here is the latest DL Nominees report.",
+          files: [file]
+        });
+      } else {
+        // Fallback: download the file
+        doc.save("DL_Nominees_Report.pdf");
+      }
+    } catch (err) {
+      console.error("Error sharing PDF:", err);
+      alert("Failed to share PDF. Your device or browser may not support file sharing. Downloading instead...");
+    }
   }
 
   function handleLogout() {
@@ -3459,6 +3484,9 @@ export default function AdminDashboard() {
               <button className="btn-close" onClick={() => setViewingDistrictStatsId(null)} aria-label="Close modal">✕</button>
             </div>
             <div className="modal-body" style={{ maxHeight: "60vh", overflowY: "auto" }}>
+              <div style={{ marginBottom: "1rem", fontWeight: "bold", color: "var(--navy-900)" }}>
+                Total Districts: {cohortStatsData?.cohorts?.find(c => c.id === viewingDistrictStatsId)?.districtBreakdown?.length || 0}
+              </div>
               <table className="admin-table">
                 <thead>
                   <tr>
@@ -3513,52 +3541,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* Share Modal */}
-      {shareModalOpen && (
-        <div className="modal-backdrop" onClick={() => setShareModalOpen(false)}>
-          <div className="modal-content" style={{ maxWidth: "400px" }} onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Share Registration Link</h3>
-              <button className="btn-close" onClick={() => setShareModalOpen(false)} aria-label="Close share modal">✕</button>
-            </div>
-            <div className="modal-body" style={{ textAlign: "center", padding: "20px 0" }}>
-              <p style={{ marginBottom: "20px", color: "#666" }}>
-                Distribute the portal link to district officers and nominees.
-              </p>
-              
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                <button className="btn-primary" onClick={handleShareWhatsApp} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", background: "#25D366", borderColor: "#25D366" }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
-                  </svg>
-                  Share via WhatsApp
-                </button>
-                
-                <button className="btn-secondary" onClick={handleShareEmail} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                    <polyline points="22,6 12,13 2,6"></polyline>
-                  </svg>
-                  Share via Email
-                </button>
 
-                <button className="btn-secondary" onClick={handleCopyShareLink} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                  </svg>
-                  {shareCopied ? "Link Copied!" : "Copy Portal Link"}
-                </button>
-              </div>
-            </div>
-            <div className="modal-actions">
-              <button type="button" className="btn-secondary" onClick={() => setShareModalOpen(false)}>
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Defaulters Modal */}
       {showDefaultersModal && (

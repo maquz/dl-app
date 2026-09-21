@@ -899,7 +899,7 @@ router.get("/:id/diagnostics", trainerOrAdminAuth, async (req, res) => {
       regionCounts[region] = (regionCounts[region] || 0) + 1;
     });
 
-    const uniqueRegions = Object.keys(regionCounts).sort();
+    const uniqueRegions = Object.keys(regionCounts).filter(r => r && r.trim().toLowerCase() !== 'unknown').sort();
     const criticalAreas = [];
     
     const questionLevel = questions.map((q, idx) => {
