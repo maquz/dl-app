@@ -917,7 +917,9 @@ router.get("/:id/diagnostics", trainerOrAdminAuth, async (req, res) => {
         const chosenOpt = ansObj[q.id];
         if (chosenOpt) {
           answerCounts[chosenOpt] = (answerCounts[chosenOpt] || 0) + 1;
-          regionalCounts[r][chosenOpt] = (regionalCounts[r][chosenOpt] || 0) + 1;
+          if (regionalCounts[r]) {
+            regionalCounts[r][chosenOpt] = (regionalCounts[r][chosenOpt] || 0) + 1;
+          }
         }
       });
 
