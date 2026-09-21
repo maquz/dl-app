@@ -3,6 +3,7 @@ const XLSX = require("xlsx");
 const db = require("../db");
 const supabase = require("../supabase");
 const adminAuth = require("../middleware/adminAuth");
+const { trainerOrAdminAuth } = require("../middleware/adminAuth");
 const { findNextAvailableCohort, findCohortForDistrict } = require("./cohorts");
 
 const router = express.Router();
@@ -429,7 +430,7 @@ router.get("/stats", adminAuth, async (req, res) => {
 });
 
 // GET /api/registrations - list/search/filter (admin only)
-router.get("/", adminAuth, async (req, res) => {
+router.get("/", trainerOrAdminAuth, async (req, res) => {
   const { q, region, district, role, cohort_id, attendance_status } = req.query;
 
   // 1. Try Supabase
@@ -547,8 +548,8 @@ router.get("/", adminAuth, async (req, res) => {
   res.json({ count: rows.length, registrations: rows });
 });
 
-// PUT /api/registrations/:id - update a registration (admin only)
-router.put("/:id", adminAuth, async (req, res) => {
+// PUT /api/registrations/:id - Admin/Trainer update registration (e.g. mark Attended)
+router.put("/:id", trainerOrAdminAuth, async (req, res) => {
   const id = Number(req.params.id);
   const errors = validateRegistration(req.body);
   if (Object.keys(errors).length > 0) {

@@ -1,6 +1,7 @@
 const express = require("express");
 const db = require("../db");
 const adminAuth = require("../middleware/adminAuth");
+const { trainerOrAdminAuth } = require("../middleware/adminAuth");
 
 const router = express.Router();
 
@@ -79,8 +80,8 @@ router.get("/district-map", (req, res) => {
   }
 });
 
-// GET /api/cohorts/stats - Detailed cohort KPIs, capacity, and attendance (admin only)
-router.get("/stats", adminAuth, async (req, res) => {
+// GET /api/cohorts/stats - Real-time registration vs capacity stats
+router.get("/stats", trainerOrAdminAuth, async (req, res) => {
   const cohorts = db.prepare("SELECT * FROM cohorts ORDER BY id ASC").all();
   
   let cohortDistricts = {};
