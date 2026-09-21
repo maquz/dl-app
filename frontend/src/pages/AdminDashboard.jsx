@@ -23,6 +23,7 @@ import {
   resetTrainerPassword,
   fetchAssessments,
   fetchAssessmentOverviewStats,
+  fetchAssessmentDefaulters,
   fetchAssessmentDetails,
   createAssessment,
   updateAssessment,
@@ -131,6 +132,8 @@ export default function AdminDashboard() {
   const [assessmentsList, setAssessmentsList] = useState([]);
   const [assessmentStats, setAssessmentStats] = useState(null);
   const [assessmentsLoading, setAssessmentsLoading] = useState(false);
+  const [defaultersData, setDefaultersData] = useState([]);
+  const [showDefaultersModal, setShowDefaultersModal] = useState(false);
 
   // Question Builder Modal State
   const [isBuilderOpen, setIsBuilderOpen] = useState(false);
@@ -268,17 +271,19 @@ export default function AdminDashboard() {
   const loadAssessmentsData = useCallback(async () => {
     setAssessmentsLoading(true);
     try {
-      const [aData, sData] = await Promise.all([
+      const [aData, sData, dData] = await Promise.all([
         fetchAssessments(),
-        fetchAssessmentOverviewStats(),
+        fetchAssessmentOverviewStats(cohortFilter),
+        fetchAssessmentDefaulters(password, cohortFilter),
       ]);
       setAssessmentsList(aData.assessments || []);
       setAssessmentStats(sData);
+      setDefaultersData(dData.defaulters || []);
     } catch {
     } finally {
       setAssessmentsLoading(false);
     }
-  }, []);
+  }, [cohortFilter, password]);
 
   useEffect(() => {
     fetchRegions().then(setRegions).catch(() => {});
@@ -1927,6 +1932,20 @@ export default function AdminDashboard() {
                   </span>
                   <span className="kpi-hint">Knowledge gain improvement</span>
                 </div>
+                <div 
+                  className="kpi-card"
+                  onClick={() => setShowDefaultersModal(true)}
+                  style={{ cursor: "pointer", transition: "transform 0.15s ease", border: "1px solid #fee2e2" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 10px 15px -3px rgba(0, 0, 0, 0.1)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "0 1px 3px rgba(0, 0, 0, 0.1)"; }}
+                  title="Click to view nominees who have not taken a test"
+                >
+                  <span className="kpi-label" style={{ color: "#b91c1c" }}>Pending Tests</span>
+                  <span className="kpi-val" style={{ color: "#ef4444" }}>
+                    {defaultersData.length}
+                  </span>
+                  <span className="kpi-hint">Attendees missing test submission</span>
+                </div>
               </div>
 
               {/* Assessments List Table */}
@@ -3536,6 +3555,52 @@ export default function AdminDashboard() {
               <button type="button" className="btn-secondary" onClick={() => setShareModalOpen(false)}>
                 Close
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Defaulters Modal */}
+      {showDefaultersModal && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: "800px" }}>
+            <div className="modal-header">
+              <h2>Pending Test Submissions</h2>
+              <button className="close-btn" onClick={() => setShowDefaultersModal(false)}>&times;</button>
+            </div>
+            <div className="modal-body">
+              <p style={{ marginBottom: "1rem", color: "#475569" }}>
+                The following {defaultersData.length} nominees have been marked as "Attended" but have not submitted any test.
+              </p>
+              {defaultersData.length > 0 ? (
+                <div className="table-wrap" style={{ maxHeight: "400px", overflowY: "auto" }}>
+                  <table className="admin-table">
+                    <thead>
+                      <tr>
+                        <th>Officer Name</th>
+                        <th>Phone</th>
+                        <th>Region</th>
+                        <th>District</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {defaultersData.map((d, i) => (
+                        <tr key={i}>
+                          <td>{d.officer_name}</td>
+                          <td>{d.phone_number}</td>
+                          <td>{d.region}</td>
+                          <td>{d.district}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p>No pending tests found. All attendees have submitted.</p>
+              )}
+            </div>
+            <div className="modal-actions">
+              <button type="button" className="btn-secondary" onClick={() => setShowDefaultersModal(false)}>Close</button>
             </div>
           </div>
         </div>

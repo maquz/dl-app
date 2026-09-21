@@ -690,6 +690,56 @@ router.post("/:id/questions/bulk", trainerOrAdminAuth, async (req, res) => {
   });
 });
 
+// GET /api/assessments/defaulters - Get list of attended nominees who haven't submitted any test
+router.get("/defaulters", trainerOrAdminAuth, async (req, res) => {
+  const cohortId = req.query.cohort_id || null;
+  const supabase = require("../supabase");
+  
+  let defaulters = [];
+  
+  if (supabase) {
+    try {
+      // Get all attended registrations
+      let regQuery = supabase.from("registrations").select("id, officer_name, phone_number, region, district, cohort_id, institution_name, sex").eq("attendance_status", "Attended");
+      if (cohortId) regQuery = regQuery.eq("cohort_id", cohortId);
+      const { data: attendees } = await regQuery;
+      
+      if (attendees && attendees.length > 0) {
+        // Get all submissions
+        let subQuery = supabase.from("assessment_submissions").select("phone_number");
+        if (cohortId) subQuery = subQuery.eq("cohort_id", cohortId);
+        const { data: subs } = await subQuery;
+        
+        const submittedPhones = new Set((subs || []).map(s => s.phone_number));
+        
+        defaulters = attendees.filter(a => !submittedPhones.has(a.phone_number));
+      }
+      return res.json({ count: defaulters.length, defaulters });
+    } catch (e) {
+      console.error("Supabase defaulters error:", e.message);
+    }
+  }
+
+  // SQLite fallback
+  try {
+    let query = `
+      SELECT r.id, r.officer_name, r.phone_number, r.region, r.district, r.institution_name, r.sex
+      FROM registrations r
+      LEFT JOIN assessment_submissions s ON r.phone_number = s.phone_number
+      WHERE r.attendance_status = 'Attended' AND s.id IS NULL
+    `;
+    const params = [];
+    if (cohortId) {
+      query += ` AND r.cohort_id = ?`;
+      params.push(cohortId);
+    }
+    defaulters = db.prepare(query).all(...params);
+    res.json({ count: defaulters.length, defaulters });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch defaulters." });
+  }
+});
+
 // GET /api/assessments/stats/overview - High-level test analytics
 router.get("/stats/overview", async (req, res) => {
   let totalSubmissions = 0;

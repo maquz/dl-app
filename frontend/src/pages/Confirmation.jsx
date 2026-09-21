@@ -48,7 +48,7 @@ export default function Confirmation() {
         setAssessments(fetchedAssessments);
         setMySubmissions(fetchedSubmissions);
 
-        if (location.state?.justRegistered || location.state?.justLoggedIn) {
+        if (fetchedSubmissions.length === 0) {
           if (!sessionStorage.getItem("assessment_prompt_shown")) {
             setShowPromptOverlay(true);
             sessionStorage.setItem("assessment_prompt_shown", "true");
@@ -624,12 +624,12 @@ export default function Confirmation() {
             transform: "translateY(20px)",
             animation: "slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards"
           }}>
-            <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>{location.state?.justRegistered ? "🎉" : "👋"}</div>
+            <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>⚠️</div>
             <h2 style={{ fontSize: "1.5rem", color: "var(--navy-900)", marginBottom: "1rem", fontWeight: 800 }}>
-              {location.state?.justRegistered ? "Registration Successful" : "Welcome to the Portal"}
+              Mandatory Test Pending
             </h2>
             <p style={{ color: "#475569", marginBottom: "2rem", lineHeight: 1.5 }}>
-              Are you here to take an assessment? Please select which mandatory test you would like to complete now.
+              You have not yet completed your mandatory assessment. Please select which test you would like to take now to complete your records.
             </p>
             <div style={{ display: "flex", gap: "1rem", justifyContent: "center", marginBottom: "1rem" }}>
               <button 

@@ -309,8 +309,17 @@ export async function fetchAssessments() {
   return handle(res);
 }
 
-export async function fetchAssessmentOverviewStats() {
-  const res = await fetch(`${API_URL}/assessments/stats/overview`);
+export async function fetchAssessmentOverviewStats(cohortId = "") {
+  const url = cohortId ? `${API_URL}/assessments/stats/overview?cohort_id=${cohortId}` : `${API_URL}/assessments/stats/overview`;
+  const res = await fetch(url);
+  return handle(res);
+}
+
+export async function fetchAssessmentDefaulters(authHeader, cohortId = "") {
+  const url = cohortId ? `${API_URL}/assessments/defaulters?cohort_id=${cohortId}` : `${API_URL}/assessments/defaulters`;
+  const res = await fetch(url, {
+    headers: { ...getAdminAuthHeaders(authHeader) },
+  });
   return handle(res);
 }
 
