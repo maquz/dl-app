@@ -42,7 +42,8 @@ const PHONE_REGEX = /^\d{3}-\d{3}-\d{4}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function formatPhoneAsTyped(raw) {
-  const digits = raw.replace(/\D/g, "").slice(0, 10);
+  if (!raw) return "";
+  const digits = String(raw).replace(/\D/g, "").slice(0, 10);
   const parts = [digits.slice(0, 3), digits.slice(3, 6), digits.slice(6, 10)].filter(Boolean);
   return parts.join("-");
 }
@@ -1093,7 +1094,46 @@ export default function AdminDashboard() {
       }
     } catch (err) {
       console.error("Error sharing PDF:", err);
+      // If the user cancelled the share, do nothing
+      if (err.name === "AbortError") return;
+      
       alert("Failed to share PDF. Your device or browser may not support file sharing. Downloading instead...");
+      try {
+        const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+        
+        const title = "GES DL Programme - Nominee Registrations";
+        const filterText = `Filters: Region=${regionFilter || "All"}, District=${districtFilter || "All"}, Cohort=${cohortFilter || "All"}, Attendance=${attendanceFilter || "All"}`;
+        
+        doc.setFontSize(16);
+        doc.text(title, 40, 40);
+        doc.setFontSize(10);
+        doc.text(filterText, 40, 55);
+
+        const tableData = rows.map(r => [
+          r.officer_name,
+          r.sex,
+          formatPhoneAsTyped(r.phone_number),
+          `${r.region} / ${r.district}`,
+          r.institution_name,
+          r.schedule_role,
+          r.cohort_id ? `Cohort ${r.cohort_id}` : "Pending",
+          r.attendance_status
+        ]);
+
+        doc.autoTable({
+          startY: 70,
+          head: [["Officer Name", "Sex", "Phone", "Region / District", "Institution", "Role", "Cohort", "Status"]],
+          body: tableData,
+          theme: 'striped',
+          headStyles: { fillColor: [15, 23, 42] },
+          margin: { top: 70 },
+          showHead: 'everyPage'
+        });
+        
+        doc.save("DL_Nominees_Report.pdf");
+      } catch (fallbackErr) {
+        console.error("Fallback download also failed:", fallbackErr);
+      }
     }
   }
 
