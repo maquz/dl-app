@@ -39,6 +39,7 @@ import {
   parseDocxQuestions,
 } from "../api.js";
 import { ROLE_OPTIONS } from "../components/RoleCheckboxGroup.jsx";
+import CameraScanner from "../components/CameraScanner";
 
 const PHONE_REGEX = /^\d{3}-\d{3}-\d{4}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -285,6 +286,7 @@ export default function AdminDashboard() {
 
   // Tablet Distribution State
   const [scanImeiFor, setScanImeiFor] = useState(null);
+  const [cameraScanFor, setCameraScanFor] = useState(null);
   const [scannedImei, setScannedImei] = useState("");
 
   // Question Builder Modal State
@@ -2810,6 +2812,21 @@ export default function AdminDashboard() {
           {/* VIEW: TABLET DISTRIBUTION */}
           {activeTab === "distribution" && (
             <div className="tablet-distribution-section" style={{ padding: "2rem", background: "#fff", borderRadius: "12px", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)" }}>
+              {cameraScanFor && (
+                <CameraScanner 
+                  title="Scan IMEI QR/Barcode"
+                  onClose={() => setCameraScanFor(null)}
+                  onScanSuccess={async (decodedText) => {
+                    try {
+                      await updateRegistrationImei(password, cameraScanFor, decodedText);
+                      setRows(prev => prev.map(row => row.id === cameraScanFor ? { ...row, tablet_imei: decodedText } : row));
+                      setCameraScanFor(null);
+                    } catch (err) {
+                      alert("Failed to assign IMEI: " + err.message);
+                    }
+                  }}
+                />
+              )}
               <div className="trainers-mgmt-header" style={{ marginBottom: "2rem" }}>
                 <div>
                   <h2 style={{ fontSize: "1.5rem", color: "#1e293b", margin: "0 0 0.5rem 0" }}>Tablet Distribution (IT Persons)</h2>
@@ -2875,18 +2892,27 @@ export default function AdminDashboard() {
                               </span>
                             )}
                           </td>
-                          <td>
+                          <td style={{ display: "flex", gap: "0.5rem" }}>
                             {scanImeiFor !== r.id && (
-                              <button 
-                                className="btn-secondary"
-                                onClick={() => {
-                                  setScanImeiFor(r.id);
-                                  setScannedImei("");
-                                }}
-                                style={{ padding: "0.4rem 0.8rem", fontSize: "0.85rem" }}
-                              >
-                                {r.tablet_imei ? "Re-assign (Scan)" : "Assign (Scan)"}
-                              </button>
+                              <>
+                                <button 
+                                  className="btn-primary"
+                                  onClick={() => setCameraScanFor(r.id)}
+                                  style={{ padding: "0.4rem 0.8rem", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "0.4rem" }}
+                                >
+                                  📷 Camera
+                                </button>
+                                <button 
+                                  className="btn-secondary"
+                                  onClick={() => {
+                                    setScanImeiFor(r.id);
+                                    setScannedImei("");
+                                  }}
+                                  style={{ padding: "0.4rem 0.8rem", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "0.4rem" }}
+                                >
+                                  ⌨️ Type/USB
+                                </button>
+                              </>
                             )}
                           </td>
                         </tr>
