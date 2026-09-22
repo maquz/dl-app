@@ -1154,7 +1154,7 @@ export default function AdminDashboard() {
 
   // ---- Export Signed List (Word Format) ----
   function handleExportSignedList() {
-    const listRows = rows;
+    const listRows = [...rows].sort((a, b) => (a.district || "").localeCompare(b.district || ""));
     const date = new Date().toLocaleDateString("en-GH", { day: "2-digit", month: "long", year: "numeric" });
     const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Attendance Signed List</title><style>table { border-collapse: collapse; width: 100%; } th, td { border: 1px solid black; padding: 8px; text-align: left; } th { background-color: #f2f2f2; }</style></head><body>";
     const footer = "</body></html>";
@@ -1188,7 +1188,7 @@ export default function AdminDashboard() {
 
   // ---- Export Signed List (Excel Format) ----
   function handleExportSignedListExcel() {
-    const listRows = rows;
+    const listRows = [...rows].sort((a, b) => (a.district || "").localeCompare(b.district || ""));
     const date = new Date().toLocaleDateString("en-GH", { day: "2-digit", month: "long", year: "numeric" });
     
     const wsData = [
