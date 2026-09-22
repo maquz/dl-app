@@ -279,6 +279,7 @@ export default function AdminDashboard() {
   const [assessmentStats, setAssessmentStats] = useState(null);
   const [assessmentsLoading, setAssessmentsLoading] = useState(false);
   const [defaultersData, setDefaultersData] = useState([]);
+  const [defaultersType, setDefaultersType] = useState("");
   const [showDefaultersModal, setShowDefaultersModal] = useState(false);
 
   // Question Builder Modal State
@@ -433,7 +434,7 @@ export default function AdminDashboard() {
       const [aData, sData, dData] = await Promise.all([
         fetchAssessments(),
         fetchAssessmentOverviewStats(cohortFilter),
-        fetchAssessmentDefaulters(password, cohortFilter),
+        fetchAssessmentDefaulters(password, cohortFilter, defaultersType),
       ]);
       setAssessmentsList(aData.assessments || []);
       setAssessmentStats(sData);
@@ -442,7 +443,7 @@ export default function AdminDashboard() {
     } finally {
       setAssessmentsLoading(false);
     }
-  }, [cohortFilter, password]);
+  }, [cohortFilter, password, defaultersType]);
 
   useEffect(() => {
     fetchRegions().then(setRegions).catch(() => {});
@@ -2257,6 +2258,34 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
+              <div className="toolbar" style={{ marginBottom: "1.5rem", padding: "1rem", background: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                <div className="toolbar-inputs" style={{ display: "flex", gap: "1rem" }}>
+                  <select
+                    value={cohortFilter}
+                    onChange={(e) => setCohortFilter(e.target.value)}
+                    aria-label="Filter by cohort"
+                    style={{ flex: 1 }}
+                  >
+                    <option value="">All Cohorts (1–6)</option>
+                    {cohortsList.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} ({c.arrival_date ? c.arrival_date.split(",")[1]?.trim() : ""})
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={defaultersType}
+                    onChange={(e) => setDefaultersType(e.target.value)}
+                    aria-label="Filter missing tests by type"
+                    style={{ flex: 1 }}
+                  >
+                    <option value="">Missing Any Test (Pre or Post)</option>
+                    <option value="Pre-Test">Missing Pre-Test</option>
+                    <option value="Post-Test">Missing Post-Test</option>
+                  </select>
+                </div>
+              </div>
+
               {/* Stats Overview */}
               <div className="analytics-grid" style={{ marginBottom: "1.5rem" }}>
                 <div 
@@ -2302,7 +2331,9 @@ export default function AdminDashboard() {
                   <span className="kpi-val" style={{ color: "#ef4444" }}>
                     {defaultersData.length}
                   </span>
-                  <span className="kpi-hint">Attendees missing test submission</span>
+                  <span className="kpi-hint">
+                    {defaultersType ? `Attendees missing ${defaultersType} submission` : "Attendees missing test submission"}
+                  </span>
                 </div>
               </div>
 
@@ -3954,21 +3985,21 @@ export default function AdminDashboard() {
           <div className="modal-content" style={{ maxWidth: "800px" }}>
             <div className="modal-header">
               <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
-                <h2 style={{ margin: 0 }}>Pending Test Submissions</h2>
+                <h2 style={{ margin: 0 }}>Pending {defaultersType || "Test"} Submissions</h2>
                 <ExportActionButtons onAction={(act) => handlePdfAction(
                   act, 
-                  "Pending Test Submissions", 
-                  `Total: ${defaultersData.length} nominees attended but have not submitted any test.`,
-                  [["Officer Name", "Phone", "Region", "District"]],
-                  defaultersData.map(d => [d.officer_name, d.phone_number, d.region, d.district]),
-                  "Pending_Tests.pdf"
+                  `Pending ${defaultersType || "Test"} Submissions`, 
+                  `Total: ${defaultersData.length} nominees attended but have not submitted ${defaultersType ? 'their ' + defaultersType : 'any test'}.`,
+                  [["Officer Name", "Phone", "Region", "District", "Cohort"]],
+                  defaultersData.map(d => [d.officer_name, d.phone_number, d.region, d.district, d.cohort_name || (d.cohort_id ? `Cohort ${d.cohort_id}` : "—")]),
+                  `Pending_Tests_${defaultersType || "All"}.pdf`
                 )} />
               </div>
               <button className="close-btn" onClick={() => setShowDefaultersModal(false)}>&times;</button>
             </div>
             <div className="modal-body">
               <p style={{ marginBottom: "1rem", color: "#475569" }}>
-                The following {defaultersData.length} nominees have been marked as "Attended" but have not submitted any test.
+                The following {defaultersData.length} nominees have been marked as "Attended" but have not submitted {defaultersType ? `their ${defaultersType}` : 'any test'}.
               </p>
               {defaultersData.length > 0 ? (
                 <div className="table-wrap" style={{ maxHeight: "400px", overflowY: "auto" }}>
@@ -3979,6 +4010,7 @@ export default function AdminDashboard() {
                         <th>Phone</th>
                         <th>Region</th>
                         <th>District</th>
+                        <th>Cohort</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -3988,6 +4020,7 @@ export default function AdminDashboard() {
                           <td>{d.phone_number}</td>
                           <td>{d.region}</td>
                           <td>{d.district}</td>
+                          <td>{d.cohort_name || (d.cohort_id ? `Cohort ${d.cohort_id}` : "—")}</td>
                         </tr>
                       ))}
                     </tbody>
