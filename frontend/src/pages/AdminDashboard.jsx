@@ -2383,27 +2383,71 @@ export default function AdminDashboard() {
                 </button>
               </div>
 
-              <div className="stats-cards">
-                <div className="stat-card">
-                  <div className="stat-title">TOTAL ASSESSMENTS TAKEN</div>
-                  <div className="stat-value">{assessmentStats.totalSubmissions || 0}</div>
-                  <div className="stat-sub">Across all regions and cohorts</div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))", gap: "1.5rem", marginBottom: "2rem" }}>
+                
+                {/* Metrics Group */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                  <div className="admin-card" style={{ padding: "1.25rem", borderLeft: "4px solid #3b82f6" }}>
+                    <div style={{ fontSize: "0.75rem", fontWeight: "700", color: "#64748b", textTransform: "uppercase", marginBottom: "0.25rem" }}>TOTAL ASSESSMENTS TAKEN</div>
+                    <div style={{ fontSize: "1.5rem", fontWeight: "700", color: "#0f172a" }}>{assessmentStats.totalSubmissions || 0}</div>
+                    <div style={{ fontSize: "0.75rem", color: "#94a3b8" }}>Across filtered regions/cohorts</div>
+                  </div>
+                  <div className="admin-card" style={{ padding: "1.25rem", borderLeft: "4px solid #f59e0b" }}>
+                    <div style={{ fontSize: "0.75rem", fontWeight: "700", color: "#64748b", textTransform: "uppercase", marginBottom: "0.25rem" }}>PRE-TEST AVERAGE</div>
+                    <div style={{ fontSize: "1.5rem", fontWeight: "700", color: "#F39200" }}>{assessmentStats.preTest?.avgScore || 0}%</div>
+                    <div style={{ fontSize: "0.75rem", color: "#94a3b8" }}>Baseline diagnostics</div>
+                  </div>
+                  <div className="admin-card" style={{ padding: "1.25rem", borderLeft: "4px solid #10b981" }}>
+                    <div style={{ fontSize: "0.75rem", fontWeight: "700", color: "#64748b", textTransform: "uppercase", marginBottom: "0.25rem" }}>POST-TEST AVERAGE</div>
+                    <div style={{ fontSize: "1.5rem", fontWeight: "700", color: "#00B050" }}>{assessmentStats.postTest?.avgScore || 0}%</div>
+                    <div style={{ fontSize: "0.75rem", color: "#94a3b8" }}>Post-training mastery</div>
+                  </div>
+                  <div className="admin-card" style={{ padding: "1.25rem", borderLeft: "4px solid #0f172a" }}>
+                    <div style={{ fontSize: "0.75rem", fontWeight: "700", color: "#64748b", textTransform: "uppercase", marginBottom: "0.25rem" }}>OVERALL LEARNING GAIN</div>
+                    <div style={{ fontSize: "1.5rem", fontWeight: "700", color: "#0f172a" }}>+{assessmentStats.learningGain || 0}%</div>
+                    <div style={{ fontSize: "0.75rem", color: "#94a3b8" }}>Knowledge improvement</div>
+                  </div>
                 </div>
-                <div className="stat-card">
-                  <div className="stat-title">PRE-TEST AVERAGE</div>
-                  <div className="stat-value" style={{ color: "#F39200" }}>{assessmentStats.preTest?.avgScore || 0}%</div>
-                  <div className="stat-sub">Baseline diagnostics</div>
+
+                {/* Pie Charts Group */}
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "1rem" }}>
+                  
+                  {/* Gender Pie Chart */}
+                  <div className="admin-card" style={{ padding: "1.25rem", flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                    <div style={{ fontSize: "0.85rem", fontWeight: "700", color: "#475569", marginBottom: "1rem", textTransform: "uppercase" }}>Gender Breakdown</div>
+                    <div style={{
+                      width: "100px", height: "100px", borderRadius: "50%",
+                      background: totalCount > 0 
+                        ? `conic-gradient(#3b82f6 0% ${(maleCount/totalCount)*100}%, #f472b6 ${(maleCount/totalCount)*100}% 100%)`
+                        : "#e2e8f0",
+                      marginBottom: "1rem",
+                      boxShadow: "inset 0 0 0 10px rgba(255,255,255,0.2)"
+                    }}></div>
+                    <div style={{ display: "flex", gap: "1rem", fontSize: "0.75rem", color: "#64748b", fontWeight: "600" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}><span style={{ width: "10px", height: "10px", backgroundColor: "#3b82f6", borderRadius: "2px" }}></span> Male ({totalCount > 0 ? Math.round((maleCount/totalCount)*100) : 0}%)</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}><span style={{ width: "10px", height: "10px", backgroundColor: "#f472b6", borderRadius: "2px" }}></span> Female ({totalCount > 0 ? Math.round((femaleCount/totalCount)*100) : 0}%)</div>
+                    </div>
+                  </div>
+
+                  {/* Attendance Pie Chart */}
+                  <div className="admin-card" style={{ padding: "1.25rem", flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                    <div style={{ fontSize: "0.85rem", fontWeight: "700", color: "#475569", marginBottom: "1rem", textTransform: "uppercase" }}>Overall Attendance</div>
+                    <div style={{
+                      width: "100px", height: "100px", borderRadius: "50%",
+                      background: totalCount > 0
+                        ? `conic-gradient(#10b981 0% ${(attendedCount/totalCount)*100}%, #fde047 ${(attendedCount/totalCount)*100}% 100%)`
+                        : "#e2e8f0",
+                      marginBottom: "1rem",
+                      boxShadow: "inset 0 0 0 10px rgba(255,255,255,0.2)"
+                    }}></div>
+                    <div style={{ display: "flex", gap: "1rem", fontSize: "0.75rem", color: "#64748b", fontWeight: "600" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}><span style={{ width: "10px", height: "10px", backgroundColor: "#10b981", borderRadius: "2px" }}></span> Attended ({totalCount > 0 ? Math.round((attendedCount/totalCount)*100) : 0}%)</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}><span style={{ width: "10px", height: "10px", backgroundColor: "#fde047", borderRadius: "2px" }}></span> Pending ({totalCount > 0 ? Math.round((pendingCount/totalCount)*100) : 0}%)</div>
+                    </div>
+                  </div>
+                  
                 </div>
-                <div className="stat-card">
-                  <div className="stat-title">POST-TEST AVERAGE</div>
-                  <div className="stat-value" style={{ color: "#00B050" }}>{assessmentStats.postTest?.avgScore || 0}%</div>
-                  <div className="stat-sub">Post-training mastery</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-title">OVERALL LEARNING GAIN</div>
-                  <div className="stat-value" style={{ color: "#0F172A" }}>+{assessmentStats.learningGain || 0}%</div>
-                  <div className="stat-sub">Knowledge improvement</div>
-                </div>
+
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(400px, 1fr))", gap: "2rem", marginTop: "2rem" }}>
