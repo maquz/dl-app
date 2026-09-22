@@ -218,6 +218,7 @@ export default function AdminDashboard() {
   const [roleFilter, setRoleFilter] = useState("");
   const [cohortFilter, setCohortFilter] = useState("");
   const [attendanceFilter, setAttendanceFilter] = useState("");
+  const [genderFilter, setGenderFilter] = useState("");
   const [exporting, setExporting] = useState("");
 
   // Nominee Edit Modal State
@@ -321,7 +322,16 @@ export default function AdminDashboard() {
   const [submissionsData, setSubmissionsData] = useState({ summary: {}, submissions: [] });
   const [submissionsLoading, setSubmissionsLoading] = useState(false);
   
-  const { currentPage: regPage, setCurrentPage: setRegPage, totalPages: regTotalPages, currentData: currentRows } = usePagination(rows, 20);
+  const displayRows = useMemo(() => {
+    if (!genderFilter) return rows;
+    return rows.filter(r => {
+       const s = (r.sex || "").toLowerCase();
+       const g = genderFilter.toLowerCase();
+       return s.startsWith(g) || s === g;
+    });
+  }, [rows, genderFilter]);
+  
+  const { currentPage: regPage, setCurrentPage: setRegPage, totalPages: regTotalPages, currentData: currentRows } = usePagination(displayRows, 20);
   const { currentPage: defaultersPage, setCurrentPage: setDefaultersPage, totalPages: defaultersTotalPages, currentData: currentDefaulters } = usePagination(defaultersData, 10);
   const { currentPage: subsPage, setCurrentPage: setSubsPage, totalPages: subsTotalPages, currentData: currentSubs } = usePagination(submissionsData?.submissions || [], 15);
   
@@ -1501,19 +1511,51 @@ export default function AdminDashboard() {
             <>
               {/* Analytics KPI Cards */}
               <div className="analytics-grid">
-                <div className="kpi-card">
+                <div 
+                  className="kpi-card" 
+                  style={{ cursor: "pointer", transition: "transform 0.2s" }}
+                  onClick={() => {
+                    setRegionFilter("");
+                    setDistrictFilter("");
+                    setRoleFilter("");
+                    setCohortFilter("");
+                    setAttendanceFilter("");
+                    setQuery("");
+                    setGenderFilter("");
+                  }}
+                  title="Click to clear all filters"
+                  onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-2px)"}
+                  onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}
+                >
                   <span className="kpi-label">Total Nominees</span>
                   <span className="kpi-val text-navy">{totalCount}</span>
                   <span className="kpi-hint">Registered across Ghana</span>
                 </div>
 
                 <div className="kpi-card">
-                  <span className="kpi-label">Gender Breakdown</span>
+                  <span className="kpi-label">
+                    Gender Breakdown
+                    {genderFilter && (
+                      <button onClick={(e) => { e.stopPropagation(); setGenderFilter(""); }} style={{ marginLeft: "8px", fontSize: "0.75rem", padding: "2px 6px", borderRadius: "12px", border: "1px solid #cbd5e1", background: "#f8fafc", cursor: "pointer" }}>
+                        Clear Filter
+                      </button>
+                    )}
+                  </span>
                   <div className="kpi-split">
-                    <span className="split-item">
+                    <span 
+                      className="split-item" 
+                      style={{ cursor: "pointer", padding: "4px", borderRadius: "4px", backgroundColor: genderFilter === "Male" ? "#e0f2fe" : "transparent" }}
+                      onClick={() => setGenderFilter("Male")}
+                      title="Filter by Male"
+                    >
                       <strong>{maleCount}</strong> Male {totalCount > 0 && `(${Math.round((maleCount / totalCount) * 100)}%)`}
                     </span>
-                    <span className="split-item">
+                    <span 
+                      className="split-item" 
+                      style={{ cursor: "pointer", padding: "4px", borderRadius: "4px", backgroundColor: genderFilter === "Female" ? "#fce7f3" : "transparent" }}
+                      onClick={() => setGenderFilter("Female")}
+                      title="Filter by Female"
+                    >
                       <strong>{femaleCount}</strong> Female {totalCount > 0 && `(${Math.round((femaleCount / totalCount) * 100)}%)`}
                     </span>
                   </div>
@@ -1528,10 +1570,20 @@ export default function AdminDashboard() {
                 <div className="kpi-card">
                   <span className="kpi-label">Overall Attendance</span>
                   <div className="kpi-split">
-                    <span className="split-item">
+                    <span 
+                      className="split-item" 
+                      style={{ cursor: "pointer", padding: "4px", borderRadius: "4px", backgroundColor: attendanceFilter === "Attended" ? "#dcfce7" : "transparent" }}
+                      onClick={() => setAttendanceFilter(prev => prev === "Attended" ? "" : "Attended")}
+                      title="Filter by Attended"
+                    >
                       <strong>{stats?.attendedCount ?? rows.filter((r) => r.attendance_status === "Attended").length}</strong> Attended
                     </span>
-                    <span className="split-item">
+                    <span 
+                      className="split-item" 
+                      style={{ cursor: "pointer", padding: "4px", borderRadius: "4px", backgroundColor: attendanceFilter === "Registered" ? "#fef3c7" : "transparent" }}
+                      onClick={() => setAttendanceFilter(prev => prev === "Registered" ? "" : "Registered")}
+                      title="Filter by Pending"
+                    >
                       <strong>{Math.max(0, totalCount - (stats?.attendedCount ?? rows.filter((r) => r.attendance_status === "Attended").length))}</strong> Pending
                     </span>
                   </div>
@@ -1546,9 +1598,16 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                <div className="kpi-card">
+                <div 
+                  className="kpi-card" 
+                  style={{ cursor: "pointer", transition: "transform 0.2s" }}
+                  onClick={() => document.querySelector(".toolbar")?.scrollIntoView({ behavior: "smooth" })}
+                  title="Scroll to table"
+                  onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-2px)"}
+                  onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}
+                >
                   <span className="kpi-label">Filtered Results</span>
-                  <span className="kpi-val text-orange">{rows.length}</span>
+                  <span className="kpi-val text-orange">{displayRows.length}</span>
                   <span className="kpi-hint">{loading ? "Updating..." : "Matching current filters"}</span>
                 </div>
               </div>
