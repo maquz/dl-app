@@ -52,6 +52,7 @@ app.use("/api/admin", adminRouter);
 app.use("/api/cohorts", cohortsRouter);
 app.use("/api/national-trainers", nationalTrainersRouter);
 app.use("/api/assessments", assessmentsRouter);
+app.use("/api/resources", require("./routes/resources"));
 
 // Basic 404 + error handling
 app.use((req, res) => res.status(404).json({ error: "Not found" }));

@@ -432,3 +432,8 @@ export async function parseDocxQuestions(file) {
   });
   return handle(res);
 }
+
+export async function fetchResources() {
+  const res = await fetch(`${API_URL}/resources`);
+  return handle(res);
+}

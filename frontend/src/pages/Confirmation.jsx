@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { fetchAssessments } from "../api";
+import { fetchAssessments, fetchResources } from "../api";
 
 export default function Confirmation() {
   const location = useLocation();
@@ -13,9 +13,10 @@ export default function Confirmation() {
     );
   });
 
-  // activeTab: 'pre-test' | 'post-test' | 'slip'
+  // activeTab: 'pre-test' | 'post-test' | 'slip' | 'resources'
   const [activeTab, setActiveTab] = useState(location.state?.activeTab || "pre-test");
   const [assessments, setAssessments] = useState([]);
+  const [resources, setResources] = useState([]);
   const [loadingAssessments, setLoadingAssessments] = useState(true);
   const [mySubmissions, setMySubmissions] = useState([]);
 
@@ -40,12 +41,14 @@ export default function Confirmation() {
     const cohortId = nominee?.cohortId || 1;
     Promise.all([
       fetchAssessments({ cohortId }),
+      fetchResources().catch(() => ({ resources: [] })),
       import("../api").then(api => api.fetchMySubmissions(nominee?.phoneNumber, nominee?.id).catch(() => ({ submissions: [] })))
     ])
-      .then(([aData, sData]) => {
+      .then(([aData, rData, sData]) => {
         const fetchedAssessments = aData.assessments || [];
         const fetchedSubmissions = sData.submissions || [];
         setAssessments(fetchedAssessments);
+        setResources(rData.resources || []);
         setMySubmissions(fetchedSubmissions);
 
         if (fetchedSubmissions.length === 0) {
@@ -188,6 +191,21 @@ export default function Confirmation() {
                 </div>
               </div>
               <span className="officer-nav-badge badge-slip">Slip</span>
+            </button>
+
+            <button
+              type="button"
+              className={`officer-nav-btn ${activeTab === "resources" ? "active" : ""}`}
+              onClick={() => setActiveTab("resources")}
+            >
+              <div className="officer-nav-btn-left">
+                <span className="officer-nav-icon">📚</span>
+                <div className="officer-nav-text">
+                  <span className="officer-nav-title">Training Resources</span>
+                  <span className="officer-nav-sub">PDFs & Documents</span>
+                </div>
+              </div>
+              <span className="officer-nav-badge badge-slip" style={{background:"#eff6ff", color:"#2563eb", borderColor:"#bfdbfe"}}>Docs</span>
             </button>
           </nav>
 
@@ -601,6 +619,38 @@ export default function Confirmation() {
                 >
                   Go to Pre-Training Test →
                 </button>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "resources" && (
+            <div className="view-panel fade-in">
+              <div className="view-header">
+                <h2>Training Resources & Documents</h2>
+                <p>Download the official DL manuals, timetables, and resource materials.</p>
+              </div>
+              <div className="view-content" style={{ padding: "2rem", display: "grid", gap: "1rem" }}>
+                {resources && resources.length > 0 ? (
+                  resources.map(file => (
+                    <div key={file.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1.25rem", border: "1px solid #e2e8f0", borderRadius: "12px", background: "#fff", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                        <span style={{ fontSize: "2rem" }}>📄</span>
+                        <div>
+                          <strong style={{ fontSize: "1.1rem", color: "#1e293b", display: "block", marginBottom: "0.25rem" }}>{file.name}</strong>
+                          <span style={{ fontSize: "0.85rem", color: "#64748b" }}>PDF Document • {(file.size / 1024 / 1024).toFixed(2)} MB</span>
+                        </div>
+                      </div>
+                      <a href={file.url} target="_blank" rel="noreferrer" className="btn-primary" style={{ padding: "0.5rem 1rem", textDecoration: "none" }}>
+                        Download
+                      </a>
+                    </div>
+                  ))
+                ) : (
+                  <div style={{ textAlign: "center", padding: "3rem", background: "#f8fafc", borderRadius: "12px", border: "1px dashed #cbd5e1", color: "#64748b" }}>
+                    <p style={{ margin: 0, fontSize: "1.1rem" }}>No resources are available yet.</p>
+                    <p style={{ marginTop: "0.5rem", fontSize: "0.9rem" }}>Documents will appear here once uploaded by the administrator.</p>
+                  </div>
+                )}
               </div>
             </div>
           )}
