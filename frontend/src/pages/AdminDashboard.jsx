@@ -94,13 +94,14 @@ async function handlePdfAction(action, title, subtitle, head, body, filename) {
 }
 
 async function handleHtmlPdfAction(action, elementId, filename) {
+  let pdf = null;
   try {
     const el = document.getElementById(elementId);
     if (!el) return;
     const canvas = await html2canvas(el, { scale: 2 });
     const imgData = canvas.toDataURL("image/png");
     // Calculate A4 size in px (approx 595 x 842 at 72dpi, let's just use image dimensions for a 1-page long pdf)
-    const pdf = new jsPDF({
+    pdf = new jsPDF({
       orientation: canvas.width > canvas.height ? "landscape" : "portrait",
       unit: "px",
       format: [canvas.width, canvas.height]
@@ -122,6 +123,10 @@ async function handleHtmlPdfAction(action, elementId, filename) {
     }
   } catch (err) {
     console.error("Error exporting HTML to PDF:", err);
+    if (err.name === "AbortError") return;
+    if (action === 'share' && pdf) {
+      pdf.save(filename);
+    }
   }
 }
 
@@ -136,6 +141,50 @@ function ExportActionButtons({ onAction }) {
       </button>
       <button className="btn-primary" onClick={() => onAction('share')} style={{ padding: "0.25rem 0.5rem", fontSize: "0.85rem", height: "auto" }}>
          📤 Share
+      </button>
+    </div>
+  );
+}
+
+function usePagination(data, itemsPerPage = 20) {
+  const [currentPage, setCurrentPage] = useState(1);
+  const totalPages = Math.ceil((data?.length || 0) / itemsPerPage);
+  
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [data]);
+
+  const currentData = useMemo(() => {
+    const begin = (currentPage - 1) * itemsPerPage;
+    const end = begin + itemsPerPage;
+    return (data || []).slice(begin, end);
+  }, [data, currentPage, itemsPerPage]);
+
+  return { currentPage, setCurrentPage, totalPages, currentData };
+}
+
+function PaginationControls({ currentPage, totalPages, onPageChange }) {
+  if (totalPages <= 1) return null;
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1rem", borderTop: "1px solid #e2e8f0", backgroundColor: "#f8fafc", borderRadius: "0 0 8px 8px" }}>
+      <button 
+        className="btn-secondary" 
+        disabled={currentPage === 1} 
+        onClick={() => onPageChange(currentPage - 1)}
+        style={{ padding: "0.25rem 0.75rem" }}
+      >
+        Previous
+      </button>
+      <span style={{ fontSize: "0.9rem", color: "#64748b" }}>
+        Page {currentPage} of {totalPages}
+      </span>
+      <button 
+        className="btn-secondary" 
+        disabled={currentPage === totalPages} 
+        onClick={() => onPageChange(currentPage + 1)}
+        style={{ padding: "0.25rem 0.75rem" }}
+      >
+        Next
       </button>
     </div>
   );
@@ -271,6 +320,10 @@ export default function AdminDashboard() {
   const [viewingSubmissionsId, setViewingSubmissionsId] = useState(null);
   const [submissionsData, setSubmissionsData] = useState({ summary: {}, submissions: [] });
   const [submissionsLoading, setSubmissionsLoading] = useState(false);
+  
+  const { currentPage: regPage, setCurrentPage: setRegPage, totalPages: regTotalPages, currentData: currentRows } = usePagination(rows, 20);
+  const { currentPage: defaultersPage, setCurrentPage: setDefaultersPage, totalPages: defaultersTotalPages, currentData: currentDefaulters } = usePagination(defaultersData, 10);
+  const { currentPage: subsPage, setCurrentPage: setSubsPage, totalPages: subsTotalPages, currentData: currentSubs } = usePagination(submissionsData?.submissions || [], 15);
   
   // District Stats Modal State
   const [viewingDistrictStatsId, setViewingDistrictStatsId] = useState(null);
@@ -1187,12 +1240,9 @@ export default function AdminDashboard() {
       }
     } catch (err) {
       console.error("Error sharing PDF:", err);
-      // If the user cancelled the share, do nothing
       if (err.name === "AbortError") return;
-      
       try {
         const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
-        
         const title = "GES DL Programme - Nominee Registrations";
         const filterText = `Filters: Region=${regionFilter || "All"}, District=${districtFilter || "All"}, Cohort=${cohortFilter || "All"}, Attendance=${attendanceFilter || "All"}`;
         
@@ -1640,10 +1690,10 @@ export default function AdminDashboard() {
                         </td>
                       </tr>
                     )}
-                    {rows.map((r) => (
+                    {currentRows.map((r) => (
                       <tr key={r.id}>
                         <td>
-                          <span className="ref-tag">{r.referenceCode || `DL-${r.id}`}</span>
+                          <span className="ref-tag">{r.reference_code || `DL-${r.id}`}</span>
                         </td>
                         <td>
                           <strong>{r.officer_name}</strong>
@@ -1727,6 +1777,7 @@ export default function AdminDashboard() {
                     ))}
                   </tbody>
                 </table>
+                <PaginationControls currentPage={regPage} totalPages={regTotalPages} onPageChange={setRegPage} />
               </div>
             </>
           )}
@@ -2948,31 +2999,37 @@ export default function AdminDashboard() {
                           </td>
                         </tr>
                       )}
-                      {submissionsData.submissions?.map((s) => (
+                      {currentSubs.map((s) => (
                         <tr key={s.id}>
                           {viewingSubmissionsId === "ALL" && (
                             <td className="text-sm">
                               <strong>{s.assessment_type}</strong>
                               <br/>
-                              <span className="text-muted" style={{ fontSize: '0.8rem' }}>{s.assessment_title}</span>
+                              <span className="text-muted">{s.assessment_title}</span>
                             </td>
                           )}
-                          <td className="text-bold">{s.officer_name || "Unknown"}</td>
-                          <td>{s.phone_number || "—"}</td>
-                          <td>{s.score} / {s.total_points} pts</td>
-                          <td><strong>{s.percentage}%</strong></td>
                           <td>
-                            <span className={`review-badge ${s.percentage >= 50 ? "correct" : "incorrect"}`}>
-                              {s.percentage >= 50 ? "✓ Passed" : "✗ Needs Review"}
+                            <strong>{s.officer_name || "Unknown"}</strong>
+                          </td>
+                          <td>{formatPhoneAsTyped(s.phone_number) || "—"}</td>
+                          <td><strong>{s.score}</strong> / {s.total_points}</td>
+                          <td>
+                            <span className={`attendance-status-pill status-${s.percentage >= 50 ? "excused" : "absent"}`}>
+                              {s.percentage}%
                             </span>
                           </td>
                           <td>
-                            <span className="table-date">
+                            {s.percentage >= 50 ? (
+                              <span className="text-sm text-green">Passed</span>
+                            ) : (
+                              <span className="text-sm text-orange">Needs Review</span>
+                            )}
+                          </td>
+                          <td>
+                            <span className="table-date text-sm text-muted">
                               {new Date(
-                                s.submitted_at.includes("T") 
-                                  ? s.submitted_at 
-                                  : s.submitted_at.replace(" ", "T") + "Z"
-                              ).toLocaleDateString(undefined, {
+                                s.submitted_at.includes("T") ? s.submitted_at : s.submitted_at.replace(" ", "T") + "Z"
+                              ).toLocaleString(undefined, {
                                 month: "short",
                                 day: "numeric",
                                 hour: "2-digit",
@@ -2984,6 +3041,7 @@ export default function AdminDashboard() {
                       ))}
                     </tbody>
                   </table>
+                  <PaginationControls currentPage={subsPage} totalPages={subsTotalPages} onPageChange={setSubsPage} />
                 </div>
               </>
             )}
@@ -3730,7 +3788,7 @@ export default function AdminDashboard() {
                       </tr>
                     </thead>
                     <tbody>
-                      {defaultersData.map((d, i) => (
+                      {currentDefaulters.map((d, i) => (
                         <tr key={i}>
                           <td>{d.officer_name}</td>
                           <td>{d.phone_number}</td>
@@ -3740,6 +3798,7 @@ export default function AdminDashboard() {
                       ))}
                     </tbody>
                   </table>
+                  <PaginationControls currentPage={defaultersPage} totalPages={defaultersTotalPages} onPageChange={setDefaultersPage} />
                 </div>
               ) : (
                 <p>No pending tests found. All attendees have submitted.</p>
