@@ -1,6 +1,7 @@
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
+import html2canvas from "html2canvas";
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import {
@@ -46,6 +47,98 @@ function formatPhoneAsTyped(raw) {
   const digits = String(raw).replace(/\D/g, "").slice(0, 10);
   const parts = [digits.slice(0, 3), digits.slice(3, 6), digits.slice(6, 10)].filter(Boolean);
   return parts.join("-");
+}
+
+async function handlePdfAction(action, title, subtitle, head, body, filename) {
+  try {
+    const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+    doc.setFontSize(16);
+    doc.text(title, 40, 40);
+    if (subtitle) {
+      doc.setFontSize(10);
+      doc.text(subtitle, 40, 55);
+    }
+    doc.autoTable({
+      startY: subtitle ? 70 : 55,
+      head: head,
+      body: body,
+      theme: 'striped',
+      headStyles: { fillColor: [15, 23, 42] },
+      margin: { top: 70 },
+      showHead: 'everyPage'
+    });
+    if (action === 'download') {
+      doc.save(filename);
+    } else if (action === 'print') {
+      doc.autoPrint();
+      window.open(doc.output('bloburl'), '_blank');
+    } else if (action === 'share') {
+      const pdfBlob = doc.output('blob');
+      const file = new File([pdfBlob], filename, { type: "application/pdf" });
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ title, files: [file] });
+      } else {
+        doc.save(filename);
+      }
+    }
+  } catch (err) {
+    if (err.name === "AbortError") return;
+    if (action === 'share') {
+      try {
+        const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+        doc.autoTable({ head, body });
+        doc.save(filename);
+      } catch(e) {}
+    }
+  }
+}
+
+async function handleHtmlPdfAction(action, elementId, filename) {
+  try {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+    const canvas = await html2canvas(el, { scale: 2 });
+    const imgData = canvas.toDataURL("image/png");
+    // Calculate A4 size in px (approx 595 x 842 at 72dpi, let's just use image dimensions for a 1-page long pdf)
+    const pdf = new jsPDF({
+      orientation: canvas.width > canvas.height ? "landscape" : "portrait",
+      unit: "px",
+      format: [canvas.width, canvas.height]
+    });
+    pdf.addImage(imgData, "PNG", 0, 0, canvas.width, canvas.height);
+    if (action === 'download') {
+      pdf.save(filename);
+    } else if (action === 'print') {
+      pdf.autoPrint();
+      window.open(pdf.output('bloburl'), '_blank');
+    } else if (action === 'share') {
+      const pdfBlob = pdf.output('blob');
+      const file = new File([pdfBlob], filename, { type: "application/pdf" });
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ title: filename, files: [file] });
+      } else {
+        pdf.save(filename);
+      }
+    }
+  } catch (err) {
+    console.error("Error exporting HTML to PDF:", err);
+  }
+}
+
+function ExportActionButtons({ onAction }) {
+  return (
+    <div style={{ display: "flex", gap: "0.5rem" }}>
+      <button className="btn-secondary" onClick={() => onAction('print')} style={{ padding: "0.25rem 0.5rem", fontSize: "0.85rem", height: "auto" }}>
+         🖨️ Print
+      </button>
+      <button className="btn-secondary" onClick={() => onAction('download')} style={{ padding: "0.25rem 0.5rem", fontSize: "0.85rem", height: "auto" }}>
+         ⬇️ PDF
+      </button>
+      <button className="btn-primary" onClick={() => onAction('share')} style={{ padding: "0.25rem 0.5rem", fontSize: "0.85rem", height: "auto" }}>
+         📤 Share
+      </button>
+    </div>
+  );
 }
 
 export default function AdminDashboard() {
@@ -2291,17 +2384,20 @@ export default function AdminDashboard() {
                       ))}
                     </select>
                     {selectedDiagnosticAssessment && (
-                      <button 
-                        className="btn-secondary"
-                        onClick={() => window.open(`/api/assessments/${selectedDiagnosticAssessment}/export/xlsx?cohort_id=${cohortFilter || ""}`, '_blank')}
-                      >
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: "4px" }}>
-                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                          <polyline points="7 10 12 15 17 10" />
-                          <line x1="12" y1="15" x2="12" y2="3" />
-                        </svg>
-                        Export Excel
-                      </button>
+                      <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                        <ExportActionButtons onAction={(act) => handleHtmlPdfAction(act, "diagnostic-report-container", "Diagnostic_Report.pdf")} />
+                        <button 
+                          className="btn-secondary"
+                          onClick={() => window.open(`/api/assessments/${selectedDiagnosticAssessment}/export/xlsx?cohort_id=${cohortFilter || ""}`, '_blank')}
+                        >
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: "4px" }}>
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="7 10 12 15 17 10" />
+                            <line x1="12" y1="15" x2="12" y2="3" />
+                          </svg>
+                          Export Excel
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -2311,7 +2407,7 @@ export default function AdminDashboard() {
                 ) : !selectedDiagnosticAssessment ? (
                   <p style={{ textAlign: "center", padding: "2rem", color: "#64748b" }}>Select an assessment above to view detailed participation, mastery, and regional analytics.</p>
                 ) : diagnosticData && !diagnosticData.error ? (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
+                  <div id="diagnostic-report-container" style={{ display: "flex", flexDirection: "column", gap: "2rem", padding: "1rem", backgroundColor: "#fff" }}>
                     
                     {/* 1. Participation / Coverage */}
                     <div style={{ backgroundColor: "#f8fafc", padding: "1.5rem", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
@@ -2784,9 +2880,27 @@ export default function AdminDashboard() {
         <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="subs-modal-title">
           <div className="modal-content" style={{ maxWidth: "950px" }}>
             <div className="modal-header">
-              <h2 id="subs-modal-title">
-                {viewingSubmissionsId === "ALL" ? "All Submitted Tests (Global)" : "Assessment Candidate Submissions"}
-              </h2>
+              <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+                <h2 id="subs-modal-title" style={{ margin: 0 }}>
+                  {viewingSubmissionsId === "ALL" ? "All Submitted Tests (Global)" : "Assessment Candidate Submissions"}
+                </h2>
+                {!submissionsLoading && submissionsData?.submissions && (
+                  <ExportActionButtons onAction={(act) => handlePdfAction(
+                    act, 
+                    viewingSubmissionsId === "ALL" ? "All Submitted Tests (Global)" : "Assessment Candidate Submissions", 
+                    viewingSubmissionsId !== "ALL" ? `Total: ${submissionsData.summary?.totalSubmissions || 0} | Avg: ${submissionsData.summary?.averagePercentage || 0}%` : "",
+                    viewingSubmissionsId === "ALL" 
+                      ? [["Assessment", "Candidate", "Phone", "Score", "Percentage", "Result", "Submitted At"]]
+                      : [["Candidate Name", "Phone Number", "Score", "Percentage", "Result", "Submitted At"]],
+                    (submissionsData.submissions || []).map(s => viewingSubmissionsId === "ALL" ? [
+                      s.assessment_title, s.officer_name || "Unknown", s.phone_number || "-", `${s.score}/${s.total_points}`, `${s.percentage}%`, s.percentage >= 50 ? "Passed" : "Needs Review", s.submitted_at.split("T")[0]
+                    ] : [
+                      s.officer_name || "Unknown", s.phone_number || "-", `${s.score}/${s.total_points}`, `${s.percentage}%`, s.percentage >= 50 ? "Passed" : "Needs Review", s.submitted_at.split("T")[0]
+                    ]),
+                    "Submitted_Tests.pdf"
+                  )} />
+                )}
+              </div>
               <button className="modal-close-btn" onClick={() => setViewingSubmissionsId(null)} aria-label="Close submissions modal">
                 &times;
               </button>
@@ -2814,7 +2928,7 @@ export default function AdminDashboard() {
                 )}
 
                 <div className="table-wrap">
-                  <table>
+                  <table className="admin-table">
                     <thead>
                       <tr>
                         {viewingSubmissionsId === "ALL" && <th scope="col">Assessment</th>}
@@ -3587,7 +3701,17 @@ export default function AdminDashboard() {
         <div className="modal-overlay">
           <div className="modal-content" style={{ maxWidth: "800px" }}>
             <div className="modal-header">
-              <h2>Pending Test Submissions</h2>
+              <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+                <h2 style={{ margin: 0 }}>Pending Test Submissions</h2>
+                <ExportActionButtons onAction={(act) => handlePdfAction(
+                  act, 
+                  "Pending Test Submissions", 
+                  `Total: ${defaultersData.length} nominees attended but have not submitted any test.`,
+                  [["Officer Name", "Phone", "Region", "District"]],
+                  defaultersData.map(d => [d.officer_name, d.phone_number, d.region, d.district]),
+                  "Pending_Tests.pdf"
+                )} />
+              </div>
               <button className="close-btn" onClick={() => setShowDefaultersModal(false)}>&times;</button>
             </div>
             <div className="modal-body">
