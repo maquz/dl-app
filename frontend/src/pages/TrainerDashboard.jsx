@@ -14,6 +14,7 @@ import {
   fetchAssessmentOverviewStats,
   fetchNationalTrainers,
   updateNationalTrainer,
+  fetchResources,
 } from "../api";
 
 export default function TrainerDashboard() {
@@ -55,6 +56,19 @@ export default function TrainerDashboard() {
   const [assessmentsList, setAssessmentsList] = useState([]);
   const [assessmentsLoading, setAssessmentsLoading] = useState(false);
   const [overviewStats, setOverviewStats] = useState(null);
+
+  // Resources State
+  const [resources, setResources] = useState([]);
+  const [openCats, setOpenCats] = useState({
+    "English Language": true,
+    "Mathematics": true,
+    "Monitoring tools": true,
+    "General Resources": true
+  });
+
+  // Oversight Pagination State
+  const [oversightPage, setOversightPage] = useState(1);
+  const itemsPerPage = 15;
 
   // Submissions Modal State
   const [viewingSubmissionsId, setViewingSubmissionsId] = useState(null);
@@ -127,8 +141,16 @@ export default function TrainerDashboard() {
   useEffect(() => {
     if (token) {
       loadParticipants();
+      loadResourcesData();
     }
   }, [cohortFilter, attendanceFilter, searchQuery]);
+
+  async function loadResourcesData() {
+    try {
+      const data = await fetchResources();
+      setResources(data.resources || []);
+    } catch {}
+  }
 
   async function loadAssessmentsData() {
     setAssessmentsLoading(true);
@@ -437,6 +459,13 @@ export default function TrainerDashboard() {
         >
           🛡️ National Facilitators Directory ({trainersList.length})
         </button>
+        <button
+          type="button"
+          className={`dash-tab ${activeTab === "resources" ? "active" : ""}`}
+          onClick={() => setActiveTab("resources")}
+        >
+          📁 Training Resources ({resources.length})
+        </button>
       </div>
 
       {successMsg && <div className="banner banner-success">{successMsg}</div>}
@@ -518,7 +547,7 @@ export default function TrainerDashboard() {
                     <td colSpan={9} className="empty-row">No participants found matching criteria.</td>
                   </tr>
                 )}
-                {participants.map((p) => (
+                {participants.slice((oversightPage - 1) * itemsPerPage, oversightPage * itemsPerPage).map((p) => (
                   <tr key={p.id}>
                     <td><span className="ref-tag">{p.referenceCode || `DL-${p.id}`}</span></td>
                     <td>
@@ -550,7 +579,7 @@ export default function TrainerDashboard() {
                         className={`btn-checkin-toggle ${p.attendance_status === "Attended" ? "is-attended" : ""}`}
                         onClick={() => handleQuickCheckIn(p.id, p.attendance_status || "Registered", p.officer_name)}
                       >
-                        {p.attendance_status === "Attended" ? "Undo" : "Check-in"}
+                        {p.attendance_status === "Attended" ? "Undo Check-In" : "Check In"}
                       </button>
                     </td>
                   </tr>
@@ -558,6 +587,33 @@ export default function TrainerDashboard() {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Controls */}
+          {participants.length > 0 && (
+            <div className="pagination" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "1rem" }}>
+              <div style={{ fontSize: "0.85rem", color: "#64748b" }}>
+                Showing {(oversightPage - 1) * itemsPerPage + 1} to {Math.min(oversightPage * itemsPerPage, participants.length)} of {participants.length} entries
+              </div>
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                <button 
+                  className="btn-secondary" 
+                  style={{ padding: "0.25rem 0.75rem" }}
+                  disabled={oversightPage === 1} 
+                  onClick={() => setOversightPage(prev => Math.max(prev - 1, 1))}
+                >
+                  Previous
+                </button>
+                <button 
+                  className="btn-secondary" 
+                  style={{ padding: "0.25rem 0.75rem" }}
+                  disabled={oversightPage >= Math.ceil(participants.length / itemsPerPage)} 
+                  onClick={() => setOversightPage(prev => Math.min(prev + 1, Math.ceil(participants.length / itemsPerPage)))}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -715,6 +771,61 @@ export default function TrainerDashboard() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* TRAINING RESOURCES */}
+      {activeTab === "resources" && (
+        <div className="trainer-team-view fade-in">
+          <div className="cohort-view-header">
+            <h2>Training Resources & Documents</h2>
+            <p>Download the official DL manuals, timetables, and resource materials.</p>
+          </div>
+          <div className="view-content" style={{ display: "grid", gap: "2rem", marginTop: "2rem" }}>
+            {resources && resources.length > 0 ? (
+              ["English Language", "Mathematics", "Monitoring tools", "General Resources"].map(cat => {
+                const catResources = resources.filter(r => r.category === cat);
+                if (catResources.length === 0) return null;
+                const isOpen = openCats[cat];
+                return (
+                  <div key={cat} style={{ display: "grid", gap: "1rem" }}>
+                    <h3 
+                      onClick={() => setOpenCats(prev => ({ ...prev, [cat]: !isOpen }))}
+                      style={{ 
+                        fontSize: "1.25rem", color: "#0f172a", borderBottom: "2px solid #e2e8f0", 
+                        paddingBottom: "0.5rem", margin: 0, display: "flex", justifyContent: "space-between", 
+                        alignItems: "center", cursor: "pointer", userSelect: "none"
+                      }}
+                    >
+                      {cat}
+                      <span style={{ fontSize: "1rem", color: "#64748b", transform: isOpen ? "rotate(0deg)" : "rotate(-90deg)", transition: "transform 0.2s" }}>
+                        ▼
+                      </span>
+                    </h3>
+                    {isOpen && catResources.map(file => (
+                      <div key={file.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1.25rem", border: "1px solid #e2e8f0", borderRadius: "12px", background: "#fff", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                          <span style={{ fontSize: "2rem" }}>📄</span>
+                          <div>
+                            <strong style={{ fontSize: "1.1rem", color: "#1e293b", display: "block", marginBottom: "0.25rem" }}>{file.name}</strong>
+                            <span style={{ fontSize: "0.85rem", color: "#64748b" }}>PDF Document • {(file.size / 1024 / 1024).toFixed(2)} MB</span>
+                          </div>
+                        </div>
+                        <a href={file.url} target="_blank" rel="noreferrer" className="btn-primary" style={{ padding: "0.5rem 1rem", textDecoration: "none" }}>
+                          Download
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })
+            ) : (
+              <div style={{ textAlign: "center", padding: "3rem", background: "#f8fafc", borderRadius: "12px", border: "1px dashed #cbd5e1", color: "#64748b" }}>
+                <p style={{ margin: 0, fontSize: "1.1rem" }}>No resources are available yet.</p>
+                <p style={{ marginTop: "0.5rem", fontSize: "0.9rem" }}>Documents will appear here once uploaded by the administrator.</p>
+              </div>
+            )}
           </div>
         </div>
       )}

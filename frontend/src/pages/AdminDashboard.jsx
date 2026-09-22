@@ -1152,6 +1152,40 @@ export default function AdminDashboard() {
     }
   }
 
+  // ---- Export Signed List (Word Format) ----
+  function handleExportSignedList() {
+    const listRows = rows;
+    const date = new Date().toLocaleDateString("en-GH", { day: "2-digit", month: "long", year: "numeric" });
+    const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Attendance Signed List</title><style>table { border-collapse: collapse; width: 100%; } th, td { border: 1px solid black; padding: 8px; text-align: left; } th { background-color: #f2f2f2; }</style></head><body>";
+    const footer = "</body></html>";
+    let html = `<h2 style='text-align:center;'>Nominee Attendance Signed List</h2>`;
+    html += `<p style='text-align:center;'>Generated on ${date} &bull; Total: ${listRows.length} nominee(s)</p>`;
+    html += "<table>";
+    html += "<tr><th>S/N</th><th>Name</th><th>District</th><th>Institution</th><th>Phone No</th><th>Signature</th></tr>";
+    
+    listRows.forEach((r, i) => {
+      html += `<tr>
+        <td>${i + 1}</td>
+        <td><strong>${r.officer_name}</strong></td>
+        <td>${r.district || ""}</td>
+        <td>${r.institution_name || ""}</td>
+        <td>${r.phone_number || ""}</td>
+        <td style='width:150px;'></td>
+      </tr>`;
+    });
+    html += "</table>";
+    
+    const sourceHTML = header + html + footer;
+    const blob = new Blob(['\ufeff', sourceHTML], { type: 'application/msword' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `Signed_List_${date.replace(/ /g, "_")}.doc`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
   // ---- Print current filtered nominees table ----
   function handlePrint() {
     const printRows = rows;
@@ -1710,6 +1744,16 @@ export default function AdminDashboard() {
                       <rect x="6" y="14" width="12" height="8"></rect>
                     </svg>
                     Print
+                  </button>
+                  <button className="btn-secondary" onClick={handleExportSignedList} title="Download signed attendance list (Word)">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: "4px" }}>
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                      <polyline points="14 2 14 8 20 8"></polyline>
+                      <line x1="16" y1="13" x2="8" y2="13"></line>
+                      <line x1="16" y1="17" x2="8" y2="17"></line>
+                      <polyline points="10 9 9 9 8 9"></polyline>
+                    </svg>
+                    Signed List
                   </button>
                   <button className="btn-primary" onClick={handleOpenShare} title="Share nominees data">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: "4px" }}>
