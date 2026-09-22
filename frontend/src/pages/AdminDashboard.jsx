@@ -9,6 +9,7 @@ import {
   fetchRegions,
   deleteRegistration,
   updateRegistration,
+  updateRegistrationImei,
   downloadExport,
   fetchStats,
   fetchAdminUsers,
@@ -281,6 +282,10 @@ export default function AdminDashboard() {
   const [defaultersData, setDefaultersData] = useState([]);
   const [defaultersType, setDefaultersType] = useState("");
   const [showDefaultersModal, setShowDefaultersModal] = useState(false);
+
+  // Tablet Distribution State
+  const [scanImeiFor, setScanImeiFor] = useState(null);
+  const [scannedImei, setScannedImei] = useState("");
 
   // Question Builder Modal State
   const [isBuilderOpen, setIsBuilderOpen] = useState(false);
@@ -1535,6 +1540,22 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               </button>
+
+              <button
+                type="button"
+                className={`admin-nav-item ${activeTab === "distribution" ? "active" : ""}`}
+                onClick={() => {
+                  setActiveTab("distribution");
+                }}
+              >
+                <div className="admin-nav-item-left">
+                  <span className="admin-nav-item-icon">📱</span>
+                  <div className="admin-nav-item-text">
+                    <span>Tablet Distribution</span>
+                    <span className="admin-nav-item-sub">Assign Devices</span>
+                  </div>
+                </div>
+              </button>
             </nav>
           </div>
 
@@ -2783,6 +2804,97 @@ export default function AdminDashboard() {
                 )}
               </div>
 
+            </div>
+          )}
+
+          {/* VIEW: TABLET DISTRIBUTION */}
+          {activeTab === "distribution" && (
+            <div className="tablet-distribution-section" style={{ padding: "2rem", background: "#fff", borderRadius: "12px", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)" }}>
+              <div className="trainers-mgmt-header" style={{ marginBottom: "2rem" }}>
+                <div>
+                  <h2 style={{ fontSize: "1.5rem", color: "#1e293b", margin: "0 0 0.5rem 0" }}>Tablet Distribution (IT Persons)</h2>
+                  <p style={{ color: "#64748b", margin: 0 }}>Assign and track mobile tablets distributed to IT personnel by scanning their IMEI.</p>
+                </div>
+              </div>
+              
+              <div className="table-wrap">
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>S/N</th>
+                      <th>Officer Name</th>
+                      <th>District</th>
+                      <th>Phone Number</th>
+                      <th>Assigned IMEI</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.filter(r => (r.roles || []).some(role => role.toLowerCase().includes("it"))).length === 0 ? (
+                      <tr>
+                        <td colSpan="6" className="empty-row" style={{ textAlign: "center", padding: "2rem" }}>No IT persons found for current filters.</td>
+                      </tr>
+                    ) : (
+                      rows.filter(r => (r.roles || []).some(role => role.toLowerCase().includes("it"))).map((r, idx) => (
+                        <tr key={r.id}>
+                          <td>{idx + 1}</td>
+                          <td><strong>{r.officer_name}</strong></td>
+                          <td>{r.district}</td>
+                          <td>{r.phone_number}</td>
+                          <td>
+                            {scanImeiFor === r.id ? (
+                              <form onSubmit={async (e) => {
+                                e.preventDefault();
+                                try {
+                                  await updateRegistrationImei(password, r.id, scannedImei);
+                                  setRows(prev => prev.map(row => row.id === r.id ? { ...row, tablet_imei: scannedImei } : row));
+                                  setScanImeiFor(null);
+                                  setScannedImei("");
+                                } catch (err) {
+                                  alert("Failed to assign IMEI: " + err.message);
+                                }
+                              }}>
+                                <input
+                                  type="text"
+                                  autoFocus
+                                  placeholder="Scan IMEI..."
+                                  value={scannedImei}
+                                  onChange={e => setScannedImei(e.target.value)}
+                                  onBlur={(e) => {
+                                    // Prevent blur from closing it immediately if they just clicked the input
+                                    if(e.relatedTarget && e.relatedTarget.tagName === 'BUTTON') return;
+                                    setScanImeiFor(null);
+                                    setScannedImei("");
+                                  }}
+                                  style={{ padding: "0.5rem", width: "200px", border: "2px solid #3b82f6", borderRadius: "6px", outline: "none", fontSize: "1rem" }}
+                                />
+                              </form>
+                            ) : (
+                              <span style={{ fontFamily: "monospace", fontSize: "1rem", color: r.tablet_imei ? "#16a34a" : "#94a3b8", fontWeight: r.tablet_imei ? 600 : 400 }}>
+                                {r.tablet_imei || "Not Assigned"}
+                              </span>
+                            )}
+                          </td>
+                          <td>
+                            {scanImeiFor !== r.id && (
+                              <button 
+                                className="btn-secondary"
+                                onClick={() => {
+                                  setScanImeiFor(r.id);
+                                  setScannedImei("");
+                                }}
+                                style={{ padding: "0.4rem 0.8rem", fontSize: "0.85rem" }}
+                              >
+                                {r.tablet_imei ? "Re-assign (Scan)" : "Assign (Scan)"}
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 

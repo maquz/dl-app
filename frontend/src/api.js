@@ -164,6 +164,18 @@ export async function updateRegistration(password, id, payload) {
   return handle(res);
 }
 
+export async function updateRegistrationImei(authHeader, id, tablet_imei) {
+  const res = await fetch(`${API_URL}/registrations/${id}/imei`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAdminAuthHeaders(authHeader),
+    },
+    body: JSON.stringify({ tablet_imei }),
+  });
+  return handle(res);
+}
+
 export async function deleteRegistration(password, id) {
   const res = await fetch(`${API_URL}/registrations/${id}`, {
     method: "DELETE",
