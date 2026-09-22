@@ -17,6 +17,12 @@ export default function Confirmation() {
   const [activeTab, setActiveTab] = useState(location.state?.activeTab || "pre-test");
   const [assessments, setAssessments] = useState([]);
   const [resources, setResources] = useState([]);
+  const [openCats, setOpenCats] = useState({
+    "English Language": true,
+    "Mathematics": true,
+    "Monitoring tools": true,
+    "General Resources": true
+  });
   const [loadingAssessments, setLoadingAssessments] = useState(true);
   const [mySubmissions, setMySubmissions] = useState([]);
 
@@ -634,12 +640,23 @@ export default function Confirmation() {
                   ["English Language", "Mathematics", "Monitoring tools", "General Resources"].map(cat => {
                     const catResources = resources.filter(r => r.category === cat);
                     if (catResources.length === 0) return null;
+                    const isOpen = openCats[cat];
                     return (
                       <div key={cat} style={{ display: "grid", gap: "1rem" }}>
-                        <h3 style={{ fontSize: "1.25rem", color: "#0f172a", borderBottom: "2px solid #e2e8f0", paddingBottom: "0.5rem", margin: 0 }}>
+                        <h3 
+                          onClick={() => setOpenCats(prev => ({ ...prev, [cat]: !isOpen }))}
+                          style={{ 
+                            fontSize: "1.25rem", color: "#0f172a", borderBottom: "2px solid #e2e8f0", 
+                            paddingBottom: "0.5rem", margin: 0, display: "flex", justifyContent: "space-between", 
+                            alignItems: "center", cursor: "pointer", userSelect: "none"
+                          }}
+                        >
                           {cat}
+                          <span style={{ fontSize: "1rem", color: "#64748b", transform: isOpen ? "rotate(0deg)" : "rotate(-90deg)", transition: "transform 0.2s" }}>
+                            ▼
+                          </span>
                         </h3>
-                        {catResources.map(file => (
+                        {isOpen && catResources.map(file => (
                           <div key={file.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1.25rem", border: "1px solid #e2e8f0", borderRadius: "12px", background: "#fff", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
                               <span style={{ fontSize: "2rem" }}>📄</span>
