@@ -1,17 +1,28 @@
 import React, { useEffect, useRef } from "react";
-import { Html5QrcodeScanner } from "html5-qrcode";
+import { Html5QrcodeScanner, Html5QrcodeSupportedFormats } from "html5-qrcode";
 
 export default function CameraScanner({ title = "Scan Barcode/QR Code", onScanSuccess, onClose }) {
   const scannerRef = useRef(null);
 
   useEffect(() => {
-    // Initialize the scanner
+    // Initialize the scanner with optimized settings for long 1D barcodes (IMEI)
     const scanner = new Html5QrcodeScanner(
       "reader",
       {
-        qrbox: { width: 300, height: 150 },
-        fps: 10,
-        rememberLastUsedCamera: true
+        fps: 20,
+        rememberLastUsedCamera: true,
+        formatsToSupport: [
+          Html5QrcodeSupportedFormats.CODE_128,
+          Html5QrcodeSupportedFormats.CODE_39,
+          Html5QrcodeSupportedFormats.CODE_93,
+          Html5QrcodeSupportedFormats.EAN_13,
+          Html5QrcodeSupportedFormats.QR_CODE
+        ],
+        videoConstraints: {
+          facingMode: "environment",
+          width: { min: 1280, ideal: 1920 },
+          height: { min: 720, ideal: 1080 }
+        }
       },
       /* verbose= */ false
     );
