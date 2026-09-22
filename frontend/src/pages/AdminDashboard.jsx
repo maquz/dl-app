@@ -338,6 +338,10 @@ export default function AdminDashboard() {
        return s.startsWith(g) || s === g;
     });
   }, [rows, genderFilter]);
+
+  const itPersonsList = useMemo(() => {
+    return displayRows.filter(r => (r.roles || []).some(role => role.toLowerCase().includes("it person")));
+  }, [displayRows]);
   
   const { currentPage: regPage, setCurrentPage: setRegPage, totalPages: regTotalPages, currentData: currentRows } = usePagination(displayRows, 20);
   const { currentPage: defaultersPage, setCurrentPage: setDefaultersPage, totalPages: defaultersTotalPages, currentData: currentDefaulters } = usePagination(defaultersData, 10);
@@ -1229,6 +1233,73 @@ export default function AdminDashboard() {
     XLSX.utils.book_append_sheet(wb, ws, "Signed List");
     
     XLSX.writeFile(wb, `Signed_List_${date.replace(/ /g, "_")}.xlsx`);
+  }
+
+  function handleExportDistributionWord(itPersonsList) {
+    const listRows = [...itPersonsList].sort((a, b) => (a.district || "").localeCompare(b.district || ""));
+    const date = new Date().toLocaleDateString("en-GH", { day: "2-digit", month: "long", year: "numeric" });
+    const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Tablet Distribution List</title><style>table { border-collapse: collapse; width: 100%; } th, td { border: 1px solid black; padding: 8px; text-align: left; } th { background-color: #f2f2f2; }</style></head><body>";
+    const footer = "</body></html>";
+    let html = `<h2 style='text-align:center;'>Tablet Distribution List (IT Persons)</h2>`;
+    html += `<p style='text-align:center;'>Generated on ${date} &bull; Total: ${listRows.length} IT Person(s)</p>`;
+    html += "<table>";
+    html += "<tr><th>S/N</th><th>Name</th><th>Role</th><th>District</th><th>Phone No</th><th>Assigned IMEI</th></tr>";
+    
+    listRows.forEach((r, i) => {
+      const roleStr = r.roles ? r.roles.filter(role => role.toLowerCase().includes("it person")).join(", ") : "";
+      html += `<tr>
+        <td>${i + 1}</td>
+        <td><strong>${r.officer_name}</strong></td>
+        <td>${roleStr}</td>
+        <td>${r.district || ""}</td>
+        <td>${r.phone_number || ""}</td>
+        <td style='font-family: monospace;'>${r.tablet_imei || "Not Assigned"}</td>
+      </tr>`;
+    });
+    html += "</table>";
+    const blob = new Blob(['\ufeff', header + html + footer], {
+      type: "application/msword;charset=utf-8"
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "Tablet_Distribution_List.doc";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  function handleExportDistributionExcel(itPersonsList) {
+    const listRows = [...itPersonsList].sort((a, b) => (a.district || "").localeCompare(b.district || ""));
+    const date = new Date().toLocaleDateString("en-GH", { day: "2-digit", month: "long", year: "numeric" });
+    const wsData = [
+      ["S/N", "Name", "Role", "District", "Phone No", "Assigned IMEI"]
+    ];
+    listRows.forEach((r, i) => {
+      const roleStr = r.roles ? r.roles.filter(role => role.toLowerCase().includes("it person")).join(", ") : "";
+      wsData.push([
+        i + 1,
+        r.officer_name || "",
+        roleStr,
+        r.district || "",
+        r.phone_number || "",
+        r.tablet_imei || "Not Assigned"
+      ]);
+    });
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    
+    ws["!cols"] = [
+      { wch: 5 },  
+      { wch: 35 }, 
+      { wch: 45 }, 
+      { wch: 25 }, 
+      { wch: 15 }, 
+      { wch: 25 }, 
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Tablet Distribution");
+    XLSX.writeFile(wb, `Tablet_Distribution_${date.replace(/ /g, "_")}.xlsx`);
   }
 
   // ---- Print current filtered nominees table ----
@@ -2811,53 +2882,63 @@ export default function AdminDashboard() {
 
           {/* VIEW: TABLET DISTRIBUTION */}
           {activeTab === "distribution" && (
-            <div className="tablet-distribution-section" style={{ padding: "2rem", background: "#fff", borderRadius: "12px", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)" }}>
-              {cameraScanFor && (
-                <CameraScanner 
-                  title="Scan IMEI QR/Barcode"
-                  onClose={() => setCameraScanFor(null)}
-                  onScanSuccess={async (decodedText) => {
-                    try {
-                      await updateRegistrationImei(password, cameraScanFor, decodedText);
-                      setRows(prev => prev.map(row => row.id === cameraScanFor ? { ...row, tablet_imei: decodedText } : row));
-                      setCameraScanFor(null);
-                    } catch (err) {
-                      alert("Failed to assign IMEI: " + err.message);
-                    }
-                  }}
-                />
-              )}
-              <div className="trainers-mgmt-header" style={{ marginBottom: "2rem" }}>
-                <div>
-                  <h2 style={{ fontSize: "1.5rem", color: "#1e293b", margin: "0 0 0.5rem 0" }}>Tablet Distribution (IT Persons)</h2>
-                  <p style={{ color: "#64748b", margin: 0 }}>Assign and track mobile tablets distributed to IT personnel by scanning their IMEI.</p>
+              <div className="tablet-distribution-section" style={{ padding: "2rem", background: "#fff", borderRadius: "12px", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)" }}>
+                {cameraScanFor && (
+                  <CameraScanner 
+                    title="Scan IMEI QR/Barcode"
+                    onClose={() => setCameraScanFor(null)}
+                    onScanSuccess={async (decodedText) => {
+                      try {
+                        await updateRegistrationImei(password, cameraScanFor, decodedText);
+                        setRows(prev => prev.map(row => row.id === cameraScanFor ? { ...row, tablet_imei: decodedText } : row));
+                        setCameraScanFor(null);
+                      } catch (err) {
+                        alert("Failed to assign IMEI: " + err.message);
+                      }
+                    }}
+                  />
+                )}
+                <div className="trainers-mgmt-header" style={{ marginBottom: "2rem", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                  <div>
+                    <h2 style={{ fontSize: "1.5rem", color: "#1e293b", margin: "0 0 0.5rem 0" }}>Tablet Distribution (IT Persons)</h2>
+                    <p style={{ color: "#64748b", margin: 0 }}>Assign and track mobile tablets distributed to IT personnel by scanning their IMEI.</p>
+                  </div>
+                  <div style={{ display: "flex", gap: "0.5rem" }}>
+                    <button className="btn-secondary" onClick={() => handleExportDistributionWord(itPersonsList)} title="Download Distribution List (Word)">
+                      📄 Export Word
+                    </button>
+                    <button className="btn-secondary" onClick={() => handleExportDistributionExcel(itPersonsList)} title="Download Distribution List (Excel)">
+                      📊 Export Excel
+                    </button>
+                  </div>
                 </div>
-              </div>
-              
-              <div className="table-wrap">
-                <table className="admin-table">
-                  <thead>
-                    <tr>
-                      <th>S/N</th>
-                      <th>Officer Name</th>
-                      <th>District</th>
-                      <th>Phone Number</th>
-                      <th>Assigned IMEI</th>
-                      <th>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.filter(r => (r.roles || []).some(role => role.toLowerCase().includes("it"))).length === 0 ? (
+                
+                <div className="table-wrap">
+                  <table className="admin-table">
+                    <thead>
                       <tr>
-                        <td colSpan="6" className="empty-row" style={{ textAlign: "center", padding: "2rem" }}>No IT persons found for current filters.</td>
+                        <th>S/N</th>
+                        <th>Officer Name</th>
+                        <th>Nominated Role</th>
+                        <th>District</th>
+                        <th>Phone Number</th>
+                        <th>Assigned IMEI</th>
+                        <th>Action</th>
                       </tr>
-                    ) : (
-                      rows.filter(r => (r.roles || []).some(role => role.toLowerCase().includes("it"))).map((r, idx) => (
-                        <tr key={r.id}>
-                          <td>{idx + 1}</td>
-                          <td><strong>{r.officer_name}</strong></td>
-                          <td>{r.district}</td>
-                          <td>{r.phone_number}</td>
+                    </thead>
+                    <tbody>
+                      {itPersonsList.length === 0 ? (
+                        <tr>
+                          <td colSpan="7" className="empty-row" style={{ textAlign: "center", padding: "2rem" }}>No IT persons found for current filters.</td>
+                        </tr>
+                      ) : (
+                        itPersonsList.map((r, idx) => (
+                          <tr key={r.id}>
+                            <td>{idx + 1}</td>
+                            <td><strong>{r.officer_name}</strong></td>
+                            <td><span style={{fontSize: "0.85rem", color: "#475569"}}>{(r.roles || []).filter(role => role.toLowerCase().includes("it person")).join(", ")}</span></td>
+                            <td>{r.district}</td>
+                            <td>{r.phone_number}</td>
                           <td>
                             {scanImeiFor === r.id ? (
                               <form onSubmit={async (e) => {
