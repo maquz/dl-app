@@ -629,22 +629,33 @@ export default function Confirmation() {
                 <h2>Training Resources & Documents</h2>
                 <p>Download the official DL manuals, timetables, and resource materials.</p>
               </div>
-              <div className="view-content" style={{ padding: "2rem", display: "grid", gap: "1rem" }}>
+              <div className="view-content" style={{ padding: "2rem", display: "grid", gap: "2rem" }}>
                 {resources && resources.length > 0 ? (
-                  resources.map(file => (
-                    <div key={file.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1.25rem", border: "1px solid #e2e8f0", borderRadius: "12px", background: "#fff", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                        <span style={{ fontSize: "2rem" }}>📄</span>
-                        <div>
-                          <strong style={{ fontSize: "1.1rem", color: "#1e293b", display: "block", marginBottom: "0.25rem" }}>{file.name}</strong>
-                          <span style={{ fontSize: "0.85rem", color: "#64748b" }}>PDF Document • {(file.size / 1024 / 1024).toFixed(2)} MB</span>
-                        </div>
+                  ["English Language", "Mathematics", "Monitoring tools", "General Resources"].map(cat => {
+                    const catResources = resources.filter(r => r.category === cat);
+                    if (catResources.length === 0) return null;
+                    return (
+                      <div key={cat} style={{ display: "grid", gap: "1rem" }}>
+                        <h3 style={{ fontSize: "1.25rem", color: "#0f172a", borderBottom: "2px solid #e2e8f0", paddingBottom: "0.5rem", margin: 0 }}>
+                          {cat}
+                        </h3>
+                        {catResources.map(file => (
+                          <div key={file.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1.25rem", border: "1px solid #e2e8f0", borderRadius: "12px", background: "#fff", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                              <span style={{ fontSize: "2rem" }}>📄</span>
+                              <div>
+                                <strong style={{ fontSize: "1.1rem", color: "#1e293b", display: "block", marginBottom: "0.25rem" }}>{file.name}</strong>
+                                <span style={{ fontSize: "0.85rem", color: "#64748b" }}>PDF Document • {(file.size / 1024 / 1024).toFixed(2)} MB</span>
+                              </div>
+                            </div>
+                            <a href={file.url} target="_blank" rel="noreferrer" className="btn-primary" style={{ padding: "0.5rem 1rem", textDecoration: "none" }}>
+                              Download
+                            </a>
+                          </div>
+                        ))}
                       </div>
-                      <a href={file.url} target="_blank" rel="noreferrer" className="btn-primary" style={{ padding: "0.5rem 1rem", textDecoration: "none" }}>
-                        Download
-                      </a>
-                    </div>
-                  ))
+                    );
+                  })
                 ) : (
                   <div style={{ textAlign: "center", padding: "3rem", background: "#f8fafc", borderRadius: "12px", border: "1px dashed #cbd5e1", color: "#64748b" }}>
                     <p style={{ margin: 0, fontSize: "1.1rem" }}>No resources are available yet.</p>
