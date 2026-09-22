@@ -1300,10 +1300,12 @@ export default function AdminDashboard() {
   const filterDistricts = useMemo(() => (regionFilter ? regions[regionFilter] || [] : []), [regionFilter, regions]);
   const editDistricts = useMemo(() => (editValues.region ? regions[editValues.region] || [] : []), [editValues.region, regions]);
 
-  // Analytics calculation
-  const totalCount = stats?.total ?? rows.length;
-  const maleCount = stats?.maleCount ?? rows.filter((r) => r.sex === "Male").length;
-  const femaleCount = stats?.femaleCount ?? rows.filter((r) => r.sex === "Female").length;
+  // Analytics calculation strictly bound to current filtered rows
+  const totalCount = rows.length;
+  const maleCount = rows.filter((r) => r.sex === "Male").length;
+  const femaleCount = rows.filter((r) => r.sex === "Female").length;
+  const attendedCount = rows.filter((r) => r.attendance_status === "Attended").length;
+  const pendingCount = Math.max(0, totalCount - attendedCount);
 
   // Filtered trainers list
   const filteredTrainers = useMemo(() => {
@@ -1576,7 +1578,7 @@ export default function AdminDashboard() {
                       onClick={() => setAttendanceFilter(prev => prev === "Attended" ? "" : "Attended")}
                       title="Filter by Attended"
                     >
-                      <strong>{stats?.attendedCount ?? rows.filter((r) => r.attendance_status === "Attended").length}</strong> Attended
+                      <strong>{attendedCount}</strong> Attended
                     </span>
                     <span 
                       className="split-item" 
@@ -1584,14 +1586,14 @@ export default function AdminDashboard() {
                       onClick={() => setAttendanceFilter(prev => prev === "Registered" ? "" : "Registered")}
                       title="Filter by Pending"
                     >
-                      <strong>{Math.max(0, totalCount - (stats?.attendedCount ?? rows.filter((r) => r.attendance_status === "Attended").length))}</strong> Pending
+                      <strong>{pendingCount}</strong> Pending
                     </span>
                   </div>
                   <div className="progress-bar">
                     <div
                       className="progress-fill progress-green"
                       style={{
-                        width: `${totalCount > 0 ? ((stats?.attendedCount ?? 0) / totalCount) * 100 : 0}%`,
+                        width: `${totalCount > 0 ? (attendedCount / totalCount) * 100 : 0}%`,
                         backgroundColor: "#16a34a",
                       }}
                     ></div>
