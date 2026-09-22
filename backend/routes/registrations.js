@@ -764,4 +764,34 @@ router.get("/export/xlsx", adminAuth, async (req, res) => {
   res.send(buffer);
 });
 
+// PUT /api/registrations/:id/imei - Assign tablet IMEI
+router.put("/:id/imei", trainerOrAdminAuth, async (req, res) => {
+  const { id } = req.params;
+  const { tablet_imei } = req.body;
+
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from("registrations")
+        .update({ tablet_imei: tablet_imei || null })
+        .eq("id", id)
+        .select()
+        .single();
+      if (error) throw error;
+      return res.json({ message: "IMEI updated", registration: data });
+    } catch (e) {
+      console.error("Supabase IMEI update error:", e.message);
+      return res.status(500).json({ error: "Failed to update IMEI in Supabase." });
+    }
+  }
+
+  // SQLite fallback
+  try {
+    db.prepare("UPDATE registrations SET tablet_imei = ? WHERE id = ?").run(tablet_imei || null, id);
+    res.json({ message: "IMEI updated successfully" });
+  } catch (err) {
+    res.status(500).json({ error: "Database error." });
+  }
+});
+
 module.exports = router;

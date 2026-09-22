@@ -693,6 +693,7 @@ router.post("/:id/questions/bulk", trainerOrAdminAuth, async (req, res) => {
 // GET /api/assessments/defaulters - Get list of attended nominees who haven't submitted any test
 router.get("/defaulters", trainerOrAdminAuth, async (req, res) => {
   const cohortId = req.query.cohort_id || null;
+  const testType = req.query.type || null;
   const supabase = require("../supabase");
   
   let defaulters = [];
@@ -706,8 +707,9 @@ router.get("/defaulters", trainerOrAdminAuth, async (req, res) => {
       
       if (attendees && attendees.length > 0) {
         // Get all submissions
-        let subQuery = supabase.from("assessment_submissions").select("phone_number");
+        let subQuery = supabase.from("assessment_submissions").select(testType ? "phone_number, assessments!inner(type)" : "phone_number");
         if (cohortId) subQuery = subQuery.eq("cohort_id", cohortId);
+        if (testType) subQuery = subQuery.ilike("assessments.type", testType);
         const { data: subs } = await subQuery;
         
         const submittedPhones = new Set((subs || []).map(s => s.phone_number));
@@ -723,16 +725,30 @@ router.get("/defaulters", trainerOrAdminAuth, async (req, res) => {
   // SQLite fallback
   try {
     let query = `
-      SELECT r.id, r.officer_name, r.phone_number, r.region, r.district, r.institution_name, r.sex
+      SELECT r.id, r.officer_name, r.phone_number, r.region, r.district, r.institution_name, r.sex, r.cohort_id
       FROM registrations r
-      LEFT JOIN assessment_submissions s ON r.phone_number = s.phone_number
-      WHERE r.attendance_status = 'Attended' AND s.id IS NULL
+      WHERE r.attendance_status = 'Attended'
     `;
     const params = [];
     if (cohortId) {
       query += ` AND r.cohort_id = ?`;
       params.push(cohortId);
     }
+    query += ` AND r.phone_number NOT IN (
+      SELECT s.phone_number FROM assessment_submissions s
+      ${testType ? 'JOIN assessments a ON s.assessment_id = a.id' : ''}
+      WHERE 1=1
+    `;
+    if (testType) {
+      query += ` AND a.type = ?`;
+      params.push(testType);
+    }
+    if (cohortId) {
+      query += ` AND s.cohort_id = ?`;
+      params.push(cohortId);
+    }
+    query += `)`;
+    
     defaulters = db.prepare(query).all(...params);
     res.json({ count: defaulters.length, defaulters });
   } catch (err) {
@@ -742,6 +758,7 @@ router.get("/defaulters", trainerOrAdminAuth, async (req, res) => {
 
 // GET /api/assessments/stats/overview - High-level test analytics
 router.get("/stats/overview", async (req, res) => {
+  const cohortId = req.query.cohort_id || null;
   let totalSubmissions = 0;
   let preTestStats = { count: 0, avgScore: 0, maxScore: 0, minScore: 0 };
   let postTestStats = { count: 0, avgScore: 0, maxScore: 0, minScore: 0 };
@@ -751,7 +768,11 @@ router.get("/stats/overview", async (req, res) => {
 
   if (supabase) {
     try {
-      const { data: subs } = await supabase.from("assessment_submissions").select("percentage, assessments(type)");
+      let query = supabase.from("assessment_submissions").select("percentage, assessments(type)");
+      if (cohortId) {
+        query = query.eq("cohort_id", cohortId);
+      }
+      const { data: subs } = await query;
       if (subs) {
         fromSupabase = true;
         totalSubmissions = subs.length;
@@ -780,42 +801,87 @@ router.get("/stats/overview", async (req, res) => {
   }
 
   if (!fromSupabase) {
-    totalSubmissions = db.prepare("SELECT COUNT(*) as count FROM assessment_submissions").get()?.count || 0;
-    
-    const preDbStats = db.prepare(`
-      SELECT 
-        COUNT(*) as count, 
-        AVG(percentage) as avg_score,
-        MAX(percentage) as max_score,
-        MIN(percentage) as min_score
-      FROM assessment_submissions sub
-      JOIN assessments a ON sub.assessment_id = a.id
-      WHERE a.type = 'Pre-Test'
-    `).get();
+    if (cohortId) {
+      totalSubmissions = db.prepare("SELECT COUNT(*) as count FROM assessment_submissions WHERE cohort_id = ?").get(cohortId)?.count || 0;
+      
+      const preDbStats = db.prepare(`
+        SELECT 
+          COUNT(*) as count, 
+          AVG(percentage) as avg_score,
+          MAX(percentage) as max_score,
+          MIN(percentage) as min_score
+        FROM assessment_submissions sub
+        JOIN assessments a ON sub.assessment_id = a.id
+        WHERE a.type = 'Pre-Test' AND sub.cohort_id = ?
+      `).get(cohortId);
+      if (preDbStats) {
+        preTestStats = {
+          count: preDbStats.count || 0,
+          avgScore: Math.round(preDbStats.avg_score || 0),
+          maxScore: Math.round(preDbStats.max_score || 0),
+          minScore: Math.round(preDbStats.min_score || 0)
+        };
+      }
 
-    const postDbStats = db.prepare(`
-      SELECT 
-        COUNT(*) as count, 
-        AVG(percentage) as avg_score,
-        MAX(percentage) as max_score,
-        MIN(percentage) as min_score
-      FROM assessment_submissions sub
-      JOIN assessments a ON sub.assessment_id = a.id
-      WHERE a.type = 'Post-Test'
-    `).get();
+      const postDbStats = db.prepare(`
+        SELECT 
+          COUNT(*) as count, 
+          AVG(percentage) as avg_score,
+          MAX(percentage) as max_score,
+          MIN(percentage) as min_score
+        FROM assessment_submissions sub
+        JOIN assessments a ON sub.assessment_id = a.id
+        WHERE (a.type = 'Post-Test' OR a.type = 'post-test') AND sub.cohort_id = ?
+      `).get(cohortId);
+      if (postDbStats) {
+        postTestStats = {
+          count: postDbStats.count || 0,
+          avgScore: Math.round(postDbStats.avg_score || 0),
+          maxScore: Math.round(postDbStats.max_score || 0),
+          minScore: Math.round(postDbStats.min_score || 0)
+        };
+      }
+    } else {
+      totalSubmissions = db.prepare("SELECT COUNT(*) as count FROM assessment_submissions").get()?.count || 0;
+      
+      const preDbStats = db.prepare(`
+        SELECT 
+          COUNT(*) as count, 
+          AVG(percentage) as avg_score,
+          MAX(percentage) as max_score,
+          MIN(percentage) as min_score
+        FROM assessment_submissions sub
+        JOIN assessments a ON sub.assessment_id = a.id
+        WHERE a.type = 'Pre-Test'
+      `).get();
+      if (preDbStats) {
+        preTestStats = {
+          count: preDbStats.count || 0,
+          avgScore: Math.round(preDbStats.avg_score || 0),
+          maxScore: Math.round(preDbStats.max_score || 0),
+          minScore: Math.round(preDbStats.min_score || 0)
+        };
+      }
 
-    preTestStats = {
-      count: preDbStats.count || 0,
-      avgScore: Math.round(preDbStats.avg_score || 0),
-      maxScore: Math.round(preDbStats.max_score || 0),
-      minScore: Math.round(preDbStats.min_score || 0),
-    };
-    postTestStats = {
-      count: postDbStats.count || 0,
-      avgScore: Math.round(postDbStats.avg_score || 0),
-      maxScore: Math.round(postDbStats.max_score || 0),
-      minScore: Math.round(postDbStats.min_score || 0),
-    };
+      const postDbStats = db.prepare(`
+        SELECT 
+          COUNT(*) as count, 
+          AVG(percentage) as avg_score,
+          MAX(percentage) as max_score,
+          MIN(percentage) as min_score
+        FROM assessment_submissions sub
+        JOIN assessments a ON sub.assessment_id = a.id
+        WHERE a.type = 'Post-Test' OR a.type = 'post-test'
+      `).get();
+      if (postDbStats) {
+        postTestStats = {
+          count: postDbStats.count || 0,
+          avgScore: Math.round(postDbStats.avg_score || 0),
+          maxScore: Math.round(postDbStats.max_score || 0),
+          minScore: Math.round(postDbStats.min_score || 0)
+        };
+      }
+    }
   }
 
   res.json({

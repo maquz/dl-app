@@ -70,6 +70,7 @@ CREATE TABLE IF NOT EXISTS registrations (
   arrival_date TEXT,
   attendance_status TEXT NOT NULL DEFAULT 'Registered' CHECK (attendance_status IN ('Registered', 'Attended', 'Absent', 'Excused')),
   check_in_notes TEXT,
+  tablet_imei TEXT,
   checked_in_at TIMESTAMPTZ,
   submitted_at TIMESTAMPTZ DEFAULT NOW()
 );
