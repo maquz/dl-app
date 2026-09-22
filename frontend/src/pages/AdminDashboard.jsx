@@ -1186,6 +1186,43 @@ export default function AdminDashboard() {
     document.body.removeChild(link);
   }
 
+  // ---- Export Signed List (Excel Format) ----
+  function handleExportSignedListExcel() {
+    const listRows = rows;
+    const date = new Date().toLocaleDateString("en-GH", { day: "2-digit", month: "long", year: "numeric" });
+    
+    const wsData = [
+      ["S/N", "Name", "District", "Institution", "Phone No", "Signature"]
+    ];
+    
+    listRows.forEach((r, i) => {
+      wsData.push([
+        i + 1,
+        r.officer_name || "",
+        r.district || "",
+        r.institution_name || "",
+        r.phone_number || "",
+        "" 
+      ]);
+    });
+    
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    
+    ws["!cols"] = [
+      { wch: 5 },  
+      { wch: 35 }, 
+      { wch: 25 }, 
+      { wch: 35 }, 
+      { wch: 15 }, 
+      { wch: 25 }, 
+    ];
+    
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Signed List");
+    
+    XLSX.writeFile(wb, `Signed_List_${date.replace(/ /g, "_")}.xlsx`);
+  }
+
   // ---- Print current filtered nominees table ----
   function handlePrint() {
     const printRows = rows;
@@ -1753,7 +1790,15 @@ export default function AdminDashboard() {
                       <line x1="16" y1="17" x2="8" y2="17"></line>
                       <polyline points="10 9 9 9 8 9"></polyline>
                     </svg>
-                    Signed List
+                    Signed List (Word)
+                  </button>
+                  <button className="btn-secondary" onClick={handleExportSignedListExcel} title="Download signed attendance list (Excel)">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: "4px" }}>
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                      <polyline points="7 10 12 15 17 10"></polyline>
+                      <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    Signed List (Excel)
                   </button>
                   <button className="btn-primary" onClick={handleOpenShare} title="Share nominees data">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: "4px" }}>
