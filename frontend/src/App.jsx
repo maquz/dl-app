@@ -99,7 +99,42 @@ function Shell({ children }) {
       </header>
       <main id="main-content">{children}</main>
       <footer className="site-footer">
-        <p>Differentiated Learning Programme · GALOP AF2 Nominee & Assessment Portal &copy; {new Date().getFullYear()}</p>
+        <div className="site-footer-inner">
+          <div className="site-footer-col">
+            <div className="site-footer-brand">
+              <img src="/dl-logo.jpg" alt="GES DL Logo" />
+              <h3>DL NOMINATIONS</h3>
+            </div>
+            <p>Facilitating the Differentiated Learning (DL) Programme for GALOP AF2 across the Republic of Ghana.</p>
+          </div>
+          
+          <div className="site-footer-col">
+            <div className="site-footer-heading">TECHNICAL CONTACT</div>
+            <div className="site-footer-subheading">LEAD DEVELOPER</div>
+            <div className="site-footer-val">Mark Anibrika</div>
+            
+            <div className="site-footer-subheading">PHONE / WHATSAPP</div>
+            <div className="site-footer-val">+233 24 459 7593</div>
+          </div>
+          
+          <div className="site-footer-col">
+            <div className="site-footer-heading">ORGANIZATION</div>
+            <p>Ghana Education Service (GES)</p>
+            <p>Ministry of Education, Republic of Ghana</p>
+            <p style={{ fontStyle: "italic", marginTop: "0.5rem", color: "#94a3b8" }}>"Quality Education for All"</p>
+          </div>
+        </div>
+        
+        <div className="site-footer-bottom">
+          <div>&copy; {new Date().getFullYear()} Ghana Education Service. All rights reserved.</div>
+          <div className="site-footer-bottom-links">
+            <a href="#">Privacy Policy</a>
+            <span>|</span>
+            <a href="#">Terms of Use</a>
+            <span>|</span>
+            <span>Design by Mark Anibrika</span>
+          </div>
+        </div>
       </footer>
     </div>
   );

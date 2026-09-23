@@ -186,16 +186,99 @@ main#main-content {
 }
 
 .site-footer {
-  background: var(--navy-900);
-  color: var(--stone-100);
-  text-align: center;
-  padding: 1rem;
-  font-size: 0.8rem;
+  background: #172554;
+  color: #f1f5f9;
+  padding: 3rem 2rem 1.5rem;
+  font-family: inherit;
+  margin-top: auto;
 }
-
-.site-footer p {
+.site-footer-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3rem;
+  justify-content: space-between;
+}
+.site-footer-col {
+  flex: 1;
+  min-width: 250px;
+}
+.site-footer-brand {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.site-footer-brand img {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 4px;
+}
+.site-footer-brand h3 {
   margin: 0;
-  opacity: 0.75;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #ffffff;
+}
+.site-footer-col p {
+  color: #cbd5e1;
+  line-height: 1.6;
+  font-size: 0.9rem;
+  margin: 0 0 0.5rem 0;
+}
+.site-footer-heading {
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 1.5rem;
+  color: #ffffff;
+}
+.site-footer-subheading {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #94a3b8;
+  margin-bottom: 0.25rem;
+}
+.site-footer-val {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 1.5rem;
+}
+.site-footer-bottom {
+  max-width: 1200px;
+  margin: 3rem auto 0;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.8rem;
+  color: #94a3b8;
+}
+.site-footer-bottom-links {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+.site-footer-bottom-links span {
+  opacity: 0.5;
+}
+.site-footer-bottom a {
+  color: #94a3b8;
+  text-decoration: none;
+}
+.site-footer-bottom a:hover {
+  color: #ffffff;
 }
 
 /* ---------------------------------------------------
