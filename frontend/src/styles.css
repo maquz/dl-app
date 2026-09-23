@@ -953,6 +953,13 @@ select:focus {
   gap: 0.5rem;
   border-bottom: 2px solid var(--line);
   margin-bottom: 1.5rem;
+  overflow-x: auto;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.dashboard-view-tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .dash-tab {
@@ -967,6 +974,8 @@ select:focus {
   border-bottom: 3px solid transparent;
   margin-bottom: -2px;
   transition: all 0.15s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .dash-tab:hover {
@@ -4155,6 +4164,26 @@ tbody tr:hover {
   }
   .trainer-team-view .view-content {
     gap: 1rem !important;
+  }
+  
+  /* Fix dashboard header stacking on mobile */
+  .dashboard-header {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 1.5rem !important;
+  }
+  .dashboard-header-actions {
+    width: 100% !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.75rem !important;
+  }
+  .dashboard-header-actions .btn-primary,
+  .dashboard-header-actions .btn-secondary,
+  .dashboard-header-actions a {
+    width: 100% !important;
+    justify-content: center !important;
+    text-align: center !important;
   }
 }
 
