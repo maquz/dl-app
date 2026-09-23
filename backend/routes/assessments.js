@@ -768,13 +768,27 @@ router.get("/stats/overview", async (req, res) => {
 
   if (supabase) {
     try {
-      let query = supabase.from("assessment_submissions").select("percentage, assessments(type)");
+      let query = supabase.from("assessment_submissions")
+        .select("phone_number, assessment_id, percentage, assessments(type)")
+        .order("submitted_at", { ascending: false });
+      
       if (cohortId) {
         query = query.eq("cohort_id", cohortId);
       }
-      const { data: subs } = await query;
-      if (subs) {
+      
+      const { data: rawSubs } = await query;
+      if (rawSubs) {
         fromSupabase = true;
+        // Deduplicate by phone_number and assessment_id (keeping the latest)
+        const uniqueSubsMap = new Map();
+        rawSubs.forEach(s => {
+          const key = `${s.phone_number}_${s.assessment_id}`;
+          if (!uniqueSubsMap.has(key)) {
+            uniqueSubsMap.set(key, s);
+          }
+        });
+        const subs = Array.from(uniqueSubsMap.values());
+        
         totalSubmissions = subs.length;
         
         const preSubs = subs.filter(s => s.assessments && s.assessments.type === 'Pre-Test');
@@ -802,83 +816,79 @@ router.get("/stats/overview", async (req, res) => {
 
   if (!fromSupabase) {
     if (cohortId) {
-      totalSubmissions = db.prepare("SELECT COUNT(*) as count FROM assessment_submissions WHERE cohort_id = ?").get(cohortId)?.count || 0;
+      const rawSubs = db.prepare("SELECT phone_number, assessment_id FROM assessment_submissions WHERE cohort_id = ?").all(cohortId);
+      const uniqueSubs = new Set(rawSubs.map(s => `${s.phone_number}_${s.assessment_id}`));
+      totalSubmissions = uniqueSubs.size;
       
       const preDbStats = db.prepare(`
-        SELECT 
-          COUNT(*) as count, 
-          AVG(percentage) as avg_score,
-          MAX(percentage) as max_score,
-          MIN(percentage) as min_score
+        SELECT percentage
         FROM assessment_submissions sub
         JOIN assessments a ON sub.assessment_id = a.id
         WHERE a.type = 'Pre-Test' AND sub.cohort_id = ?
-      `).get(cohortId);
-      if (preDbStats) {
+        ORDER BY sub.submitted_at DESC
+      `).all(cohortId);
+      if (preDbStats && preDbStats.length > 0) {
+        const preScores = preDbStats.map(s => s.percentage || 0);
         preTestStats = {
-          count: preDbStats.count || 0,
-          avgScore: Math.round(preDbStats.avg_score || 0),
-          maxScore: Math.round(preDbStats.max_score || 0),
-          minScore: Math.round(preDbStats.min_score || 0)
+          count: preScores.length,
+          avgScore: Math.round(preScores.reduce((a,b)=>a+b,0) / preScores.length),
+          maxScore: Math.round(Math.max(...preScores)),
+          minScore: Math.round(Math.min(...preScores))
         };
       }
 
       const postDbStats = db.prepare(`
-        SELECT 
-          COUNT(*) as count, 
-          AVG(percentage) as avg_score,
-          MAX(percentage) as max_score,
-          MIN(percentage) as min_score
+        SELECT percentage
         FROM assessment_submissions sub
         JOIN assessments a ON sub.assessment_id = a.id
-        WHERE (a.type = 'Post-Test' OR a.type = 'post-test') AND sub.cohort_id = ?
-      `).get(cohortId);
-      if (postDbStats) {
+        WHERE a.type = 'Post-Test' AND sub.cohort_id = ?
+        ORDER BY sub.submitted_at DESC
+      `).all(cohortId);
+      if (postDbStats && postDbStats.length > 0) {
+        const postScores = postDbStats.map(s => s.percentage || 0);
         postTestStats = {
-          count: postDbStats.count || 0,
-          avgScore: Math.round(postDbStats.avg_score || 0),
-          maxScore: Math.round(postDbStats.max_score || 0),
-          minScore: Math.round(postDbStats.min_score || 0)
+          count: postScores.length,
+          avgScore: Math.round(postScores.reduce((a,b)=>a+b,0) / postScores.length),
+          maxScore: Math.round(Math.max(...postScores)),
+          minScore: Math.round(Math.min(...postScores))
         };
       }
     } else {
-      totalSubmissions = db.prepare("SELECT COUNT(*) as count FROM assessment_submissions").get()?.count || 0;
+      const rawSubs = db.prepare("SELECT phone_number, assessment_id FROM assessment_submissions").all();
+      const uniqueSubs = new Set(rawSubs.map(s => `${s.phone_number}_${s.assessment_id}`));
+      totalSubmissions = uniqueSubs.size;
       
       const preDbStats = db.prepare(`
-        SELECT 
-          COUNT(*) as count, 
-          AVG(percentage) as avg_score,
-          MAX(percentage) as max_score,
-          MIN(percentage) as min_score
+        SELECT percentage
         FROM assessment_submissions sub
         JOIN assessments a ON sub.assessment_id = a.id
         WHERE a.type = 'Pre-Test'
-      `).get();
-      if (preDbStats) {
+        ORDER BY sub.submitted_at DESC
+      `).all();
+      if (preDbStats && preDbStats.length > 0) {
+        const preScores = preDbStats.map(s => s.percentage || 0);
         preTestStats = {
-          count: preDbStats.count || 0,
-          avgScore: Math.round(preDbStats.avg_score || 0),
-          maxScore: Math.round(preDbStats.max_score || 0),
-          minScore: Math.round(preDbStats.min_score || 0)
+          count: preScores.length,
+          avgScore: Math.round(preScores.reduce((a,b)=>a+b,0) / preScores.length),
+          maxScore: Math.round(Math.max(...preScores)),
+          minScore: Math.round(Math.min(...preScores))
         };
       }
 
       const postDbStats = db.prepare(`
-        SELECT 
-          COUNT(*) as count, 
-          AVG(percentage) as avg_score,
-          MAX(percentage) as max_score,
-          MIN(percentage) as min_score
+        SELECT percentage
         FROM assessment_submissions sub
         JOIN assessments a ON sub.assessment_id = a.id
-        WHERE a.type = 'Post-Test' OR a.type = 'post-test'
-      `).get();
-      if (postDbStats) {
+        WHERE a.type = 'Post-Test'
+        ORDER BY sub.submitted_at DESC
+      `).all();
+      if (postDbStats && postDbStats.length > 0) {
+        const postScores = postDbStats.map(s => s.percentage || 0);
         postTestStats = {
-          count: postDbStats.count || 0,
-          avgScore: Math.round(postDbStats.avg_score || 0),
-          maxScore: Math.round(postDbStats.max_score || 0),
-          minScore: Math.round(postDbStats.min_score || 0)
+          count: postScores.length,
+          avgScore: Math.round(postScores.reduce((a,b)=>a+b,0) / postScores.length),
+          maxScore: Math.round(Math.max(...postScores)),
+          minScore: Math.round(Math.min(...postScores))
         };
       }
     }
@@ -1798,7 +1808,16 @@ router.get("/:id/submissions", trainerOrAdminAuth, async (req, res) => {
       
       if (data) {
         fromSupabase = true;
-        submissions = data.map(sub => ({
+        // Deduplicate by phone_number
+        const uniqueSubsMap = new Map();
+        data.forEach(sub => {
+          if (!uniqueSubsMap.has(sub.phone_number)) {
+            uniqueSubsMap.set(sub.phone_number, sub);
+          }
+        });
+        const uniqueData = Array.from(uniqueSubsMap.values());
+
+        submissions = uniqueData.map(sub => ({
           ...sub,
           cohort_name: sub.cohorts ? sub.cohorts.name : null
         }));
