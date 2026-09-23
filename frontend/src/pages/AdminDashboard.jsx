@@ -3510,9 +3510,9 @@ export default function AdminDashboard() {
                       ? [["Assessment", "Candidate", "Phone", "Score", "Percentage", "Result", "Submitted At"]]
                       : [["Candidate Name", "Phone Number", "Score", "Percentage", "Result", "Submitted At"]],
                     (submissionsData.submissions || []).map(s => viewingSubmissionsId === "ALL" ? [
-                      s.assessment_title, s.officer_name || "Unknown", s.phone_number || "-", `${s.score}/${s.total_points}`, `${s.percentage}%`, s.percentage >= 50 ? "Passed" : "Needs Review", s.submitted_at.split("T")[0]
+                      s.assessment_title, s.officer_name || "Unknown", s.phone_number || "-", `${s.score}/${s.total_points}`, `${s.percentage}%`, (s.percentage || 0) >= 50 ? "Passed" : "Needs Review", (s.submitted_at || "").split("T")[0]
                     ] : [
-                      s.officer_name || "Unknown", s.phone_number || "-", `${s.score}/${s.total_points}`, `${s.percentage}%`, s.percentage >= 50 ? "Passed" : "Needs Review", s.submitted_at.split("T")[0]
+                      s.officer_name || "Unknown", s.phone_number || "-", `${s.score}/${s.total_points}`, `${s.percentage}%`, (s.percentage || 0) >= 50 ? "Passed" : "Needs Review", (s.submitted_at || "").split("T")[0]
                     ]),
                     "Submitted_Tests.pdf"
                   )} />
