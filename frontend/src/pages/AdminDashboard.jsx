@@ -376,27 +376,29 @@ export default function AdminDashboard() {
     if (!password) navigate("/admin");
   }, [password, navigate]);
 
-  const loadStats = useCallback(async () => {
+  const loadStats = useCallback(async (isBackground = false) => {
     try {
       const s = await fetchStats(password);
       setStats(s);
     } catch {}
   }, [password]);
 
-  const loadCohortStatsData = useCallback(async () => {
-    setCohortsLoading(true);
+  const loadCohortStatsData = useCallback(async (isBackground = false) => {
+    if (!isBackground) setCohortsLoading(true);
     try {
       const data = await fetchCohortStats(password);
       setCohortStatsData(data);
     } catch {
     } finally {
-      setCohortsLoading(false);
+      if (!isBackground) setCohortsLoading(false);
     }
   }, [password]);
 
-  const loadRegistrations = useCallback(async () => {
-    setLoading(true);
-    setError("");
+  const loadRegistrations = useCallback(async (isBackground = false) => {
+    if (!isBackground) {
+      setLoading(true);
+      setError("");
+    }
     try {
       const filters = {};
       if (query) filters.q = query;
@@ -413,11 +415,11 @@ export default function AdminDashboard() {
         sessionStorage.removeItem("admin_password");
         sessionStorage.removeItem("admin_profile");
         navigate("/admin");
-      } else {
+      } else if (!isBackground) {
         setError("Could not load registrations.");
       }
     } finally {
-      setLoading(false);
+      if (!isBackground) setLoading(false);
     }
   }, [password, query, regionFilter, districtFilter, roleFilter, cohortFilter, attendanceFilter, navigate]);
 
@@ -471,9 +473,20 @@ export default function AdminDashboard() {
   }, [loadStats, loadCohortStatsData, loadAdmins, loadTrainers, loadAssessmentsData]);
 
   useEffect(() => {
-    const t = setTimeout(loadRegistrations, 250);
+    const t = setTimeout(() => loadRegistrations(false), 250);
     return () => clearTimeout(t);
   }, [loadRegistrations]);
+
+  // Live Sync Polling
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // Refresh key data quietly in the background every 15 seconds
+      loadRegistrations(true);
+      loadStats(true);
+      loadCohortStatsData(true);
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [loadRegistrations, loadStats, loadCohortStatsData]);
 
   // ---------------------------------------------------
   // Nominee Actions
