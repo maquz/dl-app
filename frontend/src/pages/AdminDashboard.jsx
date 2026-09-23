@@ -1479,6 +1479,55 @@ export default function AdminDashboard() {
     });
   }, [trainersList, trainerQuery, trainerRoleFilter]);
 
+  const handleAssignDeviceData = async (id, field, rawValue) => {
+    let value = rawValue.trim();
+    if (field === 'serial') {
+      value = value.toUpperCase();
+    }
+    
+    if (value) {
+      if (field === 'imei') {
+        if (!/^\d{15}$/.test(value)) {
+          alert("Invalid IMEI format. It should be exactly 15 digits.\n\nPlease make sure you are scanning the bottom barcode.");
+          return false;
+        }
+      } else if (field === 'serial') {
+        if (!/^[A-Z0-9]{11}$/i.test(value)) {
+          alert("Invalid Serial Number format. Samsung tablet serials are exactly 11 alphanumeric characters (e.g., R8YL...).\n\nPlease ensure you are scanning the middle barcode (S/N), not the top UPC code.");
+          return false;
+        }
+      }
+
+      const dupUser = rows.find(r => r.id !== id && (
+        (field === 'imei' && r.tablet_imei === value) || 
+        (field === 'serial' && r.tablet_serial === value)
+      ));
+
+      if (dupUser) {
+        const confirmReplace = window.confirm(`This ${field === 'imei' ? 'IMEI' : 'Serial No'} is already assigned to ${dupUser.officer_name || 'another user'} (${dupUser.district || 'Unknown District'}).\n\nDo you want to reassign it to this officer?`);
+        if (!confirmReplace) return false;
+        
+        // Remove from dup user locally
+        setRows(prev => prev.map(row => {
+          if (row.id === dupUser.id) {
+            return { ...row, [field === 'imei' ? 'tablet_imei' : 'tablet_serial']: null };
+          }
+          return row;
+        }));
+      }
+    }
+
+    try {
+      const payload = field === 'imei' ? { tablet_imei: value || null } : { tablet_serial: value || null };
+      await updateRegistrationImei(password, id, payload);
+      setRows(prev => prev.map(row => row.id === id ? { ...row, ...payload } : row));
+      return true;
+    } catch (err) {
+      alert(`Failed to assign ${field === 'imei' ? 'IMEI' : 'Serial No'}: ` + err.message);
+      return false;
+    }
+  };
+
   const isSuperAdmin = !currentAdmin || currentAdmin.role === "Super Admin";
 
   return (
@@ -2895,16 +2944,11 @@ export default function AdminDashboard() {
                     title={`Scan ${cameraScanData.field === 'imei' ? 'IMEI' : 'Serial No'} Barcode`}
                     onClose={() => setCameraScanData(null)}
                     onScanSuccess={async (decodedText) => {
-                      try {
-                        const payload = cameraScanData.field === 'imei' 
-                          ? { tablet_imei: decodedText } 
-                          : { tablet_serial: decodedText };
-                        await updateRegistrationImei(password, cameraScanData.id, payload);
-                        setRows(prev => prev.map(row => row.id === cameraScanData.id ? { ...row, ...payload } : row));
+                      const success = await handleAssignDeviceData(cameraScanData.id, cameraScanData.field, decodedText);
+                      if (success) {
                         setCameraScanData(null);
-                      } catch (err) {
-                        alert(`Failed to assign ${cameraScanData.field}: ` + err.message);
                       }
+                      return success;
                     }}
                   />
                 )}
@@ -2954,13 +2998,10 @@ export default function AdminDashboard() {
                             {scanImeiFor === r.id ? (
                               <form onSubmit={async (e) => {
                                 e.preventDefault();
-                                try {
-                                  await updateRegistrationImei(password, r.id, { tablet_imei: scannedImei });
-                                  setRows(prev => prev.map(row => row.id === r.id ? { ...row, tablet_imei: scannedImei } : row));
+                                const success = await handleAssignDeviceData(r.id, 'imei', scannedImei);
+                                if (success) {
                                   setScanImeiFor(null);
                                   setScannedImei("");
-                                } catch (err) {
-                                  alert("Failed to assign IMEI: " + err.message);
                                 }
                               }}>
                                 <input
@@ -3001,13 +3042,10 @@ export default function AdminDashboard() {
                             {scanSerialFor === r.id ? (
                               <form onSubmit={async (e) => {
                                 e.preventDefault();
-                                try {
-                                  await updateRegistrationImei(password, r.id, { tablet_serial: scannedSerial });
-                                  setRows(prev => prev.map(row => row.id === r.id ? { ...row, tablet_serial: scannedSerial } : row));
+                                const success = await handleAssignDeviceData(r.id, 'serial', scannedSerial);
+                                if (success) {
                                   setScanSerialFor(null);
                                   setScannedSerial("");
-                                } catch (err) {
-                                  alert("Failed to assign Serial No: " + err.message);
                                 }
                               }}>
                                 <input

@@ -30,7 +30,7 @@ export default function CameraScanner({ title = "Scan Barcode/QR Code", onScanSu
     scannerRef.current = scanner;
 
     scanner.render(
-      (decodedText) => {
+      async (decodedText) => {
         // Pause scanning to avoid multiple scans
         if (scannerRef.current && scannerRef.current.getState() !== 3) {
           try {
@@ -38,7 +38,18 @@ export default function CameraScanner({ title = "Scan Barcode/QR Code", onScanSu
           } catch(e) {}
         }
         
-        onScanSuccess(decodedText);
+        try {
+          const result = await onScanSuccess(decodedText);
+          if (result === false) {
+            // Validation failed, resume scanning so they can try again
+            if (scannerRef.current && scannerRef.current.getState() !== 3) {
+              scannerRef.current.resume();
+            }
+            return;
+          }
+        } catch(err) {
+          console.error(err);
+        }
         
         // Clean up immediately after successful scan
         if (scannerRef.current) {
