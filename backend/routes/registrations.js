@@ -764,32 +764,45 @@ router.get("/export/xlsx", adminAuth, async (req, res) => {
   res.send(buffer);
 });
 
-// PUT /api/registrations/:id/imei - Assign tablet IMEI
+// PUT /api/registrations/:id/imei - Assign tablet IMEI/Serial
 router.put("/:id/imei", trainerOrAdminAuth, async (req, res) => {
   const { id } = req.params;
-  const { tablet_imei } = req.body;
+  const { tablet_imei, tablet_serial } = req.body;
+
+  const updates = {};
+  if (tablet_imei !== undefined) updates.tablet_imei = tablet_imei || null;
+  if (tablet_serial !== undefined) updates.tablet_serial = tablet_serial || null;
+
+  if (Object.keys(updates).length === 0) {
+    return res.status(400).json({ error: "No tablet data provided" });
+  }
 
   if (supabase) {
     try {
       const { data, error } = await supabase
         .from("registrations")
-        .update({ tablet_imei: tablet_imei || null })
+        .update(updates)
         .eq("id", id)
         .select()
         .single();
       if (error) throw error;
-      return res.json({ message: "IMEI updated", registration: data });
+      return res.json({ message: "Tablet data updated", registration: data });
     } catch (e) {
-      console.error("Supabase IMEI update error:", e.message);
-      return res.status(500).json({ error: "Failed to update IMEI in Supabase." });
+      console.error("Supabase tablet update error:", e.message);
+      return res.status(500).json({ error: "Failed to update tablet data in Supabase." });
     }
   }
 
   // SQLite fallback
   try {
-    db.prepare("UPDATE registrations SET tablet_imei = ? WHERE id = ?").run(tablet_imei || null, id);
-    res.json({ message: "IMEI updated successfully" });
+    const keys = Object.keys(updates);
+    const setClause = keys.map(k => `${k} = ?`).join(", ");
+    const values = keys.map(k => updates[k]);
+    
+    db.prepare(`UPDATE registrations SET ${setClause} WHERE id = ?`).run(...values, id);
+    res.json({ message: "Tablet data updated successfully" });
   } catch (err) {
+    console.error("SQLite tablet update error:", err.message);
     res.status(500).json({ error: "Database error." });
   }
 });

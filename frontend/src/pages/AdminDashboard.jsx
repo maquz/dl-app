@@ -286,8 +286,10 @@ export default function AdminDashboard() {
 
   // Tablet Distribution State
   const [scanImeiFor, setScanImeiFor] = useState(null);
-  const [cameraScanFor, setCameraScanFor] = useState(null);
   const [scannedImei, setScannedImei] = useState("");
+  const [scanSerialFor, setScanSerialFor] = useState(null);
+  const [scannedSerial, setScannedSerial] = useState("");
+  const [cameraScanData, setCameraScanData] = useState(null);
 
   // Question Builder Modal State
   const [isBuilderOpen, setIsBuilderOpen] = useState(false);
@@ -1245,7 +1247,7 @@ export default function AdminDashboard() {
     let html = `<h2 style='text-align:center;'>Tablet Distribution List (IT Persons)</h2>`;
     html += `<p style='text-align:center;'>Generated on ${date} &bull; Total: ${listRows.length} IT Person(s)</p>`;
     html += "<table>";
-    html += "<tr><th>S/N</th><th>Name</th><th>Role</th><th>District</th><th>Phone No</th><th>Assigned IMEI</th></tr>";
+    html += "<tr><th>S/N</th><th>Name</th><th>Role</th><th>District</th><th>Phone No</th><th>Assigned IMEI</th><th>Serial No</th></tr>";
     
     listRows.forEach((r, i) => {
       const roleStr = r.roles ? r.roles.filter(role => role.toLowerCase().includes("it person")).join(", ") : "";
@@ -1256,6 +1258,7 @@ export default function AdminDashboard() {
         <td>${r.district || ""}</td>
         <td>${r.phone_number || ""}</td>
         <td style='font-family: monospace;'>${r.tablet_imei || "Not Assigned"}</td>
+        <td style='font-family: monospace;'>${r.tablet_serial || "Not Assigned"}</td>
       </tr>`;
     });
     html += "</table>";
@@ -1275,7 +1278,7 @@ export default function AdminDashboard() {
     const listRows = [...itPersonsList].sort((a, b) => (a.district || "").localeCompare(b.district || ""));
     const date = new Date().toLocaleDateString("en-GH", { day: "2-digit", month: "long", year: "numeric" });
     const wsData = [
-      ["S/N", "Name", "Role", "District", "Phone No", "Assigned IMEI"]
+      ["S/N", "Name", "Role", "District", "Phone No", "Assigned IMEI", "Serial No"]
     ];
     listRows.forEach((r, i) => {
       const roleStr = r.roles ? r.roles.filter(role => role.toLowerCase().includes("it person")).join(", ") : "";
@@ -1285,7 +1288,8 @@ export default function AdminDashboard() {
         roleStr,
         r.district || "",
         r.phone_number || "",
-        r.tablet_imei || "Not Assigned"
+        r.tablet_imei || "Not Assigned",
+        r.tablet_serial || "Not Assigned"
       ]);
     });
     const ws = XLSX.utils.aoa_to_sheet(wsData);
@@ -1296,6 +1300,7 @@ export default function AdminDashboard() {
       { wch: 45 }, 
       { wch: 25 }, 
       { wch: 15 }, 
+      { wch: 25 }, 
       { wch: 25 }, 
     ];
 
@@ -2885,17 +2890,20 @@ export default function AdminDashboard() {
           {/* VIEW: TABLET DISTRIBUTION */}
           {activeTab === "distribution" && (
               <div className="tablet-distribution-section" style={{ padding: "2rem", background: "#fff", borderRadius: "12px", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)" }}>
-                {cameraScanFor && (
+                {cameraScanData && (
                   <CameraScanner 
-                    title="Scan IMEI QR/Barcode"
-                    onClose={() => setCameraScanFor(null)}
+                    title={`Scan ${cameraScanData.field === 'imei' ? 'IMEI' : 'Serial No'} Barcode`}
+                    onClose={() => setCameraScanData(null)}
                     onScanSuccess={async (decodedText) => {
                       try {
-                        await updateRegistrationImei(password, cameraScanFor, decodedText);
-                        setRows(prev => prev.map(row => row.id === cameraScanFor ? { ...row, tablet_imei: decodedText } : row));
-                        setCameraScanFor(null);
+                        const payload = cameraScanData.field === 'imei' 
+                          ? { tablet_imei: decodedText } 
+                          : { tablet_serial: decodedText };
+                        await updateRegistrationImei(password, cameraScanData.id, payload);
+                        setRows(prev => prev.map(row => row.id === cameraScanData.id ? { ...row, ...payload } : row));
+                        setCameraScanData(null);
                       } catch (err) {
-                        alert("Failed to assign IMEI: " + err.message);
+                        alert(`Failed to assign ${cameraScanData.field}: ` + err.message);
                       }
                     }}
                   />
@@ -2925,13 +2933,14 @@ export default function AdminDashboard() {
                         <th>District</th>
                         <th>Phone Number</th>
                         <th>Assigned IMEI</th>
+                        <th>Serial No</th>
                         <th>Action</th>
                       </tr>
                     </thead>
                     <tbody>
                       {itPersonsList.length === 0 ? (
                         <tr>
-                          <td colSpan="7" className="empty-row" style={{ textAlign: "center", padding: "2rem" }}>No IT persons found for current filters.</td>
+                          <td colSpan="8" className="empty-row" style={{ textAlign: "center", padding: "2rem" }}>No IT persons found for current filters.</td>
                         </tr>
                       ) : (
                         itPersonsList.map((r, idx) => (
@@ -2946,7 +2955,7 @@ export default function AdminDashboard() {
                               <form onSubmit={async (e) => {
                                 e.preventDefault();
                                 try {
-                                  await updateRegistrationImei(password, r.id, scannedImei);
+                                  await updateRegistrationImei(password, r.id, { tablet_imei: scannedImei });
                                   setRows(prev => prev.map(row => row.id === r.id ? { ...row, tablet_imei: scannedImei } : row));
                                   setScanImeiFor(null);
                                   setScannedImei("");
@@ -2961,12 +2970,11 @@ export default function AdminDashboard() {
                                   value={scannedImei}
                                   onChange={e => setScannedImei(e.target.value)}
                                   onBlur={(e) => {
-                                    // Prevent blur from closing it immediately if they just clicked the input
                                     if(e.relatedTarget && e.relatedTarget.tagName === 'BUTTON') return;
                                     setScanImeiFor(null);
                                     setScannedImei("");
                                   }}
-                                  style={{ padding: "0.5rem", width: "200px", border: "2px solid #3b82f6", borderRadius: "6px", outline: "none", fontSize: "1rem" }}
+                                  style={{ padding: "0.5rem", width: "160px", border: "2px solid #3b82f6", borderRadius: "6px", outline: "none", fontSize: "1rem" }}
                                 />
                               </form>
                             ) : (
@@ -2989,25 +2997,71 @@ export default function AdminDashboard() {
                               </span>
                             )}
                           </td>
-                          <td style={{ display: "flex", gap: "0.5rem" }}>
-                            {scanImeiFor !== r.id && (
+                          <td>
+                            {scanSerialFor === r.id ? (
+                              <form onSubmit={async (e) => {
+                                e.preventDefault();
+                                try {
+                                  await updateRegistrationImei(password, r.id, { tablet_serial: scannedSerial });
+                                  setRows(prev => prev.map(row => row.id === r.id ? { ...row, tablet_serial: scannedSerial } : row));
+                                  setScanSerialFor(null);
+                                  setScannedSerial("");
+                                } catch (err) {
+                                  alert("Failed to assign Serial No: " + err.message);
+                                }
+                              }}>
+                                <input
+                                  type="text"
+                                  autoFocus
+                                  placeholder="Scan Serial No..."
+                                  value={scannedSerial}
+                                  onChange={e => setScannedSerial(e.target.value)}
+                                  onBlur={(e) => {
+                                    if(e.relatedTarget && e.relatedTarget.tagName === 'BUTTON') return;
+                                    setScanSerialFor(null);
+                                    setScannedSerial("");
+                                  }}
+                                  style={{ padding: "0.5rem", width: "160px", border: "2px solid #3b82f6", borderRadius: "6px", outline: "none", fontSize: "1rem" }}
+                                />
+                              </form>
+                            ) : (
+                              <span 
+                                onClick={() => {
+                                  setScanSerialFor(r.id);
+                                  setScannedSerial(r.tablet_serial || "");
+                                }}
+                                style={{ 
+                                  fontFamily: "monospace", 
+                                  fontSize: "1rem", 
+                                  color: r.tablet_serial ? "#16a34a" : "#94a3b8", 
+                                  fontWeight: r.tablet_serial ? 600 : 400,
+                                  cursor: "pointer",
+                                  borderBottom: r.tablet_serial ? "1px dashed #16a34a" : "1px dashed #94a3b8"
+                                }}
+                                title="Click to edit"
+                              >
+                                {r.tablet_serial || "Not Assigned"}
+                              </span>
+                            )}
+                          </td>
+                          <td style={{ display: "flex", gap: "0.25rem", flexWrap: "wrap", maxWidth: "250px" }}>
+                            {scanImeiFor !== r.id && scanSerialFor !== r.id && (
                               <>
                                 <button 
                                   className="btn-primary"
-                                  onClick={() => setCameraScanFor(r.id)}
-                                  style={{ padding: "0.4rem 0.8rem", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "0.4rem" }}
+                                  onClick={() => setCameraScanData({ id: r.id, field: 'imei' })}
+                                  style={{ padding: "0.3rem 0.6rem", fontSize: "0.8rem", display: "flex", alignItems: "center", gap: "0.3rem" }}
+                                  title="Scan IMEI"
                                 >
-                                  📷 {r.tablet_imei ? "Rescan" : "Camera"}
+                                  📷 IMEI
                                 </button>
                                 <button 
-                                  className="btn-secondary"
-                                  onClick={() => {
-                                    setScanImeiFor(r.id);
-                                    setScannedImei(r.tablet_imei || "");
-                                  }}
-                                  style={{ padding: "0.4rem 0.8rem", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "0.4rem" }}
+                                  className="btn-primary"
+                                  onClick={() => setCameraScanData({ id: r.id, field: 'serial' })}
+                                  style={{ padding: "0.3rem 0.6rem", fontSize: "0.8rem", display: "flex", alignItems: "center", gap: "0.3rem", background: "#4f46e5", borderColor: "#4f46e5" }}
+                                  title="Scan Serial No."
                                 >
-                                  {r.tablet_imei ? "✏️ Edit" : "⌨️ Type/USB"}
+                                  📷 S/N
                                 </button>
                               </>
                             )}

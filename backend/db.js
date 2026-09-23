@@ -151,6 +151,7 @@ const migrations = [
   "ALTER TABLE assessments ADD COLUMN custom_close_datetime TEXT;",
   "ALTER TABLE assessments ADD COLUMN lock_mode TEXT DEFAULT 'scheduled';",
   "ALTER TABLE registrations ADD COLUMN tablet_imei TEXT;",
+  "ALTER TABLE registrations ADD COLUMN tablet_serial TEXT;",
 ];
 
 for (const sql of migrations) {
