@@ -804,15 +804,15 @@ export default function TrainerDashboard() {
                       </span>
                     </h3>
                     {isOpen && catResources.map(file => (
-                      <div key={file.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1.25rem", border: "1px solid #e2e8f0", borderRadius: "12px", background: "#fff", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                          <span style={{ fontSize: "2rem" }}>📄</span>
-                          <div>
-                            <strong style={{ fontSize: "1.1rem", color: "#1e293b", display: "block", marginBottom: "0.25rem" }}>{file.name}</strong>
+                      <div key={file.id} style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: "1rem", padding: "1.25rem", border: "1px solid #e2e8f0", borderRadius: "12px", background: "#fff", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+                        <div style={{ display: "flex", alignItems: "flex-start", gap: "1rem", flex: "1 1 200px", minWidth: 0 }}>
+                          <span style={{ fontSize: "2rem", flexShrink: 0 }}>📄</span>
+                          <div style={{ minWidth: 0, width: "100%" }}>
+                            <strong style={{ fontSize: "1.1rem", color: "#1e293b", display: "block", marginBottom: "0.25rem", wordBreak: "break-word" }}>{file.name}</strong>
                             <span style={{ fontSize: "0.85rem", color: "#64748b" }}>PDF Document • {(file.size / 1024 / 1024).toFixed(2)} MB</span>
                           </div>
                         </div>
-                        <a href={file.url} target="_blank" rel="noreferrer" className="btn-primary" style={{ padding: "0.5rem 1rem", textDecoration: "none" }}>
+                        <a href={file.url} target="_blank" rel="noreferrer" className="btn-primary" style={{ padding: "0.5rem 1rem", textDecoration: "none", flexShrink: 0, whiteSpace: "nowrap" }}>
                           Download
                         </a>
                       </div>
