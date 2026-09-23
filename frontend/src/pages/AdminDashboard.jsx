@@ -340,7 +340,9 @@ export default function AdminDashboard() {
   }, [rows, genderFilter]);
 
   const itPersonsList = useMemo(() => {
-    return displayRows.filter(r => (r.roles || []).some(role => role.toLowerCase().includes("it person")));
+    return displayRows
+      .filter(r => (r.roles || []).some(role => role.toLowerCase().includes("it person")))
+      .sort((a, b) => (a.district || "").localeCompare(b.district || ""));
   }, [displayRows]);
   
   const { currentPage: regPage, setCurrentPage: setRegPage, totalPages: regTotalPages, currentData: currentRows } = usePagination(displayRows, 20);
@@ -2968,7 +2970,21 @@ export default function AdminDashboard() {
                                 />
                               </form>
                             ) : (
-                              <span style={{ fontFamily: "monospace", fontSize: "1rem", color: r.tablet_imei ? "#16a34a" : "#94a3b8", fontWeight: r.tablet_imei ? 600 : 400 }}>
+                              <span 
+                                onClick={() => {
+                                  setScanImeiFor(r.id);
+                                  setScannedImei(r.tablet_imei || "");
+                                }}
+                                style={{ 
+                                  fontFamily: "monospace", 
+                                  fontSize: "1rem", 
+                                  color: r.tablet_imei ? "#16a34a" : "#94a3b8", 
+                                  fontWeight: r.tablet_imei ? 600 : 400,
+                                  cursor: "pointer",
+                                  borderBottom: r.tablet_imei ? "1px dashed #16a34a" : "1px dashed #94a3b8"
+                                }}
+                                title="Click to edit"
+                              >
                                 {r.tablet_imei || "Not Assigned"}
                               </span>
                             )}
@@ -2981,17 +2997,17 @@ export default function AdminDashboard() {
                                   onClick={() => setCameraScanFor(r.id)}
                                   style={{ padding: "0.4rem 0.8rem", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "0.4rem" }}
                                 >
-                                  📷 Camera
+                                  📷 {r.tablet_imei ? "Rescan" : "Camera"}
                                 </button>
                                 <button 
                                   className="btn-secondary"
                                   onClick={() => {
                                     setScanImeiFor(r.id);
-                                    setScannedImei("");
+                                    setScannedImei(r.tablet_imei || "");
                                   }}
                                   style={{ padding: "0.4rem 0.8rem", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "0.4rem" }}
                                 >
-                                  ⌨️ Type/USB
+                                  {r.tablet_imei ? "✏️ Edit" : "⌨️ Type/USB"}
                                 </button>
                               </>
                             )}
