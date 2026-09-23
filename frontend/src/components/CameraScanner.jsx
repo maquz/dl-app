@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { Html5QrcodeScanner, Html5QrcodeSupportedFormats } from "html5-qrcode";
 
-export default function CameraScanner({ title = "Scan Barcode/QR Code", onScanSuccess, onClose }) {
+export default function CameraScanner({ title = "Scan Barcode/QR Code", onScanSuccess, onClose, expectedPattern }) {
   const scannerRef = useRef(null);
 
   useEffect(() => {
@@ -31,6 +31,11 @@ export default function CameraScanner({ title = "Scan Barcode/QR Code", onScanSu
 
     scanner.render(
       async (decodedText) => {
+        // Silently ignore if it doesn't match the expected pattern (e.g. they scanned UPC instead of IMEI)
+        if (expectedPattern && !expectedPattern.test(decodedText)) {
+          return; // Do nothing, keep scanning
+        }
+
         // Pause scanning to avoid multiple scans
         if (scannerRef.current && scannerRef.current.getState() !== 3) {
           try {

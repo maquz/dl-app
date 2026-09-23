@@ -2942,6 +2942,7 @@ export default function AdminDashboard() {
                 {cameraScanData && (
                   <CameraScanner 
                     title={`Scan ${cameraScanData.field === 'imei' ? 'IMEI' : 'Serial No'} Barcode`}
+                    expectedPattern={cameraScanData.field === 'imei' ? /^\d{15}$/ : /^[A-Z0-9]{11}$/i}
                     onClose={() => setCameraScanData(null)}
                     onScanSuccess={async (decodedText) => {
                       const success = await handleAssignDeviceData(cameraScanData.id, cameraScanData.field, decodedText);
