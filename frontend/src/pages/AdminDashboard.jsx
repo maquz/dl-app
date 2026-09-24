@@ -155,17 +155,21 @@ function usePagination(data, itemsPerPage = 20) {
   const [currentPage, setCurrentPage] = useState(1);
   const totalPages = Math.ceil((data?.length || 0) / itemsPerPage);
   
+  const boundedPage = Math.max(1, Math.min(currentPage, totalPages));
+
   useEffect(() => {
-    setCurrentPage(1);
-  }, [data]);
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages);
+    }
+  }, [totalPages, currentPage]);
 
   const currentData = useMemo(() => {
-    const begin = (currentPage - 1) * itemsPerPage;
+    const begin = (boundedPage - 1) * itemsPerPage;
     const end = begin + itemsPerPage;
     return (data || []).slice(begin, end);
-  }, [data, currentPage, itemsPerPage]);
+  }, [data, boundedPage, itemsPerPage]);
 
-  return { currentPage, setCurrentPage, totalPages, currentData };
+  return { currentPage: boundedPage, setCurrentPage, totalPages, currentData };
 }
 
 function PaginationControls({ currentPage, totalPages, onPageChange }) {
@@ -173,6 +177,7 @@ function PaginationControls({ currentPage, totalPages, onPageChange }) {
   return (
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1rem", borderTop: "1px solid #e2e8f0", backgroundColor: "#f8fafc", borderRadius: "0 0 8px 8px" }}>
       <button 
+        type="button"
         className="btn-secondary" 
         disabled={currentPage === 1} 
         onClick={() => onPageChange(currentPage - 1)}
@@ -184,6 +189,7 @@ function PaginationControls({ currentPage, totalPages, onPageChange }) {
         Page {currentPage} of {totalPages}
       </span>
       <button 
+        type="button"
         className="btn-secondary" 
         disabled={currentPage === totalPages} 
         onClick={() => onPageChange(currentPage + 1)}
@@ -3179,11 +3185,11 @@ export default function AdminDashboard() {
               </div>
               {itTotalPages > 1 && (
                 <div className="pagination">
-                  <button className="btn-secondary" disabled={itPage === 1} onClick={() => setItPage(itPage - 1)}>
+                  <button type="button" className="btn-secondary" disabled={itPage === 1} onClick={() => setItPage(itPage - 1)}>
                     &laquo; Prev
                   </button>
                   <span>Page {itPage} of {itTotalPages}</span>
-                  <button className="btn-secondary" disabled={itPage === itTotalPages} onClick={() => setItPage(itPage + 1)}>
+                  <button type="button" className="btn-secondary" disabled={itPage === itTotalPages} onClick={() => setItPage(itPage + 1)}>
                     Next &raquo;
                   </button>
                 </div>
