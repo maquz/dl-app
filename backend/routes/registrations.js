@@ -181,7 +181,25 @@ router.post("/stub/generate-all", adminAuth, async (req, res) => {
     const rolesJSON = JSON.stringify(["DL District Trainer - IT Person (DL Dashboard)"]);
 
     for (const d of districts) {
-      const exists = db.prepare("SELECT id FROM registrations WHERE district = ? AND cohort_id = ? AND roles LIKE '%IT Person%'").get(d.district, cohortId);
+      let exists = false;
+      if (supabase) {
+        try {
+          const { data } = await supabase.from("registrations").select("id, roles").eq("district", d.district).eq("cohort_id", cohortId);
+          if (data && data.length > 0) {
+            exists = data.some(r => {
+              try {
+                const rolesArr = typeof r.roles === 'string' ? JSON.parse(r.roles) : r.roles;
+                return (rolesArr || []).some(role => String(role).toLowerCase().includes('it person'));
+              } catch(e) { return false; }
+            });
+          }
+        } catch(e) {}
+      }
+      if (!exists) {
+        const localExists = db.prepare("SELECT id FROM registrations WHERE district = ? AND cohort_id = ? AND roles LIKE '%IT Person%'").get(d.district, cohortId);
+        if (localExists) exists = true;
+      }
+
       if (!exists) {
         const stubPhone = `STUB-${cohortId}-${d.district.replace(/\s+/g, '')}`;
         const result = db.prepare(`
@@ -216,6 +234,39 @@ router.post("/stub/generate-all", adminAuth, async (req, res) => {
   }
 });
 
+// POST /api/registrations/stub/cleanup - admin only
+router.post("/stub/cleanup", adminAuth, async (req, res) => {
+  try {
+    let count = 0;
+    if (supabase) {
+      // Get all stubs
+      const { data: stubs } = await supabase.from("registrations").select("id, district, cohort_id").eq("officer_name", "Pending Registration").like("phone_number", "STUB-%");
+      if (stubs) {
+        for (const stub of stubs) {
+          // Check if real IT person exists for this district
+          const { data: realUsers } = await supabase.from("registrations").select("id, roles").eq("district", stub.district).eq("cohort_id", stub.cohort_id).neq("id", stub.id);
+          if (realUsers && realUsers.length > 0) {
+            const hasRealIt = realUsers.some(r => {
+              try {
+                const rolesArr = typeof r.roles === 'string' ? JSON.parse(r.roles) : r.roles;
+                return (rolesArr || []).some(role => String(role).toLowerCase().includes('it person'));
+              } catch(e) { return false; }
+            });
+            if (hasRealIt) {
+              await supabase.from("registrations").delete().eq("id", stub.id);
+              db.prepare("DELETE FROM registrations WHERE id = ?").run(stub.id);
+              count++;
+            }
+          }
+        }
+      }
+    }
+    res.json({ success: true, deleted: count });
+  } catch (err) {
+    res.status(500).json({ error: "Cleanup failed" });
+  }
+});
+
 // POST /api/registrations/stub - create a placeholder registration for tablet tracking (admin only)
 router.post("/stub", adminAuth, async (req, res) => {
   const { region, district, cohortId, tablet_imei, tablet_serial } = req.body;
@@ -227,7 +278,24 @@ router.post("/stub", adminAuth, async (req, res) => {
   const rolesJSON = JSON.stringify(["DL District Trainer - IT Person (DL Dashboard)"]);
 
   // Check if stub or real registration already exists
-  let exists = db.prepare("SELECT id FROM registrations WHERE district = ? AND cohort_id = ? AND roles LIKE '%IT Person%'").get(district, cohortId);
+  let exists = false;
+  if (supabase) {
+    try {
+      const { data } = await supabase.from("registrations").select("id, roles").eq("district", district).eq("cohort_id", cohortId);
+      if (data && data.length > 0) {
+        exists = data.some(r => {
+          try {
+            const rolesArr = typeof r.roles === 'string' ? JSON.parse(r.roles) : r.roles;
+            return (rolesArr || []).some(role => String(role).toLowerCase().includes('it person'));
+          } catch(e) { return false; }
+        });
+      }
+    } catch(e) {}
+  }
+  if (!exists) {
+    const localExists = db.prepare("SELECT id FROM registrations WHERE district = ? AND cohort_id = ? AND roles LIKE '%IT Person%'").get(district, cohortId);
+    if (localExists) exists = true;
+  }
   if (exists) {
     return res.status(409).json({ error: "An IT person or stub already exists for this district and cohort." });
   }

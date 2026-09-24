@@ -353,6 +353,7 @@ export default function AdminDashboard() {
   const { currentPage: regPage, setCurrentPage: setRegPage, totalPages: regTotalPages, currentData: currentRows } = usePagination(displayRows, 20);
   const { currentPage: defaultersPage, setCurrentPage: setDefaultersPage, totalPages: defaultersTotalPages, currentData: currentDefaulters } = usePagination(defaultersData, 10);
   const { currentPage: subsPage, setCurrentPage: setSubsPage, totalPages: subsTotalPages, currentData: currentSubs } = usePagination(submissionsData?.submissions || [], 15);
+  const { currentPage: itPage, setCurrentPage: setItPage, totalPages: itTotalPages, currentData: currentItPersons } = usePagination(itPersonsList, 20);
   
   // District Stats Modal State
   const [viewingDistrictStatsId, setViewingDistrictStatsId] = useState(null);
@@ -3002,6 +3003,28 @@ export default function AdminDashboard() {
                         ➕ Generate Trackers
                       </button>
                     )}
+                    {cohortFilter && (
+                      <button
+                        className="btn-secondary"
+                        onClick={async () => {
+                          try {
+                            const res = await fetch("/api/registrations/stub/cleanup", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json", "x-admin-password": password }
+                            });
+                            const data = await res.json();
+                            if (res.ok) {
+                              if (data.deleted > 0) alert(`Cleaned up ${data.deleted} duplicated tracking rows!`);
+                              else alert("No duplicates found!");
+                              loadRegistrations(false);
+                            }
+                          } catch (err) {}
+                        }}
+                        title="Clean up duplicate tracking rows"
+                      >
+                        🧹 Cleanup Duplicates
+                      </button>
+                    )}
                     <button className="btn-secondary" onClick={() => handleExportDistributionWord(itPersonsList)} title="Download Distribution List (Word)">
                       📄 Export Word
                     </button>
@@ -3026,14 +3049,14 @@ export default function AdminDashboard() {
                       </tr>
                     </thead>
                     <tbody>
-                      {itPersonsList.length === 0 ? (
+                      {currentItPersons.length === 0 ? (
                         <tr>
                           <td colSpan="8" className="empty-row" style={{ textAlign: "center", padding: "2rem" }}>No IT persons found for current filters.</td>
                         </tr>
                       ) : (
-                        itPersonsList.map((r, idx) => (
+                        currentItPersons.map((r, idx) => (
                           <tr key={r.id}>
-                            <td>{idx + 1}</td>
+                            <td>{(itPage - 1) * 20 + idx + 1}</td>
                             <td><strong>{r.officer_name}</strong></td>
                             <td><span style={{fontSize: "0.85rem", color: "#475569"}}>{(r.roles || []).filter(role => role.toLowerCase().includes("it person")).join(", ")}</span></td>
                             <td>{r.district}</td>
@@ -3154,6 +3177,17 @@ export default function AdminDashboard() {
                   </tbody>
                 </table>
               </div>
+              {itTotalPages > 1 && (
+                <div className="pagination">
+                  <button className="btn-secondary" disabled={itPage === 1} onClick={() => setItPage(itPage - 1)}>
+                    &laquo; Prev
+                  </button>
+                  <span>Page {itPage} of {itTotalPages}</span>
+                  <button className="btn-secondary" disabled={itPage === itTotalPages} onClick={() => setItPage(itPage + 1)}>
+                    Next &raquo;
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

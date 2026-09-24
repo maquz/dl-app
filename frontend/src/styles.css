@@ -294,7 +294,7 @@ main#main-content {
   max-width: 1080px;
   margin: 0 auto;
   padding: 1rem;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 .form-card {
