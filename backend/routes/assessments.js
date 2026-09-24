@@ -1670,6 +1670,28 @@ router.post("/:id/submit", async (req, res) => {
     return res.status(404).json({ error: "Assessment not found." });
   }
 
+  // Check if participant already submitted this assessment
+  let alreadySubmitted = false;
+  if (supabase) {
+    try {
+      const { data } = await supabase
+        .from("assessment_submissions")
+        .select("id")
+        .eq("assessment_id", assessmentId)
+        .eq("phone_number", phoneNumber)
+        .maybeSingle();
+      if (data) alreadySubmitted = true;
+    } catch (e) {}
+  }
+  if (!alreadySubmitted) {
+    const existing = db.prepare("SELECT id FROM assessment_submissions WHERE assessment_id = ? AND phone_number = ?").get(assessmentId, phoneNumber);
+    if (existing) alreadySubmitted = true;
+  }
+
+  if (alreadySubmitted) {
+    return res.status(403).json({ error: "You have already completed this test. Multiple submissions are not allowed." });
+  }
+
   // Enforce lock verification
   const lockInfo = getAssessmentLockStatus(assessment, cohortId);
   if (lockInfo.isLocked) {

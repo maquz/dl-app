@@ -85,12 +85,15 @@ async function handlePdfAction(action, title, subtitle, head, body, filename) {
     }
   } catch (err) {
     if (err.name === "AbortError") return;
+    alert("PDF Error: " + (err.message || "Unknown error"));
     if (action === 'share') {
       try {
         const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
         doc.autoTable({ head, body });
         doc.save(filename);
-      } catch(e) {}
+      } catch(e) {
+        alert("Fallback save failed: " + e.message);
+      }
     }
   }
 }
@@ -2966,12 +2969,39 @@ export default function AdminDashboard() {
                     }}
                   />
                 )}
-                <div className="trainers-mgmt-header" style={{ marginBottom: "2rem", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <div className="trainers-mgmt-header" style={{ marginBottom: "2rem", display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "1rem" }}>
                   <div>
                     <h2 style={{ fontSize: "1.5rem", color: "#1e293b", margin: "0 0 0.5rem 0" }}>Tablet Distribution (IT Persons)</h2>
                     <p style={{ color: "#64748b", margin: 0 }}>Assign and track mobile tablets distributed to IT personnel by scanning their IMEI.</p>
                   </div>
-                  <div style={{ display: "flex", gap: "0.5rem" }}>
+                  <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                    {cohortFilter && (
+                      <button 
+                        className="btn-primary" 
+                        onClick={async () => {
+                          if (!confirm("Generate placeholder tracking rows for all expected districts in this cohort that haven't registered an IT Person yet?")) return;
+                          try {
+                            const res = await fetch("/api/registrations/stub/generate-all", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json", "x-admin-password": password },
+                              body: JSON.stringify({ cohortId: cohortFilter })
+                            });
+                            const data = await res.json();
+                            if (res.ok) {
+                              alert(`Generated ${data.generatedCount} missing IT person trackers.`);
+                              loadRegistrations(false);
+                            } else {
+                              alert("Error: " + data.error);
+                            }
+                          } catch (err) {
+                            alert("Failed to generate trackers: " + err.message);
+                          }
+                        }}
+                        title="Creates tracking rows for expected IT persons before they register"
+                      >
+                        ➕ Generate Trackers
+                      </button>
+                    )}
                     <button className="btn-secondary" onClick={() => handleExportDistributionWord(itPersonsList)} title="Download Distribution List (Word)">
                       📄 Export Word
                     </button>
@@ -3510,9 +3540,9 @@ export default function AdminDashboard() {
                       ? [["Assessment", "Candidate", "Phone", "Score", "Percentage", "Result", "Submitted At"]]
                       : [["Candidate Name", "Phone Number", "Score", "Percentage", "Result", "Submitted At"]],
                     (submissionsData.submissions || []).map(s => viewingSubmissionsId === "ALL" ? [
-                      s.assessment_title, s.officer_name || "Unknown", s.phone_number || "-", `${s.score}/${s.total_points}`, `${s.percentage}%`, (s.percentage || 0) >= 50 ? "Passed" : "Needs Review", (s.submitted_at || "").split("T")[0]
+                      s.assessment_title || "Unknown Test", s.officer_name || "Unknown", s.phone_number || "-", `${s.score || 0}/${s.total_points || 0}`, `${s.percentage || 0}%`, (s.percentage || 0) >= 50 ? "Passed" : "Needs Review", (s.submitted_at || "").split("T")[0]
                     ] : [
-                      s.officer_name || "Unknown", s.phone_number || "-", `${s.score}/${s.total_points}`, `${s.percentage}%`, (s.percentage || 0) >= 50 ? "Passed" : "Needs Review", (s.submitted_at || "").split("T")[0]
+                      s.officer_name || "Unknown", s.phone_number || "-", `${s.score || 0}/${s.total_points || 0}`, `${s.percentage || 0}%`, (s.percentage || 0) >= 50 ? "Passed" : "Needs Review", (s.submitted_at || "").split("T")[0]
                     ]),
                     "Submitted_Tests.pdf"
                   )} />

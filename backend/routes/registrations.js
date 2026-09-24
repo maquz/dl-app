@@ -157,6 +157,112 @@ router.get("/my-nomination", async (req, res) => {
   return res.json({ hasRegistered: false, nominee: null });
 });
 
+// POST /api/registrations/stub/generate-all - admin only
+router.post("/stub/generate-all", adminAuth, async (req, res) => {
+  const { cohortId } = req.body;
+  if (!cohortId) return res.status(400).json({ error: "cohortId required." });
+
+  try {
+    const { fetchCohortDistrictMap } = require("./cohorts"); // we'll fetch from DB
+    // actually let's just get the districts mapped to this cohort directly
+    let districts = [];
+    try {
+      const cohortDistrictsMap = require("../data/cohort_districts.json");
+      if (cohortDistrictsMap[cohortId] && cohortDistrictsMap[cohortId].districts) {
+        districts = cohortDistrictsMap[cohortId].districts;
+      }
+    } catch(e) {}
+    
+    if (districts.length === 0) {
+      return res.status(404).json({ error: "No districts found for this cohort." });
+    }
+
+    let generatedCount = 0;
+    const rolesJSON = JSON.stringify(["DL District Trainer - IT Person (DL Dashboard)"]);
+
+    for (const d of districts) {
+      const exists = db.prepare("SELECT id FROM registrations WHERE district = ? AND cohort_id = ? AND roles LIKE '%IT Person%'").get(d.district, cohortId);
+      if (!exists) {
+        const stubPhone = `STUB-${cohortId}-${d.district.replace(/\s+/g, '')}`;
+        const result = db.prepare(`
+          INSERT INTO registrations (
+            officer_name, sex, phone_number, region, district, institution_name, roles, cohort_id, attendance_status
+          ) VALUES (
+            'Pending Registration', 'Male', ?, ?, ?, 'Pending', ?, ?, 'Registered'
+          )
+        `).run(stubPhone, d.region, d.district, rolesJSON, cohortId);
+
+        if (supabase) {
+          await supabase.from("registrations").insert([{
+            id: result.lastInsertRowid,
+            officer_name: 'Pending Registration',
+            sex: 'Male',
+            phone_number: stubPhone,
+            region: d.region,
+            district: d.district,
+            institution_name: 'Pending',
+            roles: ["DL District Trainer - IT Person (DL Dashboard)"],
+            cohort_id: cohortId,
+            attendance_status: 'Registered'
+          }]);
+        }
+        generatedCount++;
+      }
+    }
+    res.json({ success: true, generatedCount });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to generate missing IT persons." });
+  }
+});
+
+// POST /api/registrations/stub - create a placeholder registration for tablet tracking (admin only)
+router.post("/stub", adminAuth, async (req, res) => {
+  const { region, district, cohortId, tablet_imei, tablet_serial } = req.body;
+  if (!region || !district || !cohortId) {
+    return res.status(400).json({ error: "Region, district, and cohortId required." });
+  }
+
+  const stubPhone = `STUB-${cohortId}-${district.replace(/\s+/g, '')}`;
+  const rolesJSON = JSON.stringify(["DL District Trainer - IT Person (DL Dashboard)"]);
+
+  // Check if stub or real registration already exists
+  let exists = db.prepare("SELECT id FROM registrations WHERE district = ? AND cohort_id = ? AND roles LIKE '%IT Person%'").get(district, cohortId);
+  if (exists) {
+    return res.status(409).json({ error: "An IT person or stub already exists for this district and cohort." });
+  }
+
+  try {
+    const result = db.prepare(`
+      INSERT INTO registrations (
+        officer_name, sex, phone_number, region, district, institution_name, roles, cohort_id
+      ) VALUES (
+        'Pending Registration', 'Male', ?, ?, ?, 'Pending', ?, ?
+      )
+    `).run(stubPhone, region, district, rolesJSON, cohortId);
+
+    const insertedId = result.lastInsertRowid;
+
+    if (supabase) {
+      await supabase.from("registrations").insert([{
+        id: insertedId,
+        officer_name: 'Pending Registration',
+        sex: 'Male',
+        phone_number: stubPhone,
+        region,
+        district,
+        institution_name: 'Pending',
+        roles: ["DL District Trainer - IT Person (DL Dashboard)"],
+        cohort_id: cohortId
+      }]);
+    }
+
+    res.json({ success: true, id: insertedId, stubPhone });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to create stub registration." });
+  }
+});
+
 // POST /api/registrations - submit a new registration (public)
 router.post("/", async (req, res) => {
   const errors = validateRegistration(req.body);
@@ -255,30 +361,32 @@ router.post("/", async (req, res) => {
   const assignedCohortId = allocatedCohort ? allocatedCohort.id : null;
   const arrivalDate = allocatedCohort ? allocatedCohort.arrival_date : null;
 
-  // Insert to local SQLite
   const submittedAtIso = new Date().toISOString();
-  
-  const stmt = db.prepare(`
-    INSERT INTO registrations
-      (officer_name, sex, phone_number, email, region, district, institution_name, roles, cohort_id, arrival_date, attendance_status, submitted_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Attended', ?)
-  `);
+  let insertedId = null;
+  const hasItRole = roles.some(r => (r || "").toLowerCase().includes("it person"));
 
-  const info = stmt.run(
-    officerName.trim(),
-    sex,
-    phoneNumber.trim(),
-    formattedEmail,
-    region.trim(),
-    district.trim(),
-    institutionName.trim(),
-    JSON.stringify(roles),
-    assignedCohortId,
-    arrivalDate,
-    submittedAtIso
-  );
+  let stubId = null;
+  if (hasItRole && assignedCohortId) {
+    const stub = db.prepare("SELECT id FROM registrations WHERE district = ? AND cohort_id = ? AND officer_name = 'Pending Registration'").get(district.trim(), assignedCohortId);
+    if (stub) stubId = stub.id;
+  }
 
-  let insertedId = Number(info.lastInsertRowid);
+  if (stubId) {
+    db.prepare(`
+      UPDATE registrations
+      SET officer_name = ?, sex = ?, phone_number = ?, email = ?, institution_name = ?, roles = ?, arrival_date = ?, attendance_status = 'Attended', submitted_at = ?
+      WHERE id = ?
+    `).run(officerName.trim(), sex, phoneNumber.trim(), formattedEmail, institutionName.trim(), JSON.stringify(roles), arrivalDate, submittedAtIso, stubId);
+    insertedId = stubId;
+  } else {
+    const stmt = db.prepare(`
+      INSERT INTO registrations
+        (officer_name, sex, phone_number, email, region, district, institution_name, roles, cohort_id, arrival_date, attendance_status, submitted_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Attended', ?)
+    `);
+    const info = stmt.run(officerName.trim(), sex, phoneNumber.trim(), formattedEmail, region.trim(), district.trim(), institutionName.trim(), JSON.stringify(roles), assignedCohortId, arrivalDate, submittedAtIso);
+    insertedId = Number(info.lastInsertRowid);
+  }
 
   // Insert / Sync to Supabase if connected
   // IMPORTANT: Always use explicit id (max+1) because the Supabase sequence
@@ -309,11 +417,17 @@ router.post("/", async (req, res) => {
         .single();
       const nextId = maxRow ? maxRow.id + 1 : 100;
 
-      const { data: supaRow, error: supaErr } = await supabase
-        .from("registrations")
-        .insert({ ...insertPayload, id: nextId })
-        .select()
-        .single();
+      let supaRow = null;
+      let supaErr = null;
+      if (stubId) {
+        const { data, error } = await supabase.from("registrations").update(insertPayload).eq("id", stubId).select().single();
+        supaRow = data;
+        supaErr = error;
+      } else {
+        const { data, error } = await supabase.from("registrations").insert({ ...insertPayload, id: nextId }).select().single();
+        supaRow = data;
+        supaErr = error;
+      }
 
       if (supaErr) {
         console.error("Supabase insert error:", supaErr.code, supaErr.message, supaErr.details);
