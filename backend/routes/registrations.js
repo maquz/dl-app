@@ -435,8 +435,16 @@ router.post("/", async (req, res) => {
 
   let stubId = null;
   if (hasItRole && assignedCohortId) {
-    const stub = db.prepare("SELECT id FROM registrations WHERE district = ? AND cohort_id = ? AND officer_name = 'Pending Registration'").get(district.trim(), assignedCohortId);
-    if (stub) stubId = stub.id;
+    if (supabase) {
+      try {
+        const { data: stubData } = await supabase.from("registrations").select("id").eq("district", district.trim()).eq("cohort_id", assignedCohortId).eq("officer_name", "Pending Registration");
+        if (stubData && stubData.length > 0) stubId = stubData[0].id;
+      } catch (e) {}
+    }
+    if (!stubId) {
+      const stub = db.prepare("SELECT id FROM registrations WHERE district = ? AND cohort_id = ? AND officer_name = 'Pending Registration'").get(district.trim(), assignedCohortId);
+      if (stub) stubId = stub.id;
+    }
   }
 
   if (stubId) {
