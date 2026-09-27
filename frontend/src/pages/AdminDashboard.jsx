@@ -232,6 +232,15 @@ export default function AdminDashboard() {
   const [genderFilter, setGenderFilter] = useState("");
   const [exporting, setExporting] = useState("");
 
+  useEffect(() => {
+    document.documentElement.classList.add("admin-html");
+    document.body.classList.add("admin-body");
+    return () => {
+      document.documentElement.classList.remove("admin-html");
+      document.body.classList.remove("admin-body");
+    };
+  }, []);
+
   // Nominee Edit Modal State
   const [editingItem, setEditingItem] = useState(null);
   const [editValues, setEditValues] = useState({

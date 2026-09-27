@@ -42,8 +42,13 @@ html,
 body {
   margin: 0;
   padding: 0;
-  overflow-x: clip;
+  overflow-x: hidden;
   width: 100%;
+}
+
+html.admin-html,
+body.admin-body {
+  overflow-x: clip;
 }
 
 body {
