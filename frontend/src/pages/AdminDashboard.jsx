@@ -1276,21 +1276,18 @@ export default function AdminDashboard() {
     const date = new Date().toLocaleDateString("en-GH", { day: "2-digit", month: "long", year: "numeric" });
     const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Tablet Distribution List</title><style>table { border-collapse: collapse; width: 100%; } th, td { border: 1px solid black; padding: 8px; text-align: left; } th { background-color: #f2f2f2; }</style></head><body>";
     const footer = "</body></html>";
-    let html = `<h2 style='text-align:center;'>Tablet Distribution List (IT Persons)</h2>`;
-    html += `<p style='text-align:center;'>Generated on ${date} &bull; Total: ${listRows.length} IT Person(s)</p>`;
+    let html = `<h2 style='text-align:center;'>Tablet Distribution List</h2>`;
+    html += `<p style='text-align:center;'>Generated on ${date} &bull; Total: ${listRows.length} Tablet(s)</p>`;
     html += "<table>";
-    html += "<tr><th>S/N</th><th>Name</th><th>Role</th><th>District</th><th>Phone No</th><th>Assigned IMEI</th><th>Serial No</th></tr>";
+    html += "<tr><th>S/N</th><th>REGION</th><th>DISTRICT</th><th>SERIAL NO.</th><th>IMEI NO.</th></tr>";
     
     listRows.forEach((r, i) => {
-      const roleStr = r.roles ? r.roles.filter(role => role.toLowerCase().includes("it person")).join(", ") : "";
       html += `<tr>
         <td>${i + 1}</td>
-        <td><strong>${r.officer_name}</strong></td>
-        <td>${roleStr}</td>
+        <td>${r.region || ""}</td>
         <td>${r.district || ""}</td>
-        <td>${r.phone_number || ""}</td>
-        <td style='font-family: monospace;'>${r.tablet_imei || "Not Assigned"}</td>
-        <td style='font-family: monospace;'>${r.tablet_serial || "Not Assigned"}</td>
+        <td style='font-family: monospace;'>${r.tablet_serial || ""}</td>
+        <td style='font-family: monospace;'>${r.tablet_imei || ""}</td>
       </tr>`;
     });
     html += "</table>";
@@ -1308,37 +1305,31 @@ export default function AdminDashboard() {
 
   function handleExportDistributionExcel(itPersonsList) {
     const listRows = [...itPersonsList].sort((a, b) => (a.district || "").localeCompare(b.district || ""));
-    const date = new Date().toLocaleDateString("en-GH", { day: "2-digit", month: "long", year: "numeric" });
     const wsData = [
-      ["S/N", "Name", "Role", "District", "Phone No", "Assigned IMEI", "Serial No"]
+      ["S/N", "REGION", "DISTRICT", "SERIAL NO.", "IMEI NO."]
     ];
     listRows.forEach((r, i) => {
-      const roleStr = r.roles ? r.roles.filter(role => role.toLowerCase().includes("it person")).join(", ") : "";
       wsData.push([
         i + 1,
-        r.officer_name || "",
-        roleStr,
+        r.region || "",
         r.district || "",
-        r.phone_number || "",
-        r.tablet_imei || "Not Assigned",
-        r.tablet_serial || "Not Assigned"
+        r.tablet_serial || "",
+        r.tablet_imei || ""
       ]);
     });
     const ws = XLSX.utils.aoa_to_sheet(wsData);
     
     ws["!cols"] = [
-      { wch: 5 },  
-      { wch: 35 }, 
-      { wch: 45 }, 
-      { wch: 25 }, 
-      { wch: 15 }, 
+      { wch: 8 },  
+      { wch: 20 }, 
       { wch: 25 }, 
       { wch: 25 }, 
+      { wch: 25 }
     ];
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Tablet Distribution");
-    XLSX.writeFile(wb, `Tablet_Distribution_${date.replace(/ /g, "_")}.xlsx`);
+    XLSX.writeFile(wb, "Tablet_Distribution_List.xlsx");
   }
 
   // ---- Print current filtered nominees table ----
