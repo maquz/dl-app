@@ -126,7 +126,7 @@ a {
 .brand-title {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   font-weight: 600;
   color: #ffffff;
 }
@@ -188,7 +188,7 @@ main#main-content {
 .site-footer {
   background: #172554;
   color: #f1f5f9;
-  padding: 3rem 2rem 1.5rem;
+  padding: 1.5rem 1rem 1rem;
   font-family: inherit;
   margin-top: auto;
 }
@@ -197,7 +197,7 @@ main#main-content {
   margin: 0 auto;
   display: flex;
   flex-wrap: wrap;
-  gap: 3rem;
+  gap: 1.5rem;
   justify-content: space-between;
 }
 .site-footer-col {
@@ -211,15 +211,15 @@ main#main-content {
   margin-bottom: 1rem;
 }
 .site-footer-brand img {
-  width: 48px;
-  height: 48px;
+  width: 36px;
+  height: 36px;
   border-radius: 8px;
   background: #ffffff;
   padding: 4px;
 }
 .site-footer-brand h3 {
   margin: 0;
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   font-weight: 700;
   letter-spacing: 0.5px;
   color: #ffffff;
@@ -235,7 +235,7 @@ main#main-content {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1px;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.75rem;
   color: #ffffff;
 }
 .site-footer-subheading {
@@ -247,15 +247,15 @@ main#main-content {
   margin-bottom: 0.25rem;
 }
 .site-footer-val {
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 700;
   color: #ffffff;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.75rem;
 }
 .site-footer-bottom {
   max-width: 1200px;
-  margin: 3rem auto 0;
-  padding-top: 1.5rem;
+  margin: 1.5rem auto 0;
+  padding-top: 1rem;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   display: flex;
   flex-wrap: wrap;
@@ -952,7 +952,7 @@ select:focus {
   display: flex;
   gap: 0.5rem;
   border-bottom: 2px solid var(--line);
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.75rem;
   overflow-x: auto;
   white-space: nowrap;
   -webkit-overflow-scrolling: touch;
@@ -1072,7 +1072,7 @@ select:focus {
   display: grid;
   grid-template-columns: repeat(1, 1fr);
   gap: 1rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.75rem;
 }
 @media (min-width: 640px) {
   .analytics-grid {
@@ -1437,7 +1437,7 @@ tbody tr:hover {
   display: flex;
   align-items: center;
   gap: 1rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.75rem;
 }
 
 .confirmation-header h1 {
@@ -1456,7 +1456,7 @@ tbody tr:hover {
   border: 2px solid var(--line);
   border-radius: var(--radius-md);
   padding: 1.75rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.75rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
@@ -1484,7 +1484,7 @@ tbody tr:hover {
 .slip-title {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   color: var(--navy-900);
 }
 
@@ -1519,7 +1519,7 @@ tbody tr:hover {
 
 .ref-code {
   font-family: monospace;
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   font-weight: 700;
   color: var(--dl-blue);
   letter-spacing: 0.05em;
@@ -1919,7 +1919,7 @@ tbody tr:hover {
 }
 
 .step-icon {
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   line-height: 1.2;
   flex-shrink: 0;
   width: 24px;
@@ -2235,7 +2235,7 @@ tbody tr:hover {
 }
 
 .trainers-section-header {
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.75rem;
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
@@ -2294,7 +2294,7 @@ tbody tr:hover {
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   flex-shrink: 0;
 }
 
@@ -2595,7 +2595,7 @@ tbody tr:hover {
 }
 
 .result-stat-val {
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   font-weight: 700;
   color: var(--navy-900);
 }
@@ -2646,7 +2646,7 @@ tbody tr:hover {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.75rem;
   font-size: 0.9rem;
 }
 
@@ -2824,7 +2824,7 @@ tbody tr:hover {
 }
 
 .admin-nav-item-icon {
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   line-height: 1;
   flex-shrink: 0;
 }
@@ -3304,10 +3304,10 @@ tbody tr:hover {
 }
 
 .questions-container h3 {
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   font-weight: 800;
   color: #0f172a;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.75rem;
   padding-bottom: 0.5rem;
   border-bottom: 1px solid #e2e8f0;
 }
@@ -3318,7 +3318,7 @@ tbody tr:hover {
   border: 1.5px solid #e2e8f0;
   border-radius: 14px;
   padding: 1.5rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.75rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
   transition: all 0.2s ease;
 }
@@ -3673,7 +3673,7 @@ tbody tr:hover {
   align-items: center;
   flex-wrap: wrap;
   gap: 1rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.75rem;
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
@@ -3696,14 +3696,14 @@ tbody tr:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   font-weight: 800;
   box-shadow: 0 2px 6px rgba(30, 58, 138, 0.25);
   flex-shrink: 0;
 }
 
 .officer-portal-greeting {
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   font-weight: 800;
   color: #0f172a;
   margin: 0;
@@ -3930,7 +3930,7 @@ tbody tr:hover {
   flex-wrap: wrap;
   border-bottom: 1.5px solid #f1f5f9;
   padding-bottom: 1.5rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.75rem;
 }
 
 .assessment-hero-title-group h2 {
