@@ -388,6 +388,24 @@ router.post("/", async (req, res) => {
           });
         }
       }
+
+      // Check Name & District match
+      const { data: existName } = await supabase
+        .from("registrations")
+        .select("*")
+        .ilike("officer_name", officerName.trim())
+        .eq("district", district.trim())
+        .maybeSingle();
+
+      if (existName) {
+        const nominee = formatNomineeRecord(existName);
+        return res.status(409).json({
+          error: `A nomination registration for "${existName.officer_name}" already exists in ${district}.`,
+          existingReference: generateRefCode(existName.id, existName.region),
+          hasRegistered: true,
+          nominee,
+        });
+      }
     } catch (e) {
       console.error("Supabase duplicate check error:", e.message);
     }
@@ -404,10 +422,16 @@ router.post("/", async (req, res) => {
       .get(formattedEmail);
   }
 
+  if (!existing) {
+    existing = db
+      .prepare("SELECT * FROM registrations WHERE LOWER(officer_name) = LOWER(?) AND district = ?")
+      .get(officerName.trim(), district.trim());
+  }
+
   if (existing) {
     const nominee = formatNomineeRecord(existing);
     return res.status(409).json({
-      error: `A nomination registration with phone "${phoneNumber}" already exists for ${existing.officer_name}.`,
+      error: `A nomination registration already exists for ${existing.officer_name}.`,
       existingReference: generateRefCode(existing.id, existing.region),
       hasRegistered: true,
       nominee,
