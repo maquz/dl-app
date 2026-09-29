@@ -45,6 +45,22 @@ export default function Confirmation() {
 
   useEffect(() => {
     const cohortId = nominee?.cohortId || 1;
+    
+    // Refresh nominee data in case tablet details or roles were updated by admin
+    if (nominee?.phoneNumber || nominee?.email) {
+      import("../api").then(api => {
+        api.fetchMyNomination({ phone: nominee.phoneNumber, email: nominee.email })
+          .then(res => {
+            if (res.hasRegistered && res.nominee) {
+              setNominee(res.nominee);
+              localStorage.setItem("officer_profile", JSON.stringify(res.nominee));
+              sessionStorage.setItem("recent_nominee", JSON.stringify(res.nominee));
+            }
+          })
+          .catch(() => {});
+      });
+    }
+
     Promise.all([
       fetchAssessments({ cohortId }),
       fetchResources().catch(() => ({ resources: [] })),

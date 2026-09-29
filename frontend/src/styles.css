@@ -1604,8 +1604,32 @@ tbody tr:hover {
 }
 
 @media print {
+  @page {
+    size: A4 portrait;
+    margin: 1cm;
+  }
   body {
     background: #ffffff !important;
+    font-size: 10pt !important;
+    color: #000 !important;
+  }
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  .slip-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 0.5rem 1rem !important;
+    text-align: left !important;
+  }
+  .slip-field, .slip-brand, .slip-title, .slip-meta {
+    text-align: left !important;
+  }
+  .slip-brand {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
   }
   .site-header,
   .site-footer,
@@ -1624,9 +1648,28 @@ tbody tr:hover {
     padding: 0 !important;
   }
   .nomination-slip {
-    border: 1px solid #000000 !important;
+    border: 1px solid #ddd !important;
     box-shadow: none !important;
     page-break-inside: avoid;
+    padding: 1rem !important;
+    margin: 0 !important;
+  }
+  .slip-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 0.5rem !important;
+  }
+  .slip-field {
+    margin-bottom: 0.2rem !important;
+  }
+  .slip-field-label {
+    font-size: 8pt !important;
+  }
+  .slip-field-val {
+    font-size: 10pt !important;
+  }
+  .slip-footer {
+    margin-top: 0.5rem !important;
+    padding-top: 0.5rem !important;
   }
 }
 
