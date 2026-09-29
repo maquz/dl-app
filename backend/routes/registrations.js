@@ -240,19 +240,26 @@ router.post("/stub/cleanup", adminAuth, async (req, res) => {
     let count = 0;
     if (supabase) {
       // Get all stubs
-      const { data: stubs } = await supabase.from("registrations").select("id, district, cohort_id").eq("officer_name", "Pending Registration").like("phone_number", "STUB-%");
+      const { data: stubs } = await supabase.from("registrations").select("id, district, cohort_id, tablet_imei, tablet_serial").eq("officer_name", "Pending Registration").like("phone_number", "STUB-%");
       if (stubs) {
         for (const stub of stubs) {
           // Check if real IT person exists for this district
-          const { data: realUsers } = await supabase.from("registrations").select("id, roles").eq("district", stub.district).eq("cohort_id", stub.cohort_id).neq("id", stub.id);
+          const { data: realUsers } = await supabase.from("registrations").select("id, roles, tablet_imei, tablet_serial").eq("district", stub.district).eq("cohort_id", stub.cohort_id).neq("id", stub.id);
           if (realUsers && realUsers.length > 0) {
-            const hasRealIt = realUsers.some(r => {
+            const realItPerson = realUsers.find(r => {
               try {
                 const rolesArr = typeof r.roles === 'string' ? JSON.parse(r.roles) : r.roles;
                 return (rolesArr || []).some(role => String(role).toLowerCase().includes('it person'));
               } catch(e) { return false; }
             });
-            if (hasRealIt) {
+            if (realItPerson) {
+              // Merge tablet data if stub has it and real user doesn't
+              if ((stub.tablet_imei || stub.tablet_serial) && !realItPerson.tablet_imei) {
+                await supabase.from("registrations").update({
+                  tablet_imei: stub.tablet_imei,
+                  tablet_serial: stub.tablet_serial
+                }).eq("id", realItPerson.id);
+              }
               await supabase.from("registrations").delete().eq("id", stub.id);
               db.prepare("DELETE FROM registrations WHERE id = ?").run(stub.id);
               count++;
