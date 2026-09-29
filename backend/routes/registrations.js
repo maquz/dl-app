@@ -100,6 +100,8 @@ function formatNomineeRecord(row) {
     departureDate: cohort ? cohort.departure_date : "Wednesday, 23/09/2026",
     attendanceStatus: row.attendance_status || "Registered",
     submittedAt: row.submitted_at,
+    tabletSerial: row.tablet_serial || null,
+    tabletImei: row.tablet_imei || null
   };
 }
 
@@ -412,6 +414,31 @@ router.post("/", async (req, res) => {
           hasRegistered: true,
           nominee,
         });
+      }
+
+      // Check Role taken in this district
+      // Ignore stubs ("Pending Registration") so IT Persons can still claim them
+      const { data: districtUsers } = await supabase
+        .from("registrations")
+        .select("id, officer_name, roles")
+        .eq("district", district.trim())
+        .neq("officer_name", "Pending Registration");
+
+      if (districtUsers) {
+        for (const u of districtUsers) {
+          let uRoles = [];
+          try {
+            uRoles = typeof u.roles === 'string' ? JSON.parse(u.roles) : (u.roles || []);
+          } catch(e) {}
+          
+          for (const reqRole of roles) {
+            if (uRoles.includes(reqRole)) {
+               return res.status(409).json({
+                 error: `The role "${reqRole}" has already been claimed by ${u.officer_name} for ${district.trim()}. Each role can only be registered once per district.`
+               });
+            }
+          }
+        }
       }
     } catch (e) {
       console.error("Supabase duplicate check error:", e.message);

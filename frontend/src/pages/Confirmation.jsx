@@ -583,6 +583,19 @@ export default function Confirmation() {
                     </div>
                   </div>
 
+                  {(nominee?.roles || []).some(r => String(r).toLowerCase().includes('it person')) && (
+                    <>
+                      <div className="slip-field">
+                        <span className="slip-field-label">Assigned Tablet IMEI</span>
+                        <span className="slip-field-val" style={{fontFamily: 'monospace', fontWeight: 'bold'}}>{nominee?.tabletImei || "Pending Allocation"}</span>
+                      </div>
+                      <div className="slip-field">
+                        <span className="slip-field-label">Assigned Tablet Serial</span>
+                        <span className="slip-field-val" style={{fontFamily: 'monospace', fontWeight: 'bold'}}>{nominee?.tabletSerial || "Pending Allocation"}</span>
+                      </div>
+                    </>
+                  )}
+
                   <div className="slip-field full-width">
                     <span className="slip-field-label">Registration Timestamp</span>
                     <span className="slip-field-val text-muted">
