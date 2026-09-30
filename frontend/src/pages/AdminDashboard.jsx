@@ -4490,16 +4490,18 @@ export async function handleExportDistrictBreakdownExternal(action, cohortStatsD
     const title = `District Breakdown - ${cohortName}`;
     const filename = `District_Breakdown_${cohortName.replace(/\s+/g, '_')}`;
 
+    const getRemaining = (d) => d.expected > d.attended ? (d.expected - d.attended) : "Filled";
+
     if (action === 'excel') {
       const wsData = [
         ["DISTRICT", "REGION", "EXPECTED", "REGISTERED", "ATTENDED", "REMAINING SEATS"],
-        ...data.map(d => [d.district, d.region, d.expected, d.registered, d.attended, d.remaining])
+        ...data.map(d => [d.district, d.region, d.expected, d.registered, d.attended, getRemaining(d)])
       ];
-      const ws = window.XLSX.utils.aoa_to_sheet(wsData);
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
       ws["!cols"] = [{ wch: 25 }, { wch: 15 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 15 }];
-      const wb = window.XLSX.utils.book_new();
-      window.XLSX.utils.book_append_sheet(wb, ws, "Breakdown");
-      window.XLSX.writeFile(wb, `${filename}.xlsx`);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Breakdown");
+      XLSX.writeFile(wb, `${filename}.xlsx`);
       return;
     }
 
@@ -4510,7 +4512,7 @@ export async function handleExportDistrictBreakdownExternal(action, cohortStatsD
       <table border="1" style="border-collapse: collapse; width: 100%; text-align: left;">
         <thead><tr><th>District</th><th>Region</th><th>Expected</th><th>Registered</th><th>Attended</th><th>Remaining Seats</th></tr></thead>
         <tbody>
-          ${data.map(d => `<tr><td>${d.district}</td><td>${d.region}</td><td>${d.expected}</td><td>${d.registered}</td><td>${d.attended}</td><td>${d.remaining}</td></tr>`).join("")}
+          ${data.map(d => `<tr><td>${d.district}</td><td>${d.region}</td><td>${d.expected}</td><td>${d.registered}</td><td>${d.attended}</td><td>${getRemaining(d)}</td></tr>`).join("")}
         </tbody>
       </table></body></html>`;
       const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
@@ -4526,11 +4528,11 @@ export async function handleExportDistrictBreakdownExternal(action, cohortStatsD
 
     // PDF for Print / Share
     try {
-      const doc = new window.jspdf.jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+      const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
       doc.setFontSize(16);
       doc.text(title, 40, 40);
 
-      const tableData = data.map(d => [d.district, d.region, d.expected, d.registered, d.attended, d.remaining]);
+      const tableData = data.map(d => [d.district, d.region, d.expected, d.registered, d.attended, getRemaining(d).toString()]);
 
       doc.autoTable({
         startY: 60,
@@ -4551,19 +4553,15 @@ export async function handleExportDistrictBreakdownExternal(action, cohortStatsD
             await navigator.share({ title: title, files: [file] });
           } catch (e) {
             if (e.name !== "AbortError") {
-              
               doc.save(`${filename}.pdf`);
             }
           }
         } else {
           doc.save(`${filename}.pdf`);
-          
         }
       }
     } catch (err) {
       if (err.name === "AbortError") return;
-      
-      console.error(err);
-      alert("Error generating file.");
+      console.error("Error generating file:", err);
     }
 }
