@@ -149,6 +149,11 @@ export default function RegistrationForm() {
     if (!values.sex) e.sex = "Please select a sex.";
     if (!PHONE_REGEX.test(values.phoneNumber)) {
       e.phoneNumber = "Phone number must look like 024-498-9910 (10 digits with hyphens).";
+    } else {
+      const rawDigits = values.phoneNumber.replace(/\D/g, "");
+      if (rawDigits.startsWith("233")) {
+        e.phoneNumber = "Please enter your local 10-digit number starting with 0 (do not use the 233 country code).";
+      }
     }
     if (values.email && values.email.trim() && !EMAIL_REGEX.test(values.email.trim())) {
       e.email = "Please enter a valid email address (e.g. name@ges.gov.gh).";
@@ -178,6 +183,10 @@ export default function RegistrationForm() {
   async function handlePopupSubmit() {
     if (!PHONE_REGEX.test(authPopupPhone)) {
       setAuthPopupError("Please enter a valid phone number (e.g. 024-498-9910).");
+      return;
+    }
+    if (authPopupPhone.replace(/\D/g, "").startsWith("233")) {
+      setAuthPopupError("Please enter your local 10-digit number starting with 0 (do not use the 233 country code).");
       return;
     }
     setAuthPopupError("");

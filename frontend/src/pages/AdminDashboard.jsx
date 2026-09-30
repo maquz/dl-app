@@ -85,9 +85,9 @@ async function handlePdfAction(action, title, subtitle, head, body, filename) {
     }
   } catch (err) {
     if (err.name === "AbortError") return;
-      alert("Native sharing is not fully supported by your browser/device. The file has been downloaded instead.");
+      
     console.warn("Share failed:", err);
-    alert("Native sharing is not fully supported by your browser/device. The file has been downloaded instead.");
+    
     if (action === 'share') {
       try {
         const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
@@ -131,7 +131,7 @@ async function handleHtmlPdfAction(action, elementId, filename) {
   } catch (err) {
     console.error("Error exporting HTML to PDF:", err);
     if (err.name === "AbortError") return;
-      alert("Native sharing is not fully supported by your browser/device. The file has been downloaded instead.");
+      
     if (action === 'share' && pdf) {
       pdf.save(filename);
     }
@@ -587,7 +587,11 @@ export default function AdminDashboard() {
     const errs = {};
     if (!editValues.officerName.trim()) errs.officerName = "Officer name is required.";
     if (!editValues.sex) errs.sex = "Sex is required.";
-    if (!PHONE_REGEX.test(editValues.phoneNumber)) errs.phoneNumber = "Phone format must be 000-000-0000.";
+    if (!PHONE_REGEX.test(editValues.phoneNumber)) {
+      errs.phoneNumber = "Phone format must be 000-000-0000.";
+    } else if (editValues.phoneNumber.replace(/\D/g, "").startsWith("233")) {
+      errs.phoneNumber = "Use local 10-digit number (starts with 0, not 233).";
+    }
     if (editValues.email && editValues.email.trim() && !EMAIL_REGEX.test(editValues.email.trim())) {
       errs.email = "Please enter a valid email address.";
     }
@@ -1434,7 +1438,7 @@ export default function AdminDashboard() {
     } catch (err) {
       console.error("Error sharing PDF:", err);
       if (err.name === "AbortError") return;
-      alert("Native sharing is not fully supported by your browser/device. The file has been downloaded instead.");
+      
       try {
         const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
         const title = "GES DL Programme - Nominee Registrations";
@@ -4547,18 +4551,18 @@ export async function handleExportDistrictBreakdownExternal(action, cohortStatsD
             await navigator.share({ title: title, files: [file] });
           } catch (e) {
             if (e.name !== "AbortError") {
-              alert("Your browser/device blocked the native share window. Downloading the file instead.");
+              
               doc.save(`${filename}.pdf`);
             }
           }
         } else {
           doc.save(`${filename}.pdf`);
-          alert("Native sharing is not supported by your browser/device. The file has been downloaded instead.");
+          
         }
       }
     } catch (err) {
       if (err.name === "AbortError") return;
-      alert("Native sharing is not fully supported by your browser/device. The file has been downloaded instead.");
+      
       console.error(err);
       alert("Error generating file.");
     }
