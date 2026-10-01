@@ -3058,6 +3058,21 @@ export default function AdminDashboard() {
                   </div>
                 </div>
                 
+                <div style={{ marginBottom: "1rem", display: "flex", justifyContent: "flex-end" }}>
+                  <input
+                    type="search"
+                    placeholder="Search IT Persons by name, district, phone, or IMEI..."
+                    value={itQuery}
+                    onChange={(e) => {
+                      setItQuery(e.target.value);
+                      setItPage(1);
+                    }}
+                    className="search-input"
+                    style={{ maxWidth: "400px", width: "100%" }}
+                  />
+                </div>
+
+                
                 <div className="table-wrap">
                   <table className="admin-table">
                     <thead>
