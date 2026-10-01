@@ -227,6 +227,7 @@ export default function AdminDashboard() {
 
   // Filters for registrations
   const [query, setQuery] = useState("");
+  const [itQuery, setItQuery] = useState("");
   const [regionFilter, setRegionFilter] = useState("");
   const [districtFilter, setDistrictFilter] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
@@ -363,10 +364,19 @@ export default function AdminDashboard() {
   }, [rows, genderFilter]);
 
   const itPersonsList = useMemo(() => {
-    return displayRows
-      .filter(r => (r.roles || []).some(role => role.toLowerCase().includes("it person")))
-      .sort((a, b) => (a.district || "").localeCompare(b.district || ""));
-  }, [displayRows]);
+    let list = displayRows.filter(r => (r.roles || []).some(role => role.toLowerCase().includes("it person")));
+    if (itQuery.trim()) {
+      const q = itQuery.toLowerCase();
+      list = list.filter(r => 
+        (r.officer_name || "").toLowerCase().includes(q) ||
+        (r.district || "").toLowerCase().includes(q) ||
+        (r.phone_number || "").toLowerCase().includes(q) ||
+        (r.tablet_imei || "").toLowerCase().includes(q) ||
+        (r.tablet_serial || "").toLowerCase().includes(q)
+      );
+    }
+    return list.sort((a, b) => (a.district || "").localeCompare(b.district || ""));
+  }, [displayRows, itQuery]);
   
   const { currentPage: regPage, setCurrentPage: setRegPage, totalPages: regTotalPages, currentData: currentRows } = usePagination(displayRows, 20);
   const { currentPage: defaultersPage, setCurrentPage: setDefaultersPage, totalPages: defaultersTotalPages, currentData: currentDefaulters } = usePagination(defaultersData, 10);
