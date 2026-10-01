@@ -502,12 +502,12 @@ router.post("/", async (req, res) => {
   if (hasItRole && assignedCohortId) {
     if (supabase) {
       try {
-        const { data: stubData } = await supabase.from("registrations").select("id").eq("district", district.trim()).eq("cohort_id", assignedCohortId).eq("officer_name", "Pending Registration");
+        const { data: stubData } = await supabase.from("registrations").select("id").eq("district", district.trim()).eq("officer_name", "Pending Registration");
         if (stubData && stubData.length > 0) stubId = stubData[0].id;
       } catch (e) {}
     }
     if (!stubId) {
-      const stub = db.prepare("SELECT id FROM registrations WHERE district = ? AND cohort_id = ? AND officer_name = 'Pending Registration'").get(district.trim(), assignedCohortId);
+      const stub = db.prepare("SELECT id FROM registrations WHERE district = ? AND officer_name = 'Pending Registration'").get(district.trim());
       if (stub) stubId = stub.id;
     }
   }
