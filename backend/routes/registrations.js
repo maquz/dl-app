@@ -251,7 +251,9 @@ router.post("/stub/cleanup", adminAuth, async (req, res) => {
       if (stubs) {
         for (const stub of stubs) {
           // Check if real IT person exists for this district
-          const { data: realUsers } = await supabase.from("registrations").select("id, roles, tablet_imei, tablet_serial").eq("district", stub.district).eq("cohort_id", stub.cohort_id).neq("id", stub.id);
+          // We remove cohort_id from the match condition because sometimes users register under the wrong cohort or it shifts.
+          // Since there is only one IT person per district, district match is sufficient.
+          const { data: realUsers } = await supabase.from("registrations").select("id, roles, tablet_imei, tablet_serial").eq("district", stub.district).neq("id", stub.id);
           if (realUsers && realUsers.length > 0) {
             const realItPerson = realUsers.find(r => {
               try {
