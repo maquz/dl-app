@@ -4245,7 +4245,7 @@ tbody tr:hover {
 }
 
 .glass-dashboard-hero {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%); /* Greenish gradient matching image */
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
   color: white;
   padding: 3rem 1.5rem 5rem 1.5rem;
   border-bottom-left-radius: 32px;
@@ -4400,9 +4400,9 @@ tbody tr:hover {
 }
 
 .glass-action-card.active {
-  border: 2px solid #10b981;
+  border: 2px solid #3b82f6;
   background: #ffffff;
-  box-shadow: 0 12px 30px rgba(16, 185, 129, 0.15);
+  box-shadow: 0 12px 30px rgba(59, 130, 246, 0.15);
 }
 
 .action-icon {
