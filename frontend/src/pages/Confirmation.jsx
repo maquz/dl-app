@@ -7,7 +7,14 @@ export default function Confirmation() {
   const navigate = useNavigate();
 
   const [nominee, setNominee] = useState(() => {
-    return (
+    const handleTabClick = (tab) => {
+    setActiveTab(tab);
+    setTimeout(() => {
+      document.getElementById('action-content-area')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
+  };
+
+  return (
       location.state?.nominee ||
       JSON.parse(sessionStorage.getItem("recent_nominee") || localStorage.getItem("officer_profile") || "null")
     );
@@ -158,7 +165,7 @@ export default function Confirmation() {
       </div>
 
       <div className="glass-metrics-grid no-print">
-        <div className={`glass-metric-card ${activeTab === "pre-test" ? "active" : ""}`} onClick={() => setActiveTab("pre-test")} style={{ cursor: "pointer", border: activeTab === "pre-test" ? "2px solid #3b82f6" : "1px solid rgba(255, 255, 255, 0.8)", alignItems: "center", textAlign: "center", padding: "1.25rem 0.5rem" }}>
+        <div className={`glass-metric-card ${activeTab === "pre-test" ? "active" : ""}`} onClick={() => handleTabClick("pre-test")} style={{ cursor: "pointer", border: activeTab === "pre-test" ? "2px solid #3b82f6" : "1px solid rgba(255, 255, 255, 0.8)", alignItems: "center", textAlign: "center", padding: "1.25rem 0.5rem" }}>
           <div className="action-icon" style={{background: "linear-gradient(135deg, #f59e0b, #fbbf24)", width: "48px", height: "48px", borderRadius: "14px", marginBottom: "0.5rem", display: "flex", alignItems: "center", justifyContent: "center", color: "white"}}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
           </div>
@@ -166,7 +173,7 @@ export default function Confirmation() {
           <div className="metric-sub" style={{ color: "#64748b", fontSize: "0.7rem", marginTop: "2px" }}>Diagnostic</div>
         </div>
 
-        <div className={`glass-metric-card ${activeTab === "post-test" ? "active" : ""}`} onClick={() => setActiveTab("post-test")} style={{ cursor: "pointer", border: activeTab === "post-test" ? "2px solid #3b82f6" : "1px solid rgba(255, 255, 255, 0.8)", alignItems: "center", textAlign: "center", padding: "1.25rem 0.5rem" }}>
+        <div className={`glass-metric-card ${activeTab === "post-test" ? "active" : ""}`} onClick={() => handleTabClick("post-test")} style={{ cursor: "pointer", border: activeTab === "post-test" ? "2px solid #3b82f6" : "1px solid rgba(255, 255, 255, 0.8)", alignItems: "center", textAlign: "center", padding: "1.25rem 0.5rem" }}>
           <div className="action-icon" style={{background: "linear-gradient(135deg, #3b82f6, #60a5fa)", width: "48px", height: "48px", borderRadius: "14px", marginBottom: "0.5rem", display: "flex", alignItems: "center", justifyContent: "center", color: "white"}}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c3 3 9 3 12 0v-5"></path></svg>
           </div>
@@ -174,7 +181,7 @@ export default function Confirmation() {
           <div className="metric-sub" style={{ color: "#64748b", fontSize: "0.7rem", marginTop: "2px" }}>Evaluation</div>
         </div>
 
-        <div className={`glass-metric-card ${activeTab === "slip" ? "active" : ""}`} onClick={() => setActiveTab("slip")} style={{ cursor: "pointer", border: activeTab === "slip" ? "2px solid #3b82f6" : "1px solid rgba(255, 255, 255, 0.8)", alignItems: "center", textAlign: "center", padding: "1.25rem 0.5rem" }}>
+        <div className={`glass-metric-card ${activeTab === "slip" ? "active" : ""}`} onClick={() => handleTabClick("slip")} style={{ cursor: "pointer", border: activeTab === "slip" ? "2px solid #3b82f6" : "1px solid rgba(255, 255, 255, 0.8)", alignItems: "center", textAlign: "center", padding: "1.25rem 0.5rem" }}>
           <div className="action-icon" style={{background: "linear-gradient(135deg, #10b981, #34d399)", width: "48px", height: "48px", borderRadius: "14px", marginBottom: "0.5rem", display: "flex", alignItems: "center", justifyContent: "center", color: "white"}}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
           </div>
@@ -182,7 +189,7 @@ export default function Confirmation() {
           <div className="metric-sub" style={{ color: "#64748b", fontSize: "0.7rem", marginTop: "2px" }}>Registration</div>
         </div>
 
-        <div className={`glass-metric-card ${activeTab === "resources" ? "active" : ""}`} onClick={() => setActiveTab("resources")} style={{ cursor: "pointer", border: activeTab === "resources" ? "2px solid #3b82f6" : "1px solid rgba(255, 255, 255, 0.8)", alignItems: "center", textAlign: "center", padding: "1.25rem 0.5rem" }}>
+        <div className={`glass-metric-card ${activeTab === "resources" ? "active" : ""}`} onClick={() => handleTabClick("resources")} style={{ cursor: "pointer", border: activeTab === "resources" ? "2px solid #3b82f6" : "1px solid rgba(255, 255, 255, 0.8)", alignItems: "center", textAlign: "center", padding: "1.25rem 0.5rem" }}>
           <div className="action-icon" style={{background: "linear-gradient(135deg, #8b5cf6, #a78bfa)", width: "48px", height: "48px", borderRadius: "14px", marginBottom: "0.5rem", display: "flex", alignItems: "center", justifyContent: "center", color: "white"}}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
           </div>
@@ -191,7 +198,7 @@ export default function Confirmation() {
         </div>
       </div>
 
-      <div className="glass-actions-label no-print" style={{ textAlign: "center", marginTop: "1rem", marginBottom: "1.5rem" }}>
+      <div id="action-content-area" className="glass-actions-label no-print" style={{ textAlign: "center", marginTop: "1rem", marginBottom: "1.5rem" }}>
         Portal Forms & Assessments
       </div>
 
@@ -301,7 +308,7 @@ export default function Confirmation() {
                   <button
                     type="button"
                     className="btn-secondary"
-                    onClick={() => setActiveTab("slip")}
+                    onClick={() => handleTabClick("slip")}
                   >
                     View My Registration Slip
                   </button>
@@ -414,7 +421,7 @@ export default function Confirmation() {
                   <button
                     type="button"
                     className="btn-secondary"
-                    onClick={() => setActiveTab("slip")}
+                    onClick={() => handleTabClick("slip")}
                   >
                     View My Registration Slip
                   </button>
@@ -594,7 +601,7 @@ export default function Confirmation() {
                 <button
                   type="button"
                   className="btn-secondary"
-                  onClick={() => setActiveTab("pre-test")}
+                  onClick={() => handleTabClick("pre-test")}
                 >
                   Go to Pre-Training Test →
                 </button>
@@ -630,15 +637,15 @@ export default function Confirmation() {
                           </span>
                         </h3>
                         {isOpen && catResources.map(file => (
-                          <div key={file.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1.25rem", border: "1px solid #e2e8f0", borderRadius: "12px", background: "#fff", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                          <div key={file.id} style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: "1rem", padding: "1rem", border: "1px solid #e2e8f0", borderRadius: "12px", background: "#fff", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "1rem", flex: "1 1 200px", minWidth: 0 }}>
                               <span style={{ fontSize: "2rem" }}>📄</span>
-                              <div>
-                                <strong style={{ fontSize: "1.1rem", color: "#1e293b", display: "block", marginBottom: "0.25rem" }}>{file.name}</strong>
+                              <div style={{ minWidth: 0 }}>
+                                <strong style={{ fontSize: "1rem", color: "#1e293b", display: "block", marginBottom: "0.25rem", wordBreak: "break-word" }}>{file.name}</strong>
                                 <span style={{ fontSize: "0.85rem", color: "#64748b" }}>PDF Document • {(file.size / 1024 / 1024).toFixed(2)} MB</span>
                               </div>
                             </div>
-                            <a href={file.url} target="_blank" rel="noreferrer" className="btn-primary" style={{ padding: "0.5rem 1rem", textDecoration: "none" }}>
+                            <a href={file.url} target="_blank" rel="noreferrer" className="btn-primary" style={{ padding: "0.5rem 1rem", textDecoration: "none", flexShrink: 0, textAlign: "center", minWidth: "100px" }}>
                               Download
                             </a>
                           </div>

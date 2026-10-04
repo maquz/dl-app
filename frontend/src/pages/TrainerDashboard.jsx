@@ -384,7 +384,14 @@ export default function TrainerDashboard() {
     navigate("/trainer/login");
   }
 
-  return (
+  const handleTabClick = (tab) => {
+      setActiveTab(tab);
+      setTimeout(() => {
+        document.getElementById('action-content-area')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 50);
+    };
+
+    return (
     <div className="glass-dashboard-wrapper">
       {successMsg && (
         <div className="banner banner-success" style={{ margin: "1rem auto", maxWidth: "1200px" }}>
@@ -440,7 +447,7 @@ export default function TrainerDashboard() {
         </div>
       </div>
 
-      <div className="glass-actions-label no-print" style={{maxWidth: "1200px"}}>Dashboard Views</div>
+      <div id="action-content-area" className="glass-actions-label no-print" style={{maxWidth: "1200px"}}>Dashboard Views</div>
       <div className="glass-actions-grid no-print" style={{maxWidth: "1200px"}}>
         <div className={`glass-action-card ${activeTab === "oversight" ? "active" : ""}`} onClick={() => setActiveTab("oversight")}>
           <div className="action-icon" style={{background: "linear-gradient(135deg, #10b981, #34d399)"}}>
@@ -472,7 +479,7 @@ export default function TrainerDashboard() {
           </div>
         </div>
 
-        <div className={`glass-action-card ${activeTab === "team" ? "active" : ""}`} onClick={() => setActiveTab("team")}>
+        <div className={`glass-action-card ${activeTab === "team" ? "active" : ""}`} onClick={() => handleTabClick("team")}>
           <div className="action-icon" style={{background: "linear-gradient(135deg, #ef4444, #f87171)"}}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
           </div>
@@ -482,7 +489,7 @@ export default function TrainerDashboard() {
           </div>
         </div>
 
-        <div className={`glass-action-card ${activeTab === "resources" ? "active" : ""}`} onClick={() => setActiveTab("resources")}>
+        <div className={`glass-action-card ${activeTab === "resources" ? "active" : ""}`} onClick={() => handleTabClick("resources")}>
           <div className="action-icon" style={{background: "linear-gradient(135deg, #8b5cf6, #a78bfa)"}}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
           </div>

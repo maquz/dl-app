@@ -4291,13 +4291,13 @@ tbody tr:hover {
 }
 
 .hero-greeting strong {
-  font-size: 1.6rem;
-  font-weight: 700;
+  font-size: 1.35rem;
+  font-weight: 800;
   opacity: 1;
   display: block;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow: visible;
+  line-height: 1.25;
 }
 
 .hero-actions {
@@ -4444,4 +4444,20 @@ tbody tr:hover {
   padding: 2rem;
   border: 1px solid rgba(255, 255, 255, 0.8);
   min-height: 400px;
+}
+
+
+@media (max-width: 600px) {
+  .slip-brand {
+    flex-direction: column;
+    text-align: center;
+  }
+  .slip-ref-box {
+    flex-direction: column;
+    text-align: center;
+    gap: 0.5rem;
+  }
+  .nomination-slip {
+    padding: 1rem;
+  }
 }
