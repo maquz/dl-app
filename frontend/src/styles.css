@@ -2034,7 +2034,8 @@ tbody tr:hover {
 
 .metric-sub {
   font-size: 0.75rem;
-  color: var(--ink-soft);
+  color: #8b5cf6;
+  font-weight: 500;
 }
 
 .cohort-card-footer {
@@ -4251,7 +4252,7 @@ tbody tr:hover {
   border-bottom-left-radius: 32px;
   border-bottom-right-radius: 32px;
   position: relative;
-  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.2);
+  box-shadow: 0 4px 15px rgba(15, 23, 42, 0.2);
 }
 
 .hero-content {
@@ -4319,11 +4320,11 @@ tbody tr:hover {
 
 .glass-metrics-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
   max-width: 1000px;
   margin: -3rem auto 2rem auto;
-  padding: 0 1.5rem;
+  padding: 0 1rem;
   position: relative;
   z-index: 10;
 }
@@ -4332,9 +4333,9 @@ tbody tr:hover {
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border-radius: 20px;
+  border-radius: 16px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
-  padding: 1.25rem 1rem;
+  padding: 1rem 0.6rem;
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
@@ -4344,15 +4345,14 @@ tbody tr:hover {
 .metric-title {
   font-size: 0.8rem;
   color: #64748b;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  font-weight: 500;
 }
 
 .metric-value {
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   color: #1e293b;
   font-weight: 800;
+  line-height: 1.2;
 }
 
 .metric-sub {
@@ -4372,23 +4372,23 @@ tbody tr:hover {
 
 .glass-actions-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
   max-width: 1000px;
   margin: 0 auto 2rem auto;
-  padding: 0 1.5rem;
+  padding: 0 1rem;
 }
 
 .glass-action-card {
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(12px);
-  border-radius: 20px;
+  border-radius: 16px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
   padding: 1rem;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 1rem;
+  gap: 0.75rem;
   border: 1px solid rgba(255, 255, 255, 0.8);
   cursor: pointer;
   transition: all 0.2s ease;
@@ -4406,14 +4406,15 @@ tbody tr:hover {
 }
 
 .action-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   color: white;
+  margin-bottom: 0.25rem;
 }
 
 .action-details h3 {
