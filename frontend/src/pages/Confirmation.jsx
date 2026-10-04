@@ -127,132 +127,86 @@ export default function Confirmation() {
   };
 
   return (
-    <div className="officer-portal-wrapper">
-      {/* Top Welcome Bar */}
-      <div className="officer-portal-top-bar no-print">
-        <div className="officer-portal-top-left">
-          <div className="officer-portal-avatar">{initials}</div>
-          <div>
-            <h1 className="officer-portal-greeting">Welcome, {officerName}</h1>
-            <p className="officer-portal-sub">
-              Nominated DL District Trainer · {nominee?.district || "National Workshop"} ({nominee?.region || "Ghana Education Service"})
-            </p>
+    <div className="glass-dashboard-wrapper">
+      <div className="glass-dashboard-hero no-print">
+        <div className="hero-content">
+          <div className="hero-avatar">{initials}</div>
+          <div className="hero-text">
+            <h1 className="hero-greeting">Welcome back<br/><strong>{officerName}</strong></h1>
           </div>
-        </div>
-
-        <div className="portal-top-right-actions">
-          <span className="admin-status-badge" style={{ background: "#dcfce7", color: "#15803d", borderColor: "#bbf7d0" }}>
-            ● Registration Active
-          </span>
+          <div className="hero-actions">
+            <button
+              type="button"
+              className="hero-badge"
+              style={{ background: "rgba(255, 255, 255, 0.2)", color: "white", border: "1px solid rgba(255,255,255,0.4)", cursor: "pointer" }}
+              onClick={handleSignOut}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                <polyline points="16 17 21 12 16 7"></polyline>
+                <line x1="21" y1="12" x2="9" y2="12"></line>
+              </svg>
+              Sign out
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="officer-dashboard-grid">
-        {/* LEFT SIDEBAR MENU */}
-        <aside className="officer-sidebar no-print">
-          <div className="officer-sidebar-profile">
-            <span className="officer-status-pill">✓ Nominated District Trainer</span>
-            <h3 className="officer-sidebar-name">{officerName}</h3>
-            <div className="officer-sidebar-meta">
-              <span><strong>Cohort:</strong> {nominee?.cohortName || (nominee?.cohortId ? `Cohort ${nominee.cohortId}` : "Cohort 1 (Auto-Assigned)")}</span>
-              <span><strong>Arrival:</strong> {nominee?.arrivalDate || "Sunday, 20/09/2026"}</span>
-              <span><strong>District:</strong> {nominee?.district || "GES District"}</span>
-            </div>
+      <div className="glass-metrics-grid no-print">
+        <div className="glass-metric-card">
+          <div className="metric-title">Cohort</div>
+          <div className="metric-value">{nominee?.cohortName || (nominee?.cohortId ? `Cohort ${nominee.cohortId}` : "Cohort 1")}</div>
+          <div className="metric-sub">{nominee?.arrivalDate || "Arrival TBD"}</div>
+        </div>
+        <div className="glass-metric-card">
+          <div className="metric-title">District</div>
+          <div className="metric-value">{nominee?.district || "National"}</div>
+          <div className="metric-sub">{nominee?.region || "GES"}</div>
+        </div>
+        <div className="glass-metric-card">
+          <div className="metric-title">Role</div>
+          <div className="metric-value" style={{color: "#1e293b", fontSize: "1rem"}}>Nominated</div>
+          <div className="metric-sub">District Trainer</div>
+        </div>
+      </div>
+
+      <div className="glass-actions-label no-print">Dashboard Actions</div>
+      <div className="glass-actions-grid no-print">
+        <div className={`glass-action-card ${activeTab === "pre-test" ? "active" : ""}`} onClick={() => setActiveTab("pre-test")}>
+          <div className="action-icon" style={{background: "linear-gradient(135deg, #f59e0b, #fbbf24)"}}>??</div>
+          <div className="action-details">
+            <h3>Pre-Training</h3>
+            <p>{isPreLocked ? "Locked until 7:00 PM" : "Diagnostic Evaluation"}</p>
           </div>
-
-          <div className="officer-menu-heading">Portal Assessments & Forms</div>
-          <nav className="officer-nav-list" aria-label="Nominated Officer Menu">
-            <button
-              type="button"
-              className={`officer-nav-btn ${activeTab === "pre-test" ? "active" : ""}`}
-              onClick={() => setActiveTab("pre-test")}
-            >
-              <div className="officer-nav-btn-left">
-                <span className="officer-nav-icon">{isPreLocked ? "🔒" : "📝"}</span>
-                <div className="officer-nav-text">
-                  <span className="officer-nav-title">Pre-Training Assessment</span>
-                  <span className="officer-nav-sub">
-                    {isPreLocked ? "Locked until 7:00 PM" : "Diagnostic Evaluation"}
-                  </span>
-                </div>
-              </div>
-              <span className={`officer-nav-badge ${isPreLocked ? "badge-locked" : "badge-open"}`} style={isPreLocked ? { background: "#fee2e2", color: "#991b1b", borderColor: "#fecaca" } : {}}>
-                {isPreLocked ? "🔒 Locked" : "Open"}
-              </span>
-            </button>
-
-            <button
-              type="button"
-              className={`officer-nav-btn ${activeTab === "post-test" ? "active" : ""}`}
-              onClick={() => setActiveTab("post-test")}
-            >
-              <div className="officer-nav-btn-left">
-                <span className="officer-nav-icon">{isPostLocked ? "🔒" : "🎓"}</span>
-                <div className="officer-nav-text">
-                  <span className="officer-nav-title">Post-Training Assessment</span>
-                  <span className="officer-nav-sub">
-                    {isPostLocked ? "Locked until post-workshop" : "Workshop Evaluation"}
-                  </span>
-                </div>
-              </div>
-              <span className={`officer-nav-badge ${isPostLocked ? "badge-locked" : "badge-post"}`} style={isPostLocked ? { background: "#fee2e2", color: "#991b1b", borderColor: "#fecaca" } : {}}>
-                {isPostLocked ? "🔒 Locked" : "Post-Test"}
-              </span>
-            </button>
-
-            <button
-              type="button"
-              className={`officer-nav-btn ${activeTab === "slip" ? "active" : ""}`}
-              onClick={() => setActiveTab("slip")}
-            >
-              <div className="officer-nav-btn-left">
-                <span className="officer-nav-icon">📋</span>
-                <div className="officer-nav-text">
-                  <span className="officer-nav-title">Nomination Slip</span>
-                  <span className="officer-nav-sub">Official Registration & Dates</span>
-                </div>
-              </div>
-              <span className="officer-nav-badge badge-slip">Slip</span>
-            </button>
-
-            <button
-              type="button"
-              className={`officer-nav-btn ${activeTab === "resources" ? "active" : ""}`}
-              onClick={() => setActiveTab("resources")}
-            >
-              <div className="officer-nav-btn-left">
-                <span className="officer-nav-icon">📚</span>
-                <div className="officer-nav-text">
-                  <span className="officer-nav-title">Training Resources</span>
-                  <span className="officer-nav-sub">PDFs & Documents</span>
-                </div>
-              </div>
-              <span className="officer-nav-badge badge-slip" style={{background:"#eff6ff", color:"#2563eb", borderColor:"#bfdbfe"}}>Docs</span>
-            </button>
-          </nav>
-
-          <div className="officer-sidebar-actions">
-            <button type="button" className="btn-secondary btn-sidebar-print" onClick={handlePrint}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polyline points="6 9 6 2 18 2 18 9"></polyline>
-                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
-                <rect x="6" y="14" width="12" height="8"></rect>
-              </svg>
-              Print Registration Slip
-            </button>
-            <button
-              type="button"
-              className="btn-link-highlight"
-              style={{ textAlign: "center", marginTop: "0.25rem", fontSize: "0.82rem", color: "#64748b" }}
-              onClick={handleSignOut}
-            >
-              Sign out of portal
-            </button>
+        </div>
+        
+        <div className={`glass-action-card ${activeTab === "post-test" ? "active" : ""}`} onClick={() => setActiveTab("post-test")}>
+          <div className="action-icon" style={{background: "linear-gradient(135deg, #3b82f6, #60a5fa)"}}>??</div>
+          <div className="action-details">
+            <h3>Post-Training</h3>
+            <p>{isPostLocked ? "Locked until workshop end" : "Workshop Evaluation"}</p>
           </div>
-        </aside>
+        </div>
 
-        {/* RIGHT MAIN CONTENT PANEL */}
-        <main className="officer-main-panel">
+        <div className={`glass-action-card ${activeTab === "slip" ? "active" : ""}`} onClick={() => setActiveTab("slip")}>
+          <div className="action-icon" style={{background: "linear-gradient(135deg, #10b981, #34d399)"}}>??</div>
+          <div className="action-details">
+            <h3>Nomination Slip</h3>
+            <p>Official Registration</p>
+          </div>
+        </div>
+
+        <div className={`glass-action-card ${activeTab === "resources" ? "active" : ""}`} onClick={() => setActiveTab("resources")}>
+          <div className="action-icon" style={{background: "linear-gradient(135deg, #8b5cf6, #a78bfa)"}}>??</div>
+          <div className="action-details">
+            <h3>Resources</h3>
+            <p>PDFs & Documents</p>
+          </div>
+        </div>
+      </div>
+
+      <main className="glass-main-panel">
+        <div className="glass-content-card">
           {/* TAB 1: PRE-TRAINING ASSESSMENT */}
           {activeTab === "pre-test" && (
             <div className="officer-assessment-hero">
@@ -711,8 +665,9 @@ export default function Confirmation() {
               </div>
             </div>
           )}
-        </main>
-      </div>
+        </div>
+      </main>
+
 
       {/* Glassmorphism Popup Overlay */}
       {showPromptOverlay && (

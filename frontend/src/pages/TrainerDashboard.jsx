@@ -385,91 +385,106 @@ export default function TrainerDashboard() {
   }
 
   return (
-    <div className="page-wide">
+    <div className="glass-dashboard-wrapper">
       {successMsg && (
-        <div className="banner banner-success" style={{ marginBottom: "1rem" }}>
-          ✓ {successMsg}
+        <div className="banner banner-success" style={{ margin: "1rem auto", maxWidth: "1200px" }}>
+          ? {successMsg}
         </div>
       )}
-      <div className="dashboard-header">
-        <div>
-          <div className="dashboard-brand-row">
-            <span className="admin-status-badge" style={{ background: "#dcfce7", color: "#166534", borderColor: "#bbf7d0" }}>
-              National Master Trainer
-            </span>
-            <p className="form-eyebrow">Ghana Education Service · GALOP AF2 Facilitator Command Center</p>
+      {error && (
+        <div className="banner banner-error" style={{ margin: "1rem auto", maxWidth: "1200px" }}>
+          {error}
+        </div>
+      )}
+      <div className="glass-dashboard-hero no-print">
+        <div className="hero-content" style={{maxWidth: "1200px"}}>
+          <div className="hero-avatar">{trainerProfile?.name?.[0] || "N"}</div>
+          <div className="hero-text">
+            <h1 className="hero-greeting">National Facilitator<br/><strong>{trainerProfile?.name || "Master Trainer"}</strong></h1>
           </div>
-          <h1>{trainerProfile?.name || "National Facilitator"} Dashboard</h1>
-          <p className="admin-session-info">
-            Designation: <strong>{trainerProfile?.scheduleRole || "Facilitator"}</strong> · Station:{" "}
-            <strong>{trainerProfile?.placeOfWork || "National"}</strong> ({trainerProfile?.contactNumber})
-          </p>
-        </div>
-        <div className="dashboard-header-actions" style={{ display: "flex", gap: "0.6rem", alignItems: "center", flexWrap: "wrap" }}>
-          <button
-            type="button"
-            className="btn-primary"
-            onClick={handleOpenEditProfile}
-            style={{ background: "#0f766e", borderColor: "#0f766e", display: "flex", alignItems: "center", gap: "0.4rem" }}
-          >
-            ✏️ Edit My Details
-          </button>
-          <Link to="/assessments" className="btn-secondary" target="_blank">
-            Open Candidate Portal ↗
-          </Link>
-          <button className="btn-secondary" onClick={handleLogout}>
-            Sign out
-          </button>
+          <div className="hero-actions">
+            <button
+              type="button"
+              className="hero-badge"
+              style={{ background: "rgba(255, 255, 255, 0.2)", color: "white", border: "1px solid rgba(255,255,255,0.4)", cursor: "pointer", marginRight: "0.5rem" }}
+              onClick={handleOpenEditProfile}
+            >
+              ?? Edit
+            </button>
+            <button
+              type="button"
+              className="hero-badge"
+              style={{ background: "rgba(255, 255, 255, 0.2)", color: "white", border: "1px solid rgba(255,255,255,0.4)", cursor: "pointer" }}
+              onClick={handleLogout}
+            >
+              Sign out
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* View Switcher Tabs */}
-      <div className="dashboard-view-tabs" role="tablist">
-        <button
-          type="button"
-          className={`dash-tab ${activeTab === "oversight" ? "active" : ""}`}
-          onClick={() => setActiveTab("oversight")}
-        >
-          👥 Participant Oversight & Check-In ({participants.length})
-        </button>
-        <button
-          type="button"
-          className={`dash-tab ${activeTab === "assessments" ? "active" : ""}`}
-          onClick={() => {
-            setActiveTab("assessments");
-            loadAssessmentsData();
-          }}
-        >
-          📝 Pre-Test & Post-Test Management ({assessmentsList.length})
-        </button>
-        <button
-          type="button"
-          className={`dash-tab ${activeTab === "analytics" ? "active" : ""}`}
-          onClick={() => {
-            setActiveTab("analytics");
-            loadOverviewStats();
-          }}
-        >
-          📊 Learning Gain & Assessment Analytics
-        </button>
-        <button
-          type="button"
-          className={`dash-tab ${activeTab === "team" ? "active" : ""}`}
-          onClick={() => setActiveTab("team")}
-        >
-          🛡️ National Facilitators Directory ({trainersList.length})
-        </button>
-        <button
-          type="button"
-          className={`dash-tab ${activeTab === "resources" ? "active" : ""}`}
-          onClick={() => setActiveTab("resources")}
-        >
-          📁 Training Resources ({resources.length})
-        </button>
+      <div className="glass-metrics-grid no-print" style={{maxWidth: "1200px"}}>
+        <div className="glass-metric-card">
+          <div className="metric-title">Role</div>
+          <div className="metric-value" style={{fontSize: "1rem"}}>{trainerProfile?.scheduleRole || "Facilitator"}</div>
+        </div>
+        <div className="glass-metric-card">
+          <div className="metric-title">Station</div>
+          <div className="metric-value" style={{fontSize: "1rem"}}>{trainerProfile?.placeOfWork || "National"}</div>
+          <div className="metric-sub">{trainerProfile?.contactNumber}</div>
+        </div>
+        <div className="glass-metric-card">
+          <div className="metric-title">Status</div>
+          <div className="metric-value" style={{color: "#1e293b", fontSize: "1rem"}}>Active</div>
+          <div className="metric-sub">Command Center</div>
+        </div>
       </div>
 
-      {successMsg && <div className="banner banner-success">{successMsg}</div>}
-      {error && <div className="banner banner-error">{error}</div>}
+      <div className="glass-actions-label no-print" style={{maxWidth: "1200px"}}>Dashboard Views</div>
+      <div className="glass-actions-grid no-print" style={{maxWidth: "1200px"}}>
+        <div className={`glass-action-card ${activeTab === "oversight" ? "active" : ""}`} onClick={() => setActiveTab("oversight")}>
+          <div className="action-icon" style={{background: "linear-gradient(135deg, #10b981, #34d399)"}}>??</div>
+          <div className="action-details">
+            <h3>Participant Oversight</h3>
+            <p>Check-In ({participants.length})</p>
+          </div>
+        </div>
+        
+        <div className={`glass-action-card ${activeTab === "assessments" ? "active" : ""}`} onClick={() => { setActiveTab("assessments"); loadAssessmentsData(); }}>
+          <div className="action-icon" style={{background: "linear-gradient(135deg, #f59e0b, #fbbf24)"}}>??</div>
+          <div className="action-details">
+            <h3>Assessments</h3>
+            <p>Management ({assessmentsList.length})</p>
+          </div>
+        </div>
+
+        <div className={`glass-action-card ${activeTab === "analytics" ? "active" : ""}`} onClick={() => { setActiveTab("analytics"); loadOverviewStats(); }}>
+          <div className="action-icon" style={{background: "linear-gradient(135deg, #3b82f6, #60a5fa)"}}>??</div>
+          <div className="action-details">
+            <h3>Analytics</h3>
+            <p>Learning Gains</p>
+          </div>
+        </div>
+
+        <div className={`glass-action-card ${activeTab === "team" ? "active" : ""}`} onClick={() => setActiveTab("team")}>
+          <div className="action-icon" style={{background: "linear-gradient(135deg, #ef4444, #f87171)"}}>???</div>
+          <div className="action-details">
+            <h3>Team Directory</h3>
+            <p>Facilitators ({trainersList.length})</p>
+          </div>
+        </div>
+
+        <div className={`glass-action-card ${activeTab === "resources" ? "active" : ""}`} onClick={() => setActiveTab("resources")}>
+          <div className="action-icon" style={{background: "linear-gradient(135deg, #8b5cf6, #a78bfa)"}}>??</div>
+          <div className="action-details">
+            <h3>Resources</h3>
+            <p>Files ({resources.length})</p>
+          </div>
+        </div>
+      </div>
+
+      <main className="glass-main-panel" style={{maxWidth: "1200px"}}>
+        <div className="glass-content-card">
 
       {/* TAB 1: PARTICIPANT OVERSIGHT */}
       {activeTab === "oversight" && (
@@ -830,6 +845,8 @@ export default function TrainerDashboard() {
         </div>
       )}
 
+        </div>
+      </main>
       {/* SUBMISSIONS MODAL */}
       {viewingSubmissionsId && (
         <div className="modal-backdrop" role="dialog">
