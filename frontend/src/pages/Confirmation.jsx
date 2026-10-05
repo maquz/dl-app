@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { fetchAssessments, fetchResources } from "../api";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 
 export default function Confirmation() {
   const location = useLocation();
@@ -96,6 +98,53 @@ export default function Confirmation() {
 
   function handlePrint() {
     window.print();
+  }
+  async function handleSharePDF() {
+    const slip = document.getElementById("printable-slip");
+    if (!slip) return;
+    try {
+      // Temporarily ensure slip has white background for clean PDF
+      const originalBg = slip.style.backgroundColor;
+      slip.style.backgroundColor = "#ffffff";
+      
+      const canvas = await html2canvas(slip, { scale: 2, useCORS: true });
+      slip.style.backgroundColor = originalBg;
+      
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4"
+      });
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+      
+      const pdfBlob = pdf.output("blob");
+      const file = new File([pdfBlob], "DL_Nomination_Slip.pdf", { type: "application/pdf" });
+      
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({
+            files: [file],
+            title: "DL Nomination Slip",
+            text: "Here is my DL Training Registration Slip."
+          });
+        } catch (shareErr) {
+          // If user cancels or it fails, fallback silently
+          if (shareErr.name !== "AbortError") {
+            pdf.save("DL_Nomination_Slip.pdf");
+          }
+        }
+      } else {
+        // Fallback for desktops/browsers that don't support file sharing
+        pdf.save("DL_Nomination_Slip.pdf");
+      }
+    } catch (err) {
+      console.error("PDF generation failed:", err);
+      // Fallback
+      window.print();
+    }
   }
 
   function handleSignOut() {
@@ -586,6 +635,26 @@ export default function Confirmation() {
                     <rect x="6" y="14" width="12" height="8"></rect>
                   </svg>
                   Print / Save Registration Slip
+                </button>
+                <button type="button" className="btn-primary" onClick={handleSharePDF} style={{ background: "#25d366", borderColor: "#25d366", color: "white" }}>
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    style={{ marginRight: "6px", verticalAlign: "text-bottom" }}
+                  >
+                    <circle cx="18" cy="5" r="3"></circle>
+                    <circle cx="6" cy="12" r="3"></circle>
+                    <circle cx="18" cy="19" r="3"></circle>
+                    <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                    <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                  </svg>
+                  Share Slip (PDF)
                 </button>
                 <button
                   type="button"
