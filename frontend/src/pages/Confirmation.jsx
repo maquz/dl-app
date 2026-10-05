@@ -147,7 +147,7 @@ export default function Confirmation() {
             <div className="hero-nominee-details" style={{ fontSize: "0.85rem", color: "#cbd5e1", lineHeight: "1.4", marginTop: "0.5rem" }}>
               <div style={{ marginBottom: "2px" }}><strong>Cohort:</strong> {nominee?.cohortName || (nominee?.cohortId ? `Cohort ${nominee.cohortId}` : "Cohort 1")}</div>
               <div style={{ marginBottom: "2px" }}><strong>District:</strong> {nominee?.district || "National"}</div>
-              <div style={{ marginBottom: "2px" }}><strong>Role:</strong> Nominated District Trainer</div>
+              <div style={{ marginBottom: "2px" }}><strong>Role:</strong> {Array.isArray(nominee?.roles) && nominee.roles.length > 0 ? nominee.roles.join(", ") : "Nominated Trainer"}</div>
             </div>
           </div>
         </div>
