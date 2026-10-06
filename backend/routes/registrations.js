@@ -530,6 +530,25 @@ router.post("/", async (req, res) => {
   if (!allocatedCohort) {
     allocatedCohort = findCohortForDistrict(region, district);
   }
+
+  // Late Arrival Check: If the assigned cohort is already in the past, push them to the current active cohort
+  if (allocatedCohort) {
+    const today = new Date().toISOString().split('T')[0];
+    // If the cohort's departure date is strictly in the past
+    if (allocatedCohort.departure_date_iso < today) {
+      const allCohorts = db.prepare("SELECT * FROM cohorts ORDER BY id ASC").all();
+      // Find the cohort currently in session
+      let activeCohort = allCohorts.find(c => today >= c.arrival_date_iso && today <= c.departure_date_iso);
+      if (!activeCohort) {
+        // If currently between cohorts, get the next upcoming one
+        activeCohort = allCohorts.find(c => c.arrival_date_iso >= today);
+      }
+      if (activeCohort) {
+        allocatedCohort = activeCohort;
+      }
+    }
+  }
+
   if (!allocatedCohort) {
     allocatedCohort = await findNextAvailableCohort();
   }
