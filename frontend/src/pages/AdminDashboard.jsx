@@ -2941,10 +2941,10 @@ export default function AdminDashboard() {
                               <table className="admin-table" style={{ margin: 0, border: "none" }}>
                                 <thead>
                                   <tr>
-                                    <th style={{ backgroundColor: "#fff" }}>Option</th>
-                                    <th style={{ backgroundColor: "#fff", textAlign: "center" }}>Overall %</th>
+                                    <th style={{ backgroundColor: "#f8fafc", color: "#475569" }}>Option</th>
+                                    <th style={{ backgroundColor: "#f8fafc", color: "#475569", textAlign: "center" }}>Overall %</th>
                                     {diagnosticData.participation.regions.map(r => (
-                                      <th key={r} style={{ backgroundColor: "#fff", textAlign: "center" }}>{r}</th>
+                                      <th key={r} style={{ backgroundColor: "#f8fafc", color: "#475569", textAlign: "center" }}>{r}</th>
                                     ))}
                                   </tr>
                                 </thead>
