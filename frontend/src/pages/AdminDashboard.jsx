@@ -2943,21 +2943,14 @@ export default function AdminDashboard() {
                                   <tr>
                                     <th style={{ backgroundColor: "#f8fafc", color: "#475569" }}>Option</th>
                                     <th style={{ backgroundColor: "#f8fafc", color: "#475569", textAlign: "center" }}>Overall %</th>
-                                    {diagnosticData.participation.regions.map(r => (
-                                      <th key={r} style={{ backgroundColor: "#f8fafc", color: "#475569", textAlign: "center" }}>{r}</th>
-                                    ))}
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {q.optionsBreakdown.map((opt, i) => (
-                                    <tr key={i} style={{ backgroundColor: opt.isCorrect ? "#f0fdf4" : "transparent" }}>
-                                      <td style={{ fontWeight: opt.isCorrect ? 600 : 400, color: opt.isCorrect ? "#16a34a" : "inherit" }}>
-                                        {opt.isCorrect && "✓ "}{opt.option}
-                                      </td>
-                                      <td style={{ textAlign: "center", fontWeight: 600 }}>{opt.percentage}%</td>
-                                      {diagnosticData.participation.regions.map(r => (
-                                        <td key={r} style={{ textAlign: "center", color: "#64748b" }}>{opt.regionBreakdown[r]}%</td>
-                                      ))}
+                                    {diagnosticData.participation.regions.map(r => {
+                                        const val = opt.regionBreakdown[r];
+                                        return (
+                                          <td key={r} style={{ textAlign: "center", color: "#64748b" }}>
+                                            {val === "-" ? "-" : `${val}%`}
+                                          </td>
+                                        );
+                                      })}
                                     </tr>
                                   ))}
                                 </tbody>

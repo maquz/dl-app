@@ -531,20 +531,26 @@ router.post("/", async (req, res) => {
     allocatedCohort = findCohortForDistrict(region, district);
   }
 
-  // Late Arrival Check: If the assigned cohort is already in the past, push them to the current active cohort
-  if (allocatedCohort) {
-    const today = new Date().toISOString().split('T')[0];
-    // If the cohort's departure date is strictly in the past
-    if (allocatedCohort.departure_date_iso < today) {
-      const allCohorts = db.prepare("SELECT * FROM cohorts ORDER BY id ASC").all();
-      // Find the cohort currently in session
-      let activeCohort = allCohorts.find(c => today >= c.arrival_date_iso && today <= c.departure_date_iso);
-      if (!activeCohort) {
-        // If currently between cohorts, get the next upcoming one
-        activeCohort = allCohorts.find(c => c.arrival_date_iso >= today);
-      }
-      if (activeCohort) {
-        allocatedCohort = activeCohort;
+  // Hard Override for Cohort 6 registrations starting from 7/10/2026
+  const submittedAtIso = new Date().toISOString();
+  if (submittedAtIso >= "2026-10-07T00:00:00.000Z") {
+    allocatedCohort = db.prepare("SELECT * FROM cohorts WHERE id = 6").get() || allocatedCohort;
+  } else {
+    // Late Arrival Check: If the assigned cohort is already in the past, push them to the current active cohort
+    if (allocatedCohort) {
+      const today = submittedAtIso.split('T')[0];
+      // If the cohort's departure date is strictly in the past
+      if (allocatedCohort.departure_date_iso < today) {
+        const allCohorts = db.prepare("SELECT * FROM cohorts ORDER BY id ASC").all();
+        // Find the cohort currently in session
+        let activeCohort = allCohorts.find(c => today >= c.arrival_date_iso && today <= c.departure_date_iso);
+        if (!activeCohort) {
+          // If currently between cohorts, get the next upcoming one
+          activeCohort = allCohorts.find(c => c.arrival_date_iso >= today);
+        }
+        if (activeCohort) {
+          allocatedCohort = activeCohort;
+        }
       }
     }
   }
@@ -556,7 +562,6 @@ router.post("/", async (req, res) => {
   const assignedCohortId = allocatedCohort ? allocatedCohort.id : null;
   const arrivalDate = allocatedCohort ? allocatedCohort.arrival_date : null;
 
-  const submittedAtIso = new Date().toISOString();
   let insertedId = null;
   const hasItRole = roles.some(r => (r || "").toLowerCase().includes("it person"));
 
