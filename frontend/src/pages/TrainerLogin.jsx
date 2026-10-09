@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { trainerLogin } from "../api";
+import { trainerLogin, recoverTrainerPassword } from "../api";
 
 export default function TrainerLogin() {
   const navigate = useNavigate();
@@ -9,7 +9,11 @@ export default function TrainerLogin() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [errors, setErrors] = useState({});
+  
   const [loading, setLoading] = useState(false);
+  const [recoveryMode, setRecoveryMode] = useState(false);
+  const [recoveryMessage, setRecoveryMessage] = useState("");
+
 
   useEffect(() => {
     if (sessionStorage.getItem("trainer_token") && sessionStorage.getItem("trainer_profile")) {
@@ -26,6 +30,27 @@ export default function TrainerLogin() {
       e.password = "Password is required.";
     }
     return e;
+  }
+
+  
+  async function handleRecovery(e) {
+    e.preventDefault();
+    setError("");
+    setRecoveryMessage("");
+    if (!identifier.trim()) {
+      setErrors({ identifier: "Please enter your email or contact number to recover password." });
+      return;
+    }
+    setErrors({});
+    setLoading(true);
+    try {
+      const res = await recoverTrainerPassword(identifier.trim());
+      setRecoveryMessage(res.message);
+    } catch (err) {
+      setError(err.message || "Failed to recover password.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleSubmit(e) {

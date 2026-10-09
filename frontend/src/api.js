@@ -452,3 +452,10 @@ export async function fetchResources() {
   const res = await fetch(`${API_URL}/resources`);
   return handle(res);
 }
+
+export async function recoverTrainerPassword(identifier) {
+  return await fetchAPI("/national-trainers/recover", {
+    method: "POST",
+    body: JSON.stringify({ identifier })
+  });
+}
