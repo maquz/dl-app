@@ -118,7 +118,7 @@ router.get("/", async (req, res) => {
           const { count: qCount } = await supabase.from("assessment_questions").select("*", { count: "exact", head: true }).eq("assessment_id", a.id);
           a.question_count = qCount || 0;
 
-          const { data: subs } = await supabase.from("assessment_submissions").select("percentage").eq("assessment_id", a.id);
+          const { data: subs } = await supabase.from("assessment_submissions").select("percentage").limit(100000).eq("assessment_id", a.id);
           a.submission_count = subs ? subs.length : 0;
           if (a.submission_count > 0) {
             a.average_score = subs.reduce((sum, s) => sum + (s.percentage || 0), 0) / a.submission_count;
@@ -707,7 +707,7 @@ router.get("/defaulters", trainerOrAdminAuth, async (req, res) => {
       
       if (attendees && attendees.length > 0) {
         // Get all submissions
-        let subQuery = supabase.from("assessment_submissions").select(testType ? "phone_number, assessments!inner(type)" : "phone_number");
+        let subQuery = supabase.from("assessment_submissions").select(testType ? "phone_number, assessments!inner(type).limit(100000)" : "phone_number");
         if (cohortId) subQuery = subQuery.eq("cohort_id", cohortId);
         if (testType) subQuery = subQuery.ilike("assessments.type", testType);
         const { data: subs } = await subQuery;
@@ -769,7 +769,7 @@ router.get("/stats/overview", async (req, res) => {
   if (supabase) {
     try {
       let query = supabase.from("assessment_submissions")
-        .select("phone_number, assessment_id, percentage, assessments(type)")
+        .select("phone_number, assessment_id, percentage, assessments(type).limit(100000)")
         .order("submitted_at", { ascending: false });
       
       if (cohortId) {
@@ -932,7 +932,7 @@ router.get("/:id/diagnostics", trainerOrAdminAuth, async (req, res) => {
     // Submissions
     let submissions = [];
     if (supabase) {
-      let query = supabase.from("assessment_submissions").select("*").eq("assessment_id", assessmentId);
+      let query = supabase.from("assessment_submissions").select("*").limit(100000).eq("assessment_id", assessmentId);
       if (cohortId) query = query.eq("cohort_id", cohortId);
       const { data } = await query;
       if (data) submissions = data;
@@ -975,12 +975,20 @@ router.get("/:id/diagnostics", trainerOrAdminAuth, async (req, res) => {
       regionCounts[region] = (regionCounts[region] || 0) + 1;
     });
 
-    let districtsData = {};
-    try { districtsData = require("../data/districts.json"); } catch(e) {}
-    const officialRegions = Object.keys(districtsData).length > 0 ? Object.keys(districtsData).sort() : Object.keys(regionCounts).filter(r => r && r.trim().toLowerCase() !== 'unknown').sort();
+    let officialRegions = [];
+    try {
+      const cohortDistricts = require("../data/cohort_districts.json");
+      if (cohortId && cohortDistricts[cohortId]) {
+        const cohortRegs = new Set();
+        cohortDistricts[cohortId].districts.forEach(d => cohortRegs.add(d.region));
+        officialRegions = Array.from(cohortRegs).sort();
+      } else {
+        const districtsData = require("../data/districts.json");
+        officialRegions = Object.keys(districtsData).length > 0 ? Object.keys(districtsData).sort() : Object.keys(regionCounts).filter(r => r && r.trim().toLowerCase() !== 'unknown').sort();
+      }
+    } catch(e) {}
     
-    // Fallback if none (for mock testing)
-    const uniqueRegions = officialRegions.length > 0 ? officialRegions : ["Ahafo", "Ashanti", "Bono", "Bono East", "Central", "Eastern", "Greater Accra", "North East", "Northern", "Oti", "Savannah", "Upper East", "Upper West", "Volta", "Western", "Western North"];
+    const uniqueRegions = officialRegions.length > 0 ? officialRegions : Object.keys(regionCounts).filter(r => r && r.trim().toLowerCase() !== 'unknown').sort();
     const criticalAreas = [];
     
     const questionLevel = questions.map((q, idx) => {
@@ -1107,7 +1115,7 @@ router.get("/:id/export/xlsx", async (req, res) => {
 
     let submissions = [];
     if (supabase) {
-      let query = supabase.from("assessment_submissions").select("*").eq("assessment_id", assessmentId);
+      let query = supabase.from("assessment_submissions").select("*").limit(100000).eq("assessment_id", assessmentId);
       if (cohortId) query = query.eq("cohort_id", cohortId);
       const { data } = await query;
       if (data) submissions = data;
@@ -1293,7 +1301,7 @@ router.get("/my-submissions", async (req, res) => {
 
   if (supabase) {
     try {
-      let query = supabase.from("assessment_submissions").select("*, assessments(title, type)");
+      let query = supabase.from("assessment_submissions").select("*, assessments(title, type).limit(100000)");
       if (phone) {
         query = query.eq("phone_number", phone);
       }
@@ -1829,7 +1837,7 @@ router.get("/:id/submissions", trainerOrAdminAuth, async (req, res) => {
   if (supabase) {
     try {
       let query = supabase.from("assessment_submissions")
-        .select("*, cohorts(name)")
+        .select("*, cohorts(name).limit(100000)")
         .eq("assessment_id", id)
         .order("submitted_at", { ascending: false });
         

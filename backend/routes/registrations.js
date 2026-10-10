@@ -133,7 +133,7 @@ router.get("/my-nomination", async (req, res) => {
   // 1. Try Supabase
   if (supabase) {
     try {
-      let q = supabase.from("registrations").select("*");
+      let q = supabase.from("registrations").select("*").limit(100000);
       if (phone) q = q.eq("phone_number", phone);
       else if (email) q = q.ilike("email", email);
       const { data, error } = await q.maybeSingle();
@@ -191,7 +191,7 @@ router.post("/stub/generate-all", adminAuth, async (req, res) => {
       let exists = false;
       if (supabase) {
         try {
-          const { data } = await supabase.from("registrations").select("id, roles").eq("district", d.district).eq("cohort_id", cohortId);
+          const { data } = await supabase.from("registrations").select("id, roles").limit(100000).eq("district", d.district).eq("cohort_id", cohortId);
           if (data && data.length > 0) {
             exists = data.some(r => {
               try {
@@ -290,13 +290,13 @@ router.post("/stub/cleanup", adminAuth, async (req, res) => {
     let count = 0;
     if (supabase) {
       // Get all stubs
-      const { data: stubs } = await supabase.from("registrations").select("id, district, cohort_id, tablet_imei, tablet_serial").eq("officer_name", "Pending Registration").like("phone_number", "STUB-%");
+      const { data: stubs } = await supabase.from("registrations").select("id, district, cohort_id, tablet_imei, tablet_serial").limit(100000).eq("officer_name", "Pending Registration").like("phone_number", "STUB-%");
       if (stubs) {
         for (const stub of stubs) {
           // Check if real IT person exists for this district
           // We remove cohort_id from the match condition because sometimes users register under the wrong cohort or it shifts.
           // Since there is only one IT person per district, district match is sufficient.
-          const { data: realUsers } = await supabase.from("registrations").select("id, roles, tablet_imei, tablet_serial").eq("district", stub.district).neq("id", stub.id);
+          const { data: realUsers } = await supabase.from("registrations").select("id, roles, tablet_imei, tablet_serial").limit(100000).eq("district", stub.district).neq("id", stub.id);
           if (realUsers && realUsers.length > 0) {
             const realItPerson = realUsers.find(r => {
               try {
@@ -340,7 +340,7 @@ router.post("/stub", adminAuth, async (req, res) => {
   let exists = false;
   if (supabase) {
     try {
-      const { data } = await supabase.from("registrations").select("id, roles").eq("district", district).eq("cohort_id", cohortId);
+      const { data } = await supabase.from("registrations").select("id, roles").limit(100000).eq("district", district).eq("cohort_id", cohortId);
       if (data && data.length > 0) {
         exists = data.some(r => {
           try {
@@ -569,7 +569,7 @@ router.post("/", async (req, res) => {
   if (hasItRole && assignedCohortId) {
     if (supabase) {
       try {
-        const { data: stubData } = await supabase.from("registrations").select("id").eq("district", district.trim()).eq("officer_name", "Pending Registration");
+        const { data: stubData } = await supabase.from("registrations").select("id").limit(100000).eq("district", district.trim()).eq("officer_name", "Pending Registration");
         if (stubData && stubData.length > 0) stubId = stubData[0].id;
       } catch (e) {}
     }
@@ -695,7 +695,7 @@ router.get("/stats", adminAuth, async (req, res) => {
 
   if (supabase) {
     try {
-      const { data, error } = await supabase.from("registrations").select("*");
+      const { data, error } = await supabase.from("registrations").select("*").limit(100000);
       if (!error && data && data.length > 0) {
         allRows = data;
       }
@@ -758,7 +758,7 @@ router.get("/", trainerOrAdminAuth, async (req, res) => {
   // 1. Try Supabase
   if (supabase) {
     try {
-      let query = supabase.from("registrations").select("*, cohorts(name, arrival_date, start_date, end_date, departure_date, max_capacity)").order("submitted_at", { ascending: false });
+      let query = supabase.from("registrations").select("*, cohorts(name, arrival_date, start_date, end_date, departure_date, max_capacity).limit(100000)").order("submitted_at", { ascending: false });
 
       if (region) query = query.eq("region", region);
       if (district) query = query.eq("district", district);
@@ -975,7 +975,7 @@ router.get("/export/csv", adminAuth, async (req, res) => {
   let rows = [];
   if (supabase) {
     try {
-      const { data } = await supabase.from("registrations").select("*, cohorts(name)").order("id", { ascending: true });
+      const { data } = await supabase.from("registrations").select("*, cohorts(name).limit(100000)").order("id", { ascending: true });
       if (data && data.length > 0) {
         rows = data.map(r => ({
           ...r,
@@ -1032,7 +1032,7 @@ router.get("/export/xlsx", adminAuth, async (req, res) => {
   let rows = [];
   if (supabase) {
     try {
-      const { data } = await supabase.from("registrations").select("*, cohorts(name)").order("id", { ascending: true });
+      const { data } = await supabase.from("registrations").select("*, cohorts(name).limit(100000)").order("id", { ascending: true });
       if (data && data.length > 0) {
         rows = data.map(r => ({
           ...r,
