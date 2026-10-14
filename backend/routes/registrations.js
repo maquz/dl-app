@@ -392,6 +392,10 @@ router.post("/stub", adminAuth, async (req, res) => {
 
 // POST /api/registrations - submit a new registration (public)
 router.post("/", async (req, res) => {
+  return res.status(403).json({
+    error: "Registration session is closed. New registrations are no longer accepted. Please log in with your registered phone number."
+  });
+
   const errors = validateRegistration(req.body);
   if (Object.keys(errors).length > 0) {
     return res.status(400).json({ errors });

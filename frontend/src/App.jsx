@@ -85,7 +85,7 @@ function Shell({ children }) {
           ) : (
             <>
               <Link to="/signup" className={isAuth ? "active" : ""}>
-                Sign Up / Register
+                Nominee Portal
               </Link>
               <Link to="/trainer/login" className={isTrainer ? "active" : ""}>
                 Facilitator Portal

@@ -63,6 +63,7 @@ export default function RegistrationForm() {
   const [authPopupStep, setAuthPopupStep] = useState("ask");
   const [authPopupPhone, setAuthPopupPhone] = useState("");
   const [authPopupError, setAuthPopupError] = useState("");
+  const [authPopupNotice, setAuthPopupNotice] = useState("");
   const [authPopupLoading, setAuthPopupLoading] = useState(false);
   useEffect(() => {
     let candidate = null;
@@ -200,12 +201,10 @@ export default function RegistrationForm() {
           state: { nominee: res.nominee, activeTab: "pre-test", justLoggedIn: true },
         });
       } else {
-        setAuthPopupError("No registration found. Please register as a new nominee.");
-        setTimeout(() => setShowAuthPopup(false), 2500);
+        setAuthPopupError("No registration found with this phone number. Registration is closed. Please check your number or contact the DL Secretariat.");
       }
     } catch (err) {
-      setAuthPopupError("No registration found. Please register as a new nominee.");
-      setTimeout(() => setShowAuthPopup(false), 2500);
+      setAuthPopupError("No registration found with this phone number. Registration is closed. Please check your number or contact the DL Secretariat.");
     } finally {
       setAuthPopupLoading(false);
     }
@@ -308,14 +307,42 @@ export default function RegistrationForm() {
                 <h2 style={{ fontSize: "1.5rem", color: "var(--navy-900)", marginBottom: "1rem", fontWeight: 800 }}>
                   Welcome to the Portal
                 </h2>
-                <p style={{ color: "#475569", marginBottom: "2rem", lineHeight: 1.5 }}>
+                <p style={{ color: "#475569", marginBottom: "1.25rem", lineHeight: 1.5 }}>
                   Are you already a registered nominee looking to access your dashboard and take tests?
                 </p>
+                <div style={{
+                  background: "#fef3c7",
+                  border: "1px solid #fde68a",
+                  borderRadius: "8px",
+                  padding: "0.6rem 0.85rem",
+                  marginBottom: "1.5rem",
+                  fontSize: "0.82rem",
+                  color: "#92400e",
+                  fontWeight: 500
+                }}>
+                  🔒 Notice: Registration session is closed. All nominees must log in with their registered phone number.
+                </div>
                 <div style={{ display: "flex", gap: "1rem", justifyContent: "center" }}>
-                  <button type="button" className="btn-secondary" style={{ flex: 1 }} onClick={() => setShowAuthPopup(false)}>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    style={{ flex: 1 }}
+                    onClick={() => {
+                      setAuthPopupNotice("Registration session is closed. New registrations are no longer accepted. Please enter your registered phone number to verify and access your account.");
+                      setAuthPopupStep("login");
+                    }}
+                  >
                     No, I need to register
                   </button>
-                  <button type="button" className="btn-primary" style={{ flex: 1 }} onClick={() => setAuthPopupStep("login")}>
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    style={{ flex: 1 }}
+                    onClick={() => {
+                      setAuthPopupNotice("");
+                      setAuthPopupStep("login");
+                    }}
+                  >
                     Yes, log me in
                   </button>
                 </div>
@@ -325,11 +352,26 @@ export default function RegistrationForm() {
                 <h2 style={{ fontSize: "1.5rem", color: "var(--navy-900)", marginBottom: "0.5rem", fontWeight: 800 }}>
                   Access Your Portal
                 </h2>
-                <p style={{ color: "#475569", marginBottom: "1.5rem", fontSize: "0.9rem" }}>
+                <p style={{ color: "#475569", marginBottom: "1.25rem", fontSize: "0.9rem" }}>
                   Enter your registered phone number to authenticate securely. No password needed.
                 </p>
+                {authPopupNotice && (
+                  <div style={{
+                    background: "#fef3c7",
+                    border: "1px solid #fde68a",
+                    color: "#92400e",
+                    padding: "0.75rem",
+                    borderRadius: "8px",
+                    marginBottom: "1rem",
+                    fontSize: "0.85rem",
+                    textAlign: "left",
+                    lineHeight: 1.4
+                  }}>
+                    {authPopupNotice}
+                  </div>
+                )}
                 {authPopupError && (
-                  <div className="banner banner-error" style={{ marginBottom: "1rem", padding: "0.75rem", fontSize: "0.85rem" }}>
+                  <div className="banner banner-error" style={{ marginBottom: "1rem", padding: "0.75rem", fontSize: "0.85rem", textAlign: "left" }}>
                     {authPopupError}
                   </div>
                 )}
@@ -347,10 +389,24 @@ export default function RegistrationForm() {
                   />
                 </div>
                 <div style={{ display: "flex", gap: "1rem", justifyContent: "center" }}>
-                  <button type="button" className="btn-secondary" onClick={() => setShowAuthPopup(false)}>
-                    Cancel
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={() => {
+                      setAuthPopupError("");
+                      setAuthPopupNotice("");
+                      setAuthPopupStep("ask");
+                    }}
+                  >
+                    Back
                   </button>
-                  <button type="button" className="btn-primary" style={{ flex: 1 }} onClick={handlePopupSubmit} disabled={authPopupLoading}>
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    style={{ flex: 1 }}
+                    onClick={handlePopupSubmit}
+                    disabled={authPopupLoading}
+                  >
                     {authPopupLoading ? "Verifying..." : "Verify & Access"}
                   </button>
                 </div>
@@ -360,166 +416,46 @@ export default function RegistrationForm() {
         </div>
       )}
 
-      <div className="form-card">
-        <p className="form-eyebrow">Background Details of Nominees for DL District Trainers</p>
-        <h1>Registration Form for Nominees (2026)</h1>
-        <p className="form-lede">
-          Use this form to register a nominee for the Differentiated Learning (DL) District Trainer programme, Ghana
-          Education Service.
+      <div className="form-card" style={{ textAlign: "center", padding: "3rem 1.5rem" }}>
+        <div style={{ fontSize: "3.2rem", marginBottom: "1rem" }}>🔒</div>
+        <p className="form-eyebrow" style={{ color: "#b45309", fontWeight: 700 }}>Registration Session Closed</p>
+        <h1 style={{ fontSize: "1.65rem", color: "var(--navy-900)", marginBottom: "0.75rem", fontWeight: 800 }}>
+          DL District Trainer Programme (2026)
+        </h1>
+        <p className="text-muted" style={{ maxWidth: "480px", margin: "0 auto 1.5rem auto", lineHeight: 1.6, fontSize: "0.95rem" }}>
+          The registration session for this programme is now closed. New registrations are no longer being accepted.
         </p>
 
-        {serverError && (
-          <p className="banner banner-error" role="alert">
-            {serverError}
-          </p>
-        )}
+        <div style={{
+          background: "#f8fafc",
+          border: "1px solid #e2e8f0",
+          borderRadius: "12px",
+          padding: "1.5rem",
+          maxWidth: "440px",
+          margin: "0 auto 2rem auto",
+          textAlign: "left"
+        }}>
+          <div style={{ fontWeight: 600, color: "#1e293b", marginBottom: "0.35rem" }}>
+            Already a nominated officer?
+          </div>
+          <div style={{ fontSize: "0.88rem", color: "#64748b", lineHeight: 1.5 }}>
+            Access your dashboard, take pre/post assessments, and download your nomination slip by verifying your registered phone number.
+          </div>
+        </div>
 
-        <form onSubmit={handleSubmit} noValidate>
-          <FormField label="Name of Officer" htmlFor="officerName" required error={errors.officerName} hint="Provide the name of officer">
-            <input
-              id="officerName"
-              type="text"
-              value={values.officerName}
-              onChange={(e) => set("officerName", e.target.value)}
-              aria-invalid={!!errors.officerName}
-              autoComplete="name"
-            />
-          </FormField>
-
-          <fieldset className={`radio-group ${errors.sex ? "field-invalid" : ""}`}>
-            <legend>
-              Sex<span className="required-mark" aria-hidden="true"> *</span>
-            </legend>
-            <label className="radio-option">
-              <input
-                type="radio"
-                name="sex"
-                id="sex"
-                value="Male"
-                checked={values.sex === "Male"}
-                onChange={(e) => set("sex", e.target.value)}
-              />
-              <span>Male</span>
-            </label>
-            <label className="radio-option">
-              <input
-                type="radio"
-                name="sex"
-                value="Female"
-                checked={values.sex === "Female"}
-                onChange={(e) => set("sex", e.target.value)}
-              />
-              <span>Female</span>
-            </label>
-            {errors.sex && (
-              <p className="field-error" role="alert">
-                {errors.sex}
-              </p>
-            )}
-          </fieldset>
-
-          <FormField
-            label="Phone Number"
-            htmlFor="phoneNumber"
-            required
-            error={errors.phoneNumber}
-            hint="Format: 000-000-0000. E.g. 0244989910 should be entered as 024-498-9910."
-          >
-            <input
-              id="phoneNumber"
-              type="tel"
-              inputMode="numeric"
-              placeholder="024-498-9910"
-              value={values.phoneNumber}
-              onChange={(e) => set("phoneNumber", formatPhoneAsTyped(e.target.value))}
-              onBlur={handlePhoneBlur}
-              aria-invalid={!!errors.phoneNumber}
-              autoComplete="tel"
-            />
-          </FormField>
-
-          <FormField
-            label="Email Address"
-            htmlFor="email"
-            error={errors.email}
-            hint="Official or primary email address (e.g. officer@ges.gov.gh)"
-          >
-            <input
-              id="email"
-              type="email"
-              placeholder="officer@ges.gov.gh"
-              value={values.email}
-              onChange={(e) => set("email", e.target.value)}
-              onBlur={handleEmailBlur}
-              aria-invalid={!!errors.email}
-              autoComplete="email"
-            />
-          </FormField>
-
-          <RegionDistrictSelect
-            regions={regions}
-            region={values.region}
-            district={values.district}
-            onRegionChange={(v) => set("region", v)}
-            onDistrictChange={(v) => set("district", v)}
-            regionError={errors.region}
-            districtError={errors.district}
-          />
-
-          {matchedCohort && (
-            <div className="matched-cohort-notice" role="status">
-              <span className="notice-icon">📅</span>
-              <div className="notice-body">
-                <strong>Official GES Schedule for {values.district}:</strong>
-                <span>
-                  Allocated to <strong>{matchedCohort.name}</strong> · Arrival:{" "}
-                  <strong>{matchedCohort.arrival_date || matchedCohort.arrivalDate}</strong>
-                </span>
-              </div>
-            </div>
-          )}
-
-          <FormField
-            label="Place of Work"
-            htmlFor="institutionName"
-            required
-            error={errors.institutionName}
-            hint="Full name of institution you work with (name of school/office)"
-          >
-            <input
-              id="institutionName"
-              type="text"
-              value={values.institutionName}
-              onChange={(e) => set("institutionName", e.target.value)}
-              aria-invalid={!!errors.institutionName}
-            />
-          </FormField>
-
-          <RoleCheckboxGroup value={values.roles} onChange={(v) => set("roles", v)} error={errors.roles} />
-
-          <FormField
-            label="Training Schedule & Arrival Cohort"
-            htmlFor="cohortId"
-            hint="Scheduled training cycles from Sept 20 to Oct 10, 2026. Select a preferred cohort or leave as Auto-Allocate."
-          >
-            <select
-              id="cohortId"
-              value={values.cohortId}
-              onChange={(e) => set("cohortId", e.target.value)}
-            >
-              <option value="">⚡ Auto-Allocate to Next Open Cohort (Recommended)</option>
-              {cohorts.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} — Arrival: {c.arrival_date} | Training: {c.start_date.split(",")[1]} - {c.end_date.split(",")[1]} (Depart: {c.departure_date.split(",")[1]})
-                </option>
-              ))}
-            </select>
-          </FormField>
-
-          <button type="submit" className="btn-primary" disabled={submitting}>
-            {submitting ? "Submitting…" : "Submit registration"}
-          </button>
-        </form>
+        <button
+          type="button"
+          className="btn btn-primary"
+          style={{ padding: "0.85rem 2rem", fontSize: "1rem", display: "inline-flex", alignItems: "center", gap: "0.5rem" }}
+          onClick={() => {
+            setAuthPopupNotice("");
+            setAuthPopupStep("login");
+            setShowAuthPopup(true);
+          }}
+        >
+          <span>Access Your Portal (Phone Verification)</span>
+          <span>&rarr;</span>
+        </button>
       </div>
     </div>
   );
