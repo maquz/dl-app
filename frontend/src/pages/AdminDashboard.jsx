@@ -105,7 +105,26 @@ async function handleHtmlPdfAction(action, elementId, filename) {
   try {
     const el = document.getElementById(elementId);
     if (!el) return;
-    const canvas = await html2canvas(el, { scale: 2 });
+    const canvas = await html2canvas(el, { 
+      scale: 2,
+      useCORS: true,
+      onclone: (clonedDoc) => {
+        const clonedEl = clonedDoc.getElementById(elementId);
+        if (clonedEl) {
+          // Unclip all horizontal scroll wrappers so full width with all region names is captured
+          const scrollWrappers = clonedEl.querySelectorAll('[style*="overflow"]');
+          scrollWrappers.forEach(w => {
+            w.style.overflow = "visible";
+            w.style.overflowX = "visible";
+          });
+          const tables = clonedEl.querySelectorAll('table');
+          tables.forEach(t => {
+            t.style.width = "100%";
+            t.style.maxWidth = "none";
+          });
+        }
+      }
+    });
     const imgData = canvas.toDataURL("image/png");
     // Calculate A4 size in px (approx 595 x 842 at 72dpi, let's just use image dimensions for a 1-page long pdf)
     pdf = new jsPDF({
@@ -2850,22 +2869,35 @@ export default function AdminDashboard() {
                         <option key={a.id} value={a.id}>{a.title} ({a.type})</option>
                       ))}
                     </select>
-                    {selectedDiagnosticAssessment && (
-                      <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-                        <ExportActionButtons onAction={(act) => handleHtmlPdfAction(act, "diagnostic-report-container", "Diagnostic_Report.pdf")} />
-                        <button 
-                          className="btn-secondary"
-                          onClick={() => window.open(`/api/assessments/${selectedDiagnosticAssessment}/export/xlsx?cohort_id=${cohortFilter || ""}`, '_blank')}
-                        >
-                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: "4px" }}>
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                            <polyline points="7 10 12 15 17 10" />
-                            <line x1="12" y1="15" x2="12" y2="3" />
-                          </svg>
-                          Export Excel
-                        </button>
-                      </div>
-                    )}
+                    {selectedDiagnosticAssessment && (() => {
+                      const currentAss = assessmentsList.find(a => String(a.id) === String(selectedDiagnosticAssessment));
+                      const rawType = diagnosticData?.metadata?.type || currentAss?.type || "Assessment";
+                      let testTypeLabel = "Assessment";
+                      if (rawType.toLowerCase().includes("pre")) testTypeLabel = "Pre_Training";
+                      else if (rawType.toLowerCase().includes("post")) testTypeLabel = "Post_Training";
+                      else testTypeLabel = rawType.replace(/\s+/g, "_");
+
+                      const rawCohort = diagnosticData?.metadata?.cohortName || (cohortFilter ? `Cohort_${cohortFilter}` : "All_Cohorts");
+                      const cohortLabel = rawCohort.replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_-]/g, "");
+                      const diagnosticPdfFilename = `${cohortLabel}_${testTypeLabel}_Diagnostic_Report.pdf`;
+
+                      return (
+                        <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                          <ExportActionButtons onAction={(act) => handleHtmlPdfAction(act, "diagnostic-report-container", diagnosticPdfFilename)} />
+                          <button 
+                            className="btn-secondary"
+                            onClick={() => window.open(`/api/assessments/${selectedDiagnosticAssessment}/export/xlsx?cohort_id=${cohortFilter || ""}`, '_blank')}
+                          >
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: "4px" }}>
+                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                              <polyline points="7 10 12 15 17 10" />
+                              <line x1="12" y1="15" x2="12" y2="3" />
+                            </svg>
+                            Export Excel
+                          </button>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
 
@@ -2888,9 +2920,17 @@ export default function AdminDashboard() {
                         </div>
                         <div style={{ backgroundColor: "#fff", padding: "1rem", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
                           <div style={{ fontSize: "0.85rem", color: "#64748b", textTransform: "uppercase", fontWeight: 600 }}>Gender Breakdown</div>
-                          <div style={{ fontSize: "1rem", fontWeight: 600, color: "#1e293b", marginTop: "0.2rem" }}>
+                          <div style={{ fontSize: "1rem", fontWeight: 600, color: "#1e293b", marginTop: "0.2rem", lineHeight: 1.6 }}>
                             Male: {diagnosticData.participation.male} ({diagnosticData.participation.malePct}%)<br/>
                             Female: {diagnosticData.participation.female} ({diagnosticData.participation.femalePct}%)
+                            {diagnosticData.participation.unspecified > 0 && (
+                              <>
+                                <br/>
+                                <span style={{ color: "#64748b", fontSize: "0.9rem" }}>
+                                  Not Specified: {diagnosticData.participation.unspecified} ({diagnosticData.participation.unspecifiedPct}%)
+                                </span>
+                              </>
+                            )}
                           </div>
                         </div>
                         <div style={{ backgroundColor: "#fff", padding: "1rem", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
@@ -2938,25 +2978,39 @@ export default function AdminDashboard() {
                               </div>
                             </div>
                             <div style={{ padding: "0", overflowX: "auto" }}>
-                              <table className="admin-table" style={{ margin: 0, border: "none" }}>
+                              <table 
+                                className="admin-table diagnostic-table" 
+                                style={{ 
+                                  margin: 0, 
+                                  border: "1px solid #e2e8f0",
+                                  width: "100%",
+                                  minWidth: (diagnosticData.participation.regions.length > 3) 
+                                    ? `${(diagnosticData.participation.regions.length + 2) * 85}px` 
+                                    : "100%",
+                                  tableLayout: "auto",
+                                  borderCollapse: "collapse"
+                                }}
+                              >
                                 <thead>
-                                  <tr>
-                                    <th style={{ backgroundColor: "#f8fafc", color: "#475569" }}>Option</th>
-                                    <th style={{ backgroundColor: "#f8fafc", color: "#475569", textAlign: "center" }}>Overall %</th>
+                                  <tr style={{ backgroundColor: "#f1f5f9", borderBottom: "2px solid #cbd5e1" }}>
+                                    <th style={{ backgroundColor: "#f1f5f9", color: "#0f172a", fontWeight: "700", fontSize: "0.82rem", textTransform: "uppercase", padding: "0.6rem 0.9rem", position: "static", borderBottom: "2px solid #cbd5e1" }}>Option</th>
+                                    <th style={{ backgroundColor: "#f1f5f9", color: "#0f172a", fontWeight: "700", fontSize: "0.82rem", textTransform: "uppercase", padding: "0.6rem 0.9rem", textAlign: "center", width: "100px", minWidth: "90px", position: "static", borderBottom: "2px solid #cbd5e1" }}>Overall %</th>
                                     {diagnosticData.participation.regions.map(r => (
-                                      <th key={r} style={{ backgroundColor: "#f8fafc", color: "#475569", textAlign: "center" }}>{r}</th>
+                                      <th key={r} style={{ backgroundColor: "#f1f5f9", color: "#0f172a", fontWeight: "700", fontSize: "0.82rem", textTransform: "uppercase", padding: "0.6rem 0.9rem", textAlign: "center", minWidth: "90px", position: "static", borderBottom: "2px solid #cbd5e1" }}>{r}</th>
                                     ))}
                                   </tr>
                                 </thead>
                                 <tbody>
                                   {q.optionsBreakdown.map((opt, i) => (
-                                    <tr key={i} style={{ backgroundColor: opt.isCorrect ? "#f0fdf4" : "transparent" }}>
-                                      <td style={{ fontWeight: opt.isCorrect ? 600 : 400, color: opt.isCorrect ? "#16a34a" : "inherit" }}>
-                                        {opt.isCorrect && "✓ "}{opt.option}
+                                    <tr key={i} style={{ backgroundColor: opt.isCorrect ? "#f0fdf4" : (i % 2 === 1 ? "#fafbfc" : "#ffffff") }}>
+                                      <td style={{ fontWeight: opt.isCorrect ? 700 : 400, color: opt.isCorrect ? "#15803d" : "#1e293b", padding: "0.55rem 0.9rem" }}>
+                                        {opt.isCorrect && <span style={{ marginRight: "4px" }}>✓</span>}{opt.option}
                                       </td>
-                                      <td style={{ textAlign: "center", fontWeight: 600 }}>{opt.percentage}%</td>
+                                      <td style={{ textAlign: "center", fontWeight: 700, color: opt.isCorrect ? "#15803d" : "#0f172a", padding: "0.55rem 0.9rem" }}>{opt.percentage}%</td>
                                       {diagnosticData.participation.regions.map(r => (
-                                        <td key={r} style={{ textAlign: "center", color: "#64748b" }}>{opt.regionBreakdown[r]}%</td>
+                                        <td key={r} style={{ textAlign: "center", color: "#475569", fontWeight: 500, padding: "0.55rem 0.9rem" }}>
+                                          {opt.regionBreakdown[r] === "-" ? "-" : `${opt.regionBreakdown[r]}%`}
+                                        </td>
                                       ))}
                                     </tr>
                                   ))}

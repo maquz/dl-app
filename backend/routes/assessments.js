@@ -938,20 +938,72 @@ router.get("/:id/diagnostics", trainerOrAdminAuth, async (req, res) => {
       if (data) submissions = data;
       
       if (submissions.length > 0) {
-         let rQuery = supabase.from("registrations").select("phone_number, region, district, sex");
-         if (cohortId) rQuery = rQuery.eq("cohort_id", cohortId);
-         const { data: regData } = await rQuery;
-         if (regData) {
-           const regMap = {};
-           regData.forEach(r => regMap[r.phone_number] = r);
-           submissions.forEach(s => {
-              if (s.phone_number && regMap[s.phone_number]) {
-                s.region = regMap[s.phone_number].region;
-                s.district = regMap[s.phone_number].district;
-                s.sex = regMap[s.phone_number].sex;
+        // Build comprehensive registration index across Supabase and SQLite
+        const regByExactPhone = new Map();
+        const regByDigits = new Map();
+        const regByLast9 = new Map();
+        const regById = new Map();
+        const regByName = new Map();
+
+        function indexReg(r) {
+          if (!r) return;
+          if (r.id) regById.set(Number(r.id), r);
+          if (r.phone_number) {
+            const raw = String(r.phone_number).trim();
+            regByExactPhone.set(raw, r);
+            const digits = raw.replace(/\D/g, "");
+            if (digits) {
+              regByDigits.set(digits, r);
+              if (digits.length >= 9) {
+                regByLast9.set(digits.slice(-9), r);
               }
-           });
-         }
+            }
+          }
+          if (r.officer_name) {
+            regByName.set(String(r.officer_name).trim().toLowerCase(), r);
+          }
+        }
+
+        try {
+          const { data: regData } = await supabase
+            .from("registrations")
+            .select("id, phone_number, officer_name, region, district, sex")
+            .limit(100000);
+          if (regData) regData.forEach(indexReg);
+        } catch (e) {}
+
+        try {
+          const localRegs = db.prepare("SELECT id, phone_number, officer_name, region, district, sex FROM registrations").all();
+          localRegs.forEach(indexReg);
+        } catch (e) {}
+
+        submissions.forEach(s => {
+          let matched = null;
+          if (s.registration_id && regById.has(Number(s.registration_id))) {
+            matched = regById.get(Number(s.registration_id));
+          }
+          if (!matched && s.phone_number) {
+            const raw = String(s.phone_number).trim();
+            if (regByExactPhone.has(raw)) matched = regByExactPhone.get(raw);
+            const digits = raw.replace(/\D/g, "");
+            if (!matched && digits) {
+              if (regByDigits.has(digits)) matched = regByDigits.get(digits);
+              else if (digits.length >= 9 && regByLast9.has(digits.slice(-9))) {
+                matched = regByLast9.get(digits.slice(-9));
+              }
+            }
+          }
+          if (!matched && s.officer_name) {
+            const normName = String(s.officer_name).trim().toLowerCase();
+            if (regByName.has(normName)) matched = regByName.get(normName);
+          }
+
+          if (matched) {
+            if (!s.region || s.region === "Unknown") s.region = matched.region;
+            if (!s.district) s.district = matched.district;
+            if (!s.sex) s.sex = matched.sex;
+          }
+        });
       }
     }
     if (submissions.length === 0) {
@@ -963,14 +1015,15 @@ router.get("/:id/diagnostics", trainerOrAdminAuth, async (req, res) => {
 
     const cohortName = assessment.cohorts?.name || assessment.cohort_name || (cohortId ? `Cohort ${cohortId}` : "All Cohorts");
     const totalRespondents = submissions.length;
-    let male = 0, female = 0;
+    let male = 0, female = 0, unspecified = 0;
     const regionCounts = {};
     const nonResponders = []; // Mock logic for district non-response
 
     submissions.forEach(sub => {
-      const sex = (sub.registrations?.sex || sub.sex || "").toLowerCase();
+      const sex = (sub.registrations?.sex || sub.sex || "").trim().toLowerCase();
       if (sex === "male") male++;
       else if (sex === "female") female++;
+      else unspecified++;
       const region = sub.registrations?.region || sub.region || "Unknown";
       regionCounts[region] = (regionCounts[region] || 0) + 1;
     });
@@ -1082,6 +1135,8 @@ router.get("/:id/diagnostics", trainerOrAdminAuth, async (req, res) => {
         malePct: totalRespondents ? ((male / totalRespondents) * 100).toFixed(1) : 0,
         female,
         femalePct: totalRespondents ? ((female / totalRespondents) * 100).toFixed(1) : 0,
+        unspecified,
+        unspecifiedPct: totalRespondents ? ((unspecified / totalRespondents) * 100).toFixed(1) : 0,
         regions: uniqueRegions,
         regionCounts
       },
@@ -1121,20 +1176,72 @@ router.get("/:id/export/xlsx", async (req, res) => {
       if (data) submissions = data;
       
       if (submissions.length > 0) {
-         let rQuery = supabase.from("registrations").select("phone_number, region, district, sex");
-         if (cohortId) rQuery = rQuery.eq("cohort_id", cohortId);
-         const { data: regData } = await rQuery;
-         if (regData) {
-           const regMap = {};
-           regData.forEach(r => regMap[r.phone_number] = r);
-           submissions.forEach(s => {
-              if (s.phone_number && regMap[s.phone_number]) {
-                s.region = regMap[s.phone_number].region;
-                s.district = regMap[s.phone_number].district;
-                s.sex = regMap[s.phone_number].sex;
+        // Build comprehensive registration index across Supabase and SQLite
+        const regByExactPhone = new Map();
+        const regByDigits = new Map();
+        const regByLast9 = new Map();
+        const regById = new Map();
+        const regByName = new Map();
+
+        function indexReg(r) {
+          if (!r) return;
+          if (r.id) regById.set(Number(r.id), r);
+          if (r.phone_number) {
+            const raw = String(r.phone_number).trim();
+            regByExactPhone.set(raw, r);
+            const digits = raw.replace(/\D/g, "");
+            if (digits) {
+              regByDigits.set(digits, r);
+              if (digits.length >= 9) {
+                regByLast9.set(digits.slice(-9), r);
               }
-           });
-         }
+            }
+          }
+          if (r.officer_name) {
+            regByName.set(String(r.officer_name).trim().toLowerCase(), r);
+          }
+        }
+
+        try {
+          const { data: regData } = await supabase
+            .from("registrations")
+            .select("id, phone_number, officer_name, region, district, sex")
+            .limit(100000);
+          if (regData) regData.forEach(indexReg);
+        } catch (e) {}
+
+        try {
+          const localRegs = db.prepare("SELECT id, phone_number, officer_name, region, district, sex FROM registrations").all();
+          localRegs.forEach(indexReg);
+        } catch (e) {}
+
+        submissions.forEach(s => {
+          let matched = null;
+          if (s.registration_id && regById.has(Number(s.registration_id))) {
+            matched = regById.get(Number(s.registration_id));
+          }
+          if (!matched && s.phone_number) {
+            const raw = String(s.phone_number).trim();
+            if (regByExactPhone.has(raw)) matched = regByExactPhone.get(raw);
+            const digits = raw.replace(/\D/g, "");
+            if (!matched && digits) {
+              if (regByDigits.has(digits)) matched = regByDigits.get(digits);
+              else if (digits.length >= 9 && regByLast9.has(digits.slice(-9))) {
+                matched = regByLast9.get(digits.slice(-9));
+              }
+            }
+          }
+          if (!matched && s.officer_name) {
+            const normName = String(s.officer_name).trim().toLowerCase();
+            if (regByName.has(normName)) matched = regByName.get(normName);
+          }
+
+          if (matched) {
+            if (!s.region || s.region === "Unknown") s.region = matched.region;
+            if (!s.district) s.district = matched.district;
+            if (!s.sex) s.sex = matched.sex;
+          }
+        });
       }
     }
     if (submissions.length === 0) {
@@ -1174,7 +1281,16 @@ router.get("/:id/export/xlsx", async (req, res) => {
 
     const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
 
-    res.setHeader("Content-Disposition", `attachment; filename=Assessment_${assessmentId}_Data.xlsx`);
+    const rawType = assessment.type || "Assessment";
+    let testTypeLabel = "Assessment";
+    if (rawType.toLowerCase().includes("pre")) testTypeLabel = "Pre_Training";
+    else if (rawType.toLowerCase().includes("post")) testTypeLabel = "Post_Training";
+    else testTypeLabel = rawType.replace(/\s+/g, "_");
+
+    const cohortLabel = cohortId ? `Cohort_${cohortId}` : "All_Cohorts";
+    const excelFilename = `${cohortLabel}_${testTypeLabel}_Submissions.xlsx`;
+
+    res.setHeader("Content-Disposition", `attachment; filename="${excelFilename}"`);
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.send(buf);
 
