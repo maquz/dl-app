@@ -1,3 +1,5 @@
+const fs = require("fs");
+const path = require("path");
 const PptxGenJS = require("pptxgenjs");
 const db = require("../db");
 const supabase = require("../supabase");
@@ -189,17 +191,39 @@ async function generateAssessmentReportPptx(assessmentId, cohortId) {
   });
 
   // Slide 1: Title
-  let slide1 = pres.addSlide({ masterName: "MASTER_SLIDE" });
-  slide1.addText("DIFFERENTIATED LEARNING (DL)\nFOCAL PERSONS TRAINING", {
-    x: 0.5, y: 1.0, w: 9, h: 1.8, align: "center", fontSize: 36, bold: true, color: "0F172A", valign: "middle"
-  });
-  slide1.addText(cohortName.toUpperCase(), {
-    x: 0.5, y: 3.0, w: 9, h: 0.8, align: "center", fontSize: 44, bold: true, color: "005BBB", valign: "middle"
-  });
-  slide1.addShape(pres.ShapeType.rect, { x: 1.5, y: 4.0, w: 7, h: 1.0, fill: { color: "E0F2FE" }, line: { color: "005BBB", width: 2 } });
-  slide1.addText(assessment.title, {
-    x: 1.5, y: 4.0, w: 7, h: 1.0, align: "center", fontSize: 24, bold: true, color: "C00000", valign: "middle"
-  });
+  let slide1 = pres.addSlide();
+  const templatePath = path.join(__dirname, "../assets/slide1_template.png");
+  if (fs.existsSync(templatePath)) {
+    const b64 = "image/png;base64," + fs.readFileSync(templatePath).toString("base64");
+    slide1.addImage({ data: b64, x: 0, y: 0, w: 10, h: 5.625 });
+
+    slide1.addText(cohortName.toUpperCase(), {
+      x: 2.0, y: 3.82, w: 6.0, h: 0.45,
+      fontSize: 22, bold: true, color: "005BBB", align: "center", valign: "middle"
+    });
+
+    slide1.addText(assessment.title || "DL Workshop Assessment", {
+      x: 1.0, y: 4.30, w: 8.0, h: 0.45,
+      fontSize: 16, bold: true, color: "C00000", align: "center", valign: "middle"
+    });
+  } else {
+    // Fallback vector layout
+    slide1 = pres.addSlide({ masterName: "MASTER_SLIDE" });
+    slide1.addShape(pres.ShapeType.line, { x: 0.8, y: 1.4, w: 3.5, h: 0, line: { color: "000000", width: 2 } });
+    slide1.addText("GALOP AF2\nTraining\nWorkshop", {
+      x: 0.8, y: 1.5, w: 4.0, h: 1.8, fontSize: 32, bold: true, color: "0F172A", align: "left", valign: "top"
+    });
+    slide1.addShape(pres.ShapeType.line, { x: 0.8, y: 3.4, w: 3.5, h: 0, line: { color: "000000", width: 2 } });
+    slide1.addText("Differentiated Learning (DL)", {
+      x: 0.8, y: 3.5, w: 4.0, h: 0.5, fontSize: 20, italic: true, color: "1E293B", align: "left"
+    });
+    slide1.addText(cohortName.toUpperCase(), {
+      x: 2.0, y: 3.82, w: 6.0, h: 0.45, fontSize: 22, bold: true, color: "005BBB", align: "center", valign: "middle"
+    });
+    slide1.addText(assessment.title, {
+      x: 1.0, y: 4.30, w: 8.0, h: 0.45, fontSize: 16, bold: true, color: "C00000", align: "center", valign: "middle"
+    });
+  }
 
   // Slide 2: Overview
   let slide2 = pres.addSlide({ masterName: "MASTER_SLIDE" });
@@ -249,20 +273,18 @@ async function generateAssessmentReportPptx(assessmentId, cohortId) {
 
   // Slide 3: Objective
   let slide3 = pres.addSlide({ masterName: "MASTER_SLIDE" });
-  slide3.addText("Objective of the Training for DL Focal Persons:", { x: 0.5, y: 0.5, w: 9, h: 0.6, fontSize: 28, bold: true, color: "0F172A", underline: true, valign: "top" });
-  slide3.addText("To empower Differentiated Learning Focal Persons (DLFP) with the essential knowledge, concepts, and skills necessary to champion and effectively implement DL initiatives across districts in Ghana.", {
-    x: 0.5, y: 1.3, w: 9, h: 1.4, fontSize: 20, bullet: true, bold: true, color: "334155", valign: "top"
+  slide3.addText("Objective of the Training of Nominated DL District Trainers:", { 
+    x: 0.6, y: 0.8, w: 8.8, h: 0.6, fontSize: 24, bold: true, color: "0F172A", underline: true, valign: "top" 
   });
-  slide3.addText("The evaluation itself", { x: 0.5, y: 2.9, w: 9, h: 0.6, fontSize: 28, bold: true, color: "0F172A", underline: true, valign: "top" });
-  slide3.addText("From the analysis of the data, it is clear some participants got the answers wrong for some of the questions, which were on the high side.", {
-    x: 0.5, y: 3.6, w: 9, h: 1.2, fontSize: 20, bold: true, color: "334155", valign: "top"
+  slide3.addText("To empower Differentiated Learning District Trainers with the essential knowledge, concepts, and skills necessary to champion and effectively implement DL initiatives across districts in Ghana.", {
+    x: 0.6, y: 1.6, w: 8.8, h: 2.0, fontSize: 20, bullet: true, bold: true, color: "1E293B", valign: "top"
   });
   
   // Slide 4: Tips
   let slide4 = pres.addSlide({ masterName: "MASTER_SLIDE" });
-  slide4.addText("Tips to read the slides:", { x: 0.5, y: 0.5, w: 9, h: 0.6, fontSize: 28, bold: true, color: "0F172A", underline: true, valign: "top" });
-  slide4.addText("• Analysis of the results for each question of the survey, disaggregated per region.\n• The results for each question are presented on 2 slides.\n• For each question, before presenting the results per region, one slide presents the overall results and recommendations.\n• Districts that did not submit the assessment are represented as (-).", {
-    x: 0.5, y: 1.3, w: 9, h: 3.2, fontSize: 18, bullet: true, color: "334155", valign: "top"
+  slide4.addText("Tips to read the slides:", { x: 0.6, y: 0.6, w: 8.8, h: 0.6, fontSize: 26, bold: true, color: "0F172A", underline: true, valign: "top" });
+  slide4.addText("• Analysis of the results for each question of the survey, disaggregated per region.\n• The results for each question are presented on 2 slides.\n• Slide 1 presents key takeaways and the overall majority choice.\n• Slide 2 presents the regional breakdown table, where percentages show the distribution of participant responses within each region (summing to 100% per region).\n• Districts that did not submit the assessment are represented as (-).", {
+    x: 0.6, y: 1.4, w: 8.8, h: 3.2, fontSize: 18, bullet: true, color: "334155", valign: "top"
   });
 
   // Calculate Region Stats per question
@@ -345,8 +367,7 @@ async function generateAssessmentReportPptx(assessmentId, cohortId) {
     
     // Header row
     let headerRow = [
-      { text: "Option", options: { bold: true, fill: "1E293B", color: "FFFFFF", valign: "middle", align: "left" } },
-      { text: "Overall %", options: { bold: true, fill: "1E293B", color: "FFFFFF", valign: "middle", align: "center" } }
+      { text: "Option", options: { bold: true, fill: "1E293B", color: "FFFFFF", valign: "middle", align: "left" } }
     ];
     uniqueRegions.forEach(r => {
       headerRow.push({ text: r, options: { bold: true, fill: "1E293B", color: "FFFFFF", valign: "middle", align: "center" } });
@@ -366,12 +387,9 @@ async function generateAssessmentReportPptx(assessmentId, cohortId) {
       let textCol = isCorrect ? "15803D" : "1E293B";
       
       let letter = String.fromCharCode(97 + oIdx);
-      let optCount = answerCounts[opt] || 0;
-      let overallPct = qTotalOverall > 0 ? ((optCount / qTotalOverall) * 100).toFixed(1) + "%" : "0.0%";
 
       let row = [
-        { text: `${letter}. ${isCorrect ? "✓ " : ""}${opt}`, options: { bold: isCorrect, fill: rowFill, color: textCol, align: "left" } },
-        { text: overallPct, options: { bold: isCorrect, fill: rowFill, color: textCol, align: "center" } }
+        { text: `${letter}. ${isCorrect ? "✓ " : ""}${opt}`, options: { bold: isCorrect, fill: rowFill, color: textCol, align: "left" } }
       ];
       
       uniqueRegions.forEach(r => {
@@ -383,19 +401,19 @@ async function generateAssessmentReportPptx(assessmentId, cohortId) {
       tableData.push(row);
     });
 
-    // Dynamic column widths and font sizes
+    // Dynamic column widths and font sizes (without Overall % column)
     let colW = [];
     let tblFontSize = 12;
     if (uniqueRegions.length === 1) {
-      colW = [5.0, 2.0, 2.0];
+      colW = [6.5, 2.5];
       tblFontSize = 13;
     } else if (uniqueRegions.length <= 4) {
-      const regionW = 3.6 / uniqueRegions.length;
-      colW = [4.2, 1.2, ...uniqueRegions.map(() => regionW)];
-      tblFontSize = 11;
+      const regionW = 4.5 / uniqueRegions.length;
+      colW = [4.5, ...uniqueRegions.map(() => regionW)];
+      tblFontSize = 12;
     } else {
-      const regionW = 5.2 / uniqueRegions.length;
-      colW = [2.8, 1.0, ...uniqueRegions.map(() => regionW)];
+      const regionW = 6.0 / uniqueRegions.length;
+      colW = [3.0, ...uniqueRegions.map(() => regionW)];
       tblFontSize = uniqueRegions.length > 10 ? 8 : 9;
     }
 
