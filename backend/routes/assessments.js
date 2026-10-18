@@ -1764,10 +1764,29 @@ router.get("/:id/report/pptx", async (req, res) => {
   const cohortId = req.query.cohort_id || null;
 
   try {
+    const supabase = require("../supabase");
+    let assessment = null;
+    if (supabase) {
+      const { data } = await supabase.from("assessments").select("*, cohorts(name)").eq("id", assessmentId).maybeSingle();
+      if (data) assessment = data;
+    }
+    if (!assessment) {
+      assessment = db.prepare("SELECT a.*, c.name as cohort_name FROM assessments a LEFT JOIN cohorts c ON a.cohort_id = c.id WHERE a.id = ?").get(assessmentId);
+    }
+
     const { generateAssessmentReportPptx } = require("../utils/pptxReport");
     const buffer = await generateAssessmentReportPptx(assessmentId, cohortId);
+
+    const rawType = assessment?.type || "Assessment";
+    let testTypeLabel = "Assessment";
+    if (rawType.toLowerCase().includes("pre")) testTypeLabel = "Pre_Training";
+    else if (rawType.toLowerCase().includes("post")) testTypeLabel = "Post_Training";
+    else testTypeLabel = rawType.replace(/\s+/g, "_");
+
+    const cohortLabel = cohortId ? `Cohort_${cohortId}` : "All_Cohorts";
+    const pptxFilename = `${cohortLabel}_${testTypeLabel}_Report.pptx`;
     
-    res.setHeader("Content-Disposition", `attachment; filename=Assessment_Report_${assessmentId}.pptx`);
+    res.setHeader("Content-Disposition", `attachment; filename="${pptxFilename}"`);
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.presentationml.presentation");
     res.send(buffer);
   } catch (err) {

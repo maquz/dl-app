@@ -652,10 +652,34 @@ export default function TrainerDashboard() {
       {/* TAB 2: PRE-TEST & POST-TEST ASSESSMENT MANAGEMENT */}
       {activeTab === "assessments" && (
         <div className="trainer-assessments-view">
-          <div className="cohort-view-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div className="cohort-view-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "1rem" }}>
             <div>
               <h2>Pre-Test & Post-Test Question Banks</h2>
               <p>Create, activate, and manage questions for participant diagnostic and summative evaluations.</p>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginTop: "0.75rem", flexWrap: "wrap" }}>
+                <label htmlFor="assessmentCohortSelect" style={{ fontWeight: 600, fontSize: "0.88rem", color: "#334155" }}>
+                  Selected Cohort for Reports:
+                </label>
+                <select
+                  id="assessmentCohortSelect"
+                  value={cohortFilter}
+                  onChange={(e) => setCohortFilter(e.target.value)}
+                  style={{ padding: "0.4rem 0.8rem", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "0.88rem", fontWeight: 500 }}
+                >
+                  <option value="">All Cohorts (National Overview)</option>
+                  <option value="1">Cohort 1</option>
+                  <option value="2">Cohort 2</option>
+                  <option value="3">Cohort 3</option>
+                  <option value="4">Cohort 4</option>
+                  <option value="5">Cohort 5</option>
+                  <option value="6">Cohort 6</option>
+                </select>
+                {cohortFilter && (
+                  <span style={{ fontSize: "0.82rem", background: "#e0f2fe", color: "#0369a1", padding: "0.2rem 0.6rem", borderRadius: "6px", fontWeight: 600 }}>
+                    Filtering for Cohort {cohortFilter}
+                  </span>
+                )}
+              </div>
             </div>
             <button className="btn-primary" onClick={handleOpenCreateAssessment}>
               + Create Assessment
@@ -710,11 +734,12 @@ export default function TrainerDashboard() {
                     View Scores ({a.submission_count || 0})
                   </button>
                   <a
-                    href={getAssessmentPptxReportUrl(a.id, "")}
+                    href={getAssessmentPptxReportUrl(a.id, cohortFilter)}
                     className="btn-secondary"
                     style={{ background: "#e0f2fe", color: "#0369a1", borderColor: "#bae6fd", textDecoration: "none" }}
+                    title={cohortFilter ? `Download PPTX Report for Cohort ${cohortFilter}` : "Download National PPTX Report"}
                   >
-                    PPTX Report
+                    📊 PPTX Report {cohortFilter ? `(Cohort ${cohortFilter})` : ""}
                   </a>
                   <button
                     type="button"

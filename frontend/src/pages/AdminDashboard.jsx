@@ -2676,16 +2676,12 @@ export default function AdminDashboard() {
                               type="button"
                               className="btn-link-action"
                               style={{ color: "#0ea5e9", fontWeight: 600, textDecoration: "none" }}
-                              title="Download PowerPoint presentation report"
+                              title={cohortFilter ? `Download PowerPoint report for Cohort ${cohortFilter}` : "Download PowerPoint report (All Cohorts)"}
                               onClick={() => {
-                                if (!cohortFilter) {
-                                  alert("Please select a specific Cohort from the global filter dropdown at the top of the page to generate a precise 20-question PPTX report for that cohort.");
-                                  return;
-                                }
-                                window.location.href = getAssessmentPptxReportUrl(a.id, cohortFilter);
+                                window.location.href = getAssessmentPptxReportUrl(a.id, cohortFilter || "");
                               }}
                             >
-                              PPTX Report
+                              PPTX Report {cohortFilter ? `(C${cohortFilter})` : ""}
                             </button>
                             <Link to={`/assessment/${a.id}?bypass=true`} className="btn-link-action" target="_blank" rel="noreferrer" title="Preview candidate test">
                               Preview ↗
@@ -2894,6 +2890,19 @@ export default function AdminDashboard() {
                               <line x1="12" y1="15" x2="12" y2="3" />
                             </svg>
                             Export Excel
+                          </button>
+                          <button 
+                            className="btn-secondary"
+                            style={{ borderColor: "#f97316", color: "#c2410c" }}
+                            title="Download PowerPoint presentation report"
+                            onClick={() => window.open(getAssessmentPptxReportUrl(selectedDiagnosticAssessment, cohortFilter || ""), '_blank')}
+                          >
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: "4px" }}>
+                              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                              <line x1="8" y1="21" x2="16" y2="21"></line>
+                              <line x1="12" y1="17" x2="12" y2="21"></line>
+                            </svg>
+                            Export PPTX
                           </button>
                         </div>
                       );
