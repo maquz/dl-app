@@ -73,6 +73,10 @@ export default function RegistrationForm() {
       if (recentNominee) {
         const nom = JSON.parse(recentNominee);
         if (nom && nom.referenceCode) {
+          if (nom.programType === "sample_school") {
+            navigate("/schools/portal", { replace: true, state: { nominee: nom, activeTab: "pre-test" } });
+            return;
+          }
           navigate("/confirmation", { replace: true, state: { nominee: nom, activeTab: "pre-test" } });
           return;
         }
@@ -91,6 +95,13 @@ export default function RegistrationForm() {
         .then((res) => {
           if (res.hasRegistered && res.nominee) {
             sessionStorage.setItem("recent_nominee", JSON.stringify(res.nominee));
+            if (res.nominee.programType === "sample_school") {
+              navigate("/schools/portal", {
+                replace: true,
+                state: { nominee: res.nominee, activeTab: "pre-test" },
+              });
+              return;
+            }
             navigate("/confirmation", {
               replace: true,
               state: { nominee: res.nominee, activeTab: "pre-test" },
@@ -196,6 +207,13 @@ export default function RegistrationForm() {
       const res = await fetchMyNomination({ phone: authPopupPhone });
       if (res.hasRegistered && res.nominee) {
         sessionStorage.setItem("recent_nominee", JSON.stringify(res.nominee));
+        if (res.nominee.programType === "sample_school") {
+          navigate("/schools/portal", {
+            replace: true,
+            state: { nominee: res.nominee, activeTab: "pre-test", justLoggedIn: true },
+          });
+          return;
+        }
         navigate("/confirmation", {
           replace: true,
           state: { nominee: res.nominee, activeTab: "pre-test", justLoggedIn: true },
@@ -315,12 +333,29 @@ export default function RegistrationForm() {
                   border: "1px solid #fde68a",
                   borderRadius: "8px",
                   padding: "0.6rem 0.85rem",
-                  marginBottom: "1.5rem",
+                  marginBottom: "0.85rem",
                   fontSize: "0.82rem",
                   color: "#92400e",
                   fontWeight: 500
                 }}>
-                  🔒 Notice: Registration session is closed. All nominees must log in with their registered phone number.
+                  🔒 Notice: District Trainer registration is closed. All nominees must log in with their registered phone number.
+                </div>
+                <div style={{
+                  background: "#eff6ff",
+                  border: "1px solid #bfdbfe",
+                  borderRadius: "8px",
+                  padding: "0.65rem 0.85rem",
+                  marginBottom: "1.25rem",
+                  fontSize: "0.82rem",
+                  color: "#1e40af",
+                  textAlign: "left",
+                  lineHeight: 1.45
+                }}>
+                  🏫 <strong>GALOP AF2 Sample Schools (210 Schools)?</strong><br />
+                  Headteachers & Teachers can sign up or access the dedicated school test portal.{" "}
+                  <Link to="/schools" style={{ color: "#2563eb", fontWeight: 700, textDecoration: "underline" }}>
+                    Go to Sample Schools Portal &rarr;
+                  </Link>
                 </div>
                 <div style={{ display: "flex", gap: "1rem", justifyContent: "center" }}>
                   <button
@@ -441,6 +476,31 @@ export default function RegistrationForm() {
           <div style={{ fontSize: "0.88rem", color: "#64748b", lineHeight: 1.5 }}>
             Access your dashboard, take pre/post assessments, and download your nomination slip by verifying your registered phone number.
           </div>
+        </div>
+
+        <div style={{
+          background: "#f0fdf4",
+          border: "1.5px solid #bbf7d0",
+          borderRadius: "12px",
+          padding: "1.25rem",
+          maxWidth: "440px",
+          margin: "0 auto 1.5rem auto",
+          textAlign: "left"
+        }}>
+          <div style={{ fontWeight: 700, color: "#166534", marginBottom: "0.35rem", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+            <span>🏫</span>
+            <span>GALOP AF2 Sample Schools Workshop (210 Schools)</span>
+          </div>
+          <div style={{ fontSize: "0.86rem", color: "#15803d", lineHeight: 1.45, marginBottom: "0.75rem" }}>
+            Are you a Headteacher or Teacher from the selected 210 sample schools? Sign up with your school details or log in to take your pre/post assessments.
+          </div>
+          <Link
+            to="/schools"
+            className="btn btn-secondary"
+            style={{ display: "inline-block", fontSize: "0.88rem", padding: "0.45rem 1rem", background: "#ffffff", borderColor: "#86efac", color: "#166534", fontWeight: 700, textDecoration: "none" }}
+          >
+            Sample Schools Sign-Up & Portal &rarr;
+          </Link>
         </div>
 
         <button

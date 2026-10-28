@@ -78,6 +78,15 @@ function formatNomineeRecord(row) {
     rolesParsed = [row.roles];
   }
 
+  let metadata = {};
+  if (row.check_in_notes && typeof row.check_in_notes === "string" && row.check_in_notes.startsWith("{")) {
+    try {
+      metadata = JSON.parse(row.check_in_notes);
+    } catch(e) {}
+  }
+
+  const isSampleSchool = row.program_type === "sample_school" || metadata.program_type === "sample_school" || (rolesParsed.length === 1 && ["Headteacher", "Teacher"].includes(rolesParsed[0]));
+
   let cohort = null;
   if (row.cohort_id) {
     try {
@@ -86,9 +95,11 @@ function formatNomineeRecord(row) {
   }
 
   const regCode = (row.region || "GES").replace(/[^A-Za-z]/g, "").slice(0, 3).toUpperCase();
+  const prefix = isSampleSchool ? "DL-SCH-2026" : "DL-2026";
+
   return {
     id: row.id,
-    referenceCode: `DL-2026-${regCode}-${String(row.id).padStart(4, "0")}`,
+    referenceCode: `${prefix}-${regCode}-${String(row.id).padStart(4, "0")}`,
     officerName: row.officer_name,
     sex: row.sex,
     phoneNumber: row.phone_number,
@@ -97,12 +108,19 @@ function formatNomineeRecord(row) {
     district: row.district,
     institutionName: row.institution_name,
     roles: rolesParsed,
+    programType: isSampleSchool ? "sample_school" : "master_trainer",
+    schoolName: row.school_name || metadata.school_name || row.institution_name,
+    emisCode: row.emis_code || metadata.emis_code || null,
+    studyGroup: row.study_group || metadata.study_group || null,
+    groupName: metadata.group_name || null,
+    treatment: metadata.treatment || null,
+    designation: row.designation || metadata.designation || (isSampleSchool ? rolesParsed[0] : null),
     cohortId: row.cohort_id,
-    cohortName: cohort ? cohort.name : (row.cohort_id ? `Cohort ${row.cohort_id}` : "Cohort 1"),
-    arrivalDate: row.arrival_date || (cohort ? cohort.arrival_date : "Sunday, 20/09/2026"),
-    startDate: cohort ? cohort.start_date : "Monday, 21/09/2026",
-    endDate: cohort ? cohort.end_date : "Tuesday, 22/09/2026",
-    departureDate: cohort ? cohort.departure_date : "Wednesday, 23/09/2026",
+    cohortName: cohort ? cohort.name : (row.cohort_id ? `Cohort ${row.cohort_id}` : (isSampleSchool ? "Sample Schools Workshop" : "Cohort 1")),
+    arrivalDate: row.arrival_date || (cohort ? cohort.arrival_date : (isSampleSchool ? "Tuesday, 27/10/2026" : "Sunday, 20/09/2026")),
+    startDate: cohort ? cohort.start_date : (isSampleSchool ? "Tuesday, 27/10/2026" : "Monday, 21/09/2026"),
+    endDate: cohort ? cohort.end_date : (isSampleSchool ? "Thursday, 29/10/2026" : "Tuesday, 22/09/2026"),
+    departureDate: cohort ? cohort.departure_date : (isSampleSchool ? "Thursday, 29/10/2026" : "Wednesday, 23/09/2026"),
     attendanceStatus: row.attendance_status || "Registered",
     submittedAt: row.submitted_at,
     tabletSerial: row.tablet_serial || null,

@@ -459,3 +459,40 @@ export async function recoverTrainerPassword(identifier) {
     body: JSON.stringify({ identifier })
   });
 }
+
+// GALOP AF2 Sample Schools API
+export async function fetchSampleSchools(params = {}) {
+  const query = new URLSearchParams(params).toString();
+  const res = await fetch(`${API_URL}/sample-schools${query ? `?${query}` : ""}`);
+  return handle(res);
+}
+
+export async function fetchSampleSchoolHierarchy() {
+  const res = await fetch(`${API_URL}/sample-schools/hierarchy`);
+  return handle(res);
+}
+
+export async function registerSampleSchool(data) {
+  const res = await fetch(`${API_URL}/sample-schools/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  return handle(res);
+}
+
+export async function fetchSampleSchoolStats() {
+  const res = await fetch(`${API_URL}/sample-schools/stats`);
+  return handle(res);
+}
+
+export async function fetchSampleSchoolAssessments() {
+  const res = await fetch(`${API_URL}/assessments?program_type=sample_school`);
+  return handle(res);
+}
+
+export async function fetchSampleSchoolParticipants(params = {}) {
+  const query = new URLSearchParams(params).toString();
+  const res = await fetch(`${API_URL}/sample-schools/participants${query ? `?${query}` : ""}`);
+  return handle(res);
+}

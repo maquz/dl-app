@@ -16,6 +16,7 @@ import {
   updateNationalTrainer,
   fetchResources,
 } from "../api";
+import SampleSchoolsAdminTab from "../components/SampleSchoolsAdminTab.jsx";
 
 export default function TrainerDashboard() {
   const navigate = useNavigate();
@@ -498,6 +499,16 @@ export default function TrainerDashboard() {
             <p>Files ({resources.length})</p>
           </div>
         </div>
+
+        <div className={`glass-action-card ${activeTab === "sample-schools" ? "active" : ""}`} onClick={() => handleTabClick("sample-schools")}>
+          <div className="action-icon" style={{background: "linear-gradient(135deg, #0284c7, #38bdf8)"}}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+          </div>
+          <div className="action-details">
+            <h3>Sample Schools</h3>
+            <p>210 Schools Track</p>
+          </div>
+        </div>
       </div>
 
       <main className="glass-main-panel" style={{maxWidth: "1200px"}}>
@@ -885,6 +896,11 @@ export default function TrainerDashboard() {
             )}
           </div>
         </div>
+      )}
+
+      {/* TAB 6: SAMPLE SCHOOLS (210) */}
+      {activeTab === "sample-schools" && (
+        <SampleSchoolsAdminTab assessmentsList={assessmentsList} />
       )}
 
         </div>

@@ -8,6 +8,8 @@ import TrainerLogin from "./pages/TrainerLogin.jsx";
 import TrainerDashboard from "./pages/TrainerDashboard.jsx";
 import AssessmentsList from "./pages/AssessmentsList.jsx";
 import AssessmentTake from "./pages/AssessmentTake.jsx";
+import SampleSchoolRegister from "./pages/SampleSchoolRegister.jsx";
+import SampleSchoolPortal from "./pages/SampleSchoolPortal.jsx";
 
 function Shell({ children }) {
   const location = useLocation();
@@ -17,6 +19,7 @@ function Shell({ children }) {
   const isAssessment = location.pathname.startsWith("/assessment");
   const isRegister = location.pathname === "/register";
   const isAuth = location.pathname === "/" || location.pathname === "/signup";
+  const isSchools = location.pathname.startsWith("/schools") || location.pathname.startsWith("/sample-schools");
 
   const [officer, setOfficer] = useState(null);
 
@@ -34,17 +37,22 @@ function Shell({ children }) {
   }, [location.pathname]);
 
   function handleOfficerSignOut() {
+    const wasSchool = officer?.programType === "sample_school";
     localStorage.removeItem("officer_profile");
     sessionStorage.removeItem("officer_profile");
     sessionStorage.removeItem("recent_nominee");
     setOfficer(null);
-    navigate("/signup", { replace: true });
+    navigate(wasSchool ? "/schools" : "/signup", { replace: true });
   }
 
   return (
     <div className="shell">
       <header className="site-header">
-        <Link to={officer?.referenceCode ? "/confirmation" : "/"} className="brand" aria-label="DL Master Trainer Nominations Home">
+        <Link
+          to={officer?.referenceCode ? (officer.programType === "sample_school" ? "/schools/portal" : "/confirmation") : "/"}
+          className="brand"
+          aria-label="DL Nominations Home"
+        >
           <img
             src="/dl-logo.jpg"
             alt="Differentiated Learning Logo"
@@ -72,6 +80,7 @@ function Shell({ children }) {
               />
               <span className="officer-nav-name">
                 {officer.officerName?.split(" ")[0] || officer.fullName?.split(" ")[0] || "Officer"}
+                {officer.designation ? ` (${officer.designation})` : ""}
               </span>
               <button
                 type="button"
@@ -86,6 +95,9 @@ function Shell({ children }) {
             <>
               <Link to="/signup" className={isAuth ? "active" : ""}>
                 Nominee Portal
+              </Link>
+              <Link to="/schools" className={isSchools ? "active" : ""}>
+                Sample Schools
               </Link>
               <Link to="/trainer/login" className={isTrainer ? "active" : ""}>
                 Facilitator Portal
@@ -148,6 +160,11 @@ export default function App() {
         <Route path="/signup" element={<RegistrationForm />} />
         <Route path="/register" element={<RegistrationForm />} />
         <Route path="/confirmation" element={<Confirmation />} />
+        <Route path="/schools" element={<SampleSchoolRegister />} />
+        <Route path="/schools/register" element={<SampleSchoolRegister />} />
+        <Route path="/sample-schools" element={<SampleSchoolRegister />} />
+        <Route path="/schools/portal" element={<SampleSchoolPortal />} />
+        <Route path="/sample-schools/portal" element={<SampleSchoolPortal />} />
         <Route path="/admin" element={<AdminLogin />} />
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/trainer/login" element={<TrainerLogin />} />

@@ -135,6 +135,18 @@ db.exec(`
     answers_json TEXT NOT NULL,
     submitted_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
+
+  CREATE TABLE IF NOT EXISTS sample_schools (
+    id INTEGER PRIMARY KEY,
+    school_number INTEGER NOT NULL,
+    school_name TEXT NOT NULL,
+    emis_code TEXT NOT NULL,
+    region TEXT NOT NULL,
+    district TEXT NOT NULL,
+    group_id TEXT NOT NULL,
+    group_name TEXT NOT NULL,
+    treatment TEXT NOT NULL
+  );
 `);
 
 // Safe column migrations for existing databases
@@ -145,13 +157,24 @@ const migrations = [
   "ALTER TABLE registrations ADD COLUMN attendance_status TEXT DEFAULT 'Registered';",
   "ALTER TABLE registrations ADD COLUMN attended_at TEXT;",
   "ALTER TABLE registrations ADD COLUMN check_in_notes TEXT;",
+  "ALTER TABLE registrations ADD COLUMN tablet_imei TEXT;",
+  "ALTER TABLE registrations ADD COLUMN tablet_serial TEXT;",
+  "ALTER TABLE registrations ADD COLUMN program_type TEXT DEFAULT 'master_trainer';",
+  "ALTER TABLE registrations ADD COLUMN school_name TEXT;",
+  "ALTER TABLE registrations ADD COLUMN emis_code TEXT;",
+  "ALTER TABLE registrations ADD COLUMN study_group TEXT;",
+  "ALTER TABLE registrations ADD COLUMN designation TEXT;",
+  "ALTER TABLE registrations ADD COLUMN sample_school_id INTEGER REFERENCES sample_schools(id);",
   "ALTER TABLE assessments ADD COLUMN unlock_time TEXT DEFAULT '19:00';",
   "ALTER TABLE assessments ADD COLUMN unlock_date_type TEXT DEFAULT 'arrival_date';",
   "ALTER TABLE assessments ADD COLUMN custom_unlock_datetime TEXT;",
   "ALTER TABLE assessments ADD COLUMN custom_close_datetime TEXT;",
   "ALTER TABLE assessments ADD COLUMN lock_mode TEXT DEFAULT 'scheduled';",
-  "ALTER TABLE registrations ADD COLUMN tablet_imei TEXT;",
-  "ALTER TABLE registrations ADD COLUMN tablet_serial TEXT;",
+  "ALTER TABLE assessments ADD COLUMN target_program TEXT DEFAULT 'master_trainer';",
+  "ALTER TABLE assessments ADD COLUMN study_group TEXT DEFAULT 'all';",
+  "ALTER TABLE assessment_submissions ADD COLUMN program_type TEXT DEFAULT 'master_trainer';",
+  "ALTER TABLE assessment_submissions ADD COLUMN emis_code TEXT;",
+  "ALTER TABLE assessment_submissions ADD COLUMN study_group TEXT;",
 ];
 
 for (const sql of migrations) {
@@ -160,6 +183,33 @@ for (const sql of migrations) {
   } catch (e) {
     // Column might already exist
   }
+}
+
+// Seed 210 sample schools if empty
+try {
+  const schoolCount = db.prepare("SELECT COUNT(*) as count FROM sample_schools").get();
+  if (!schoolCount || schoolCount.count === 0) {
+    const schoolsData = require("./data/sample_schools.json");
+    const insertSchool = db.prepare(`
+      INSERT INTO sample_schools (id, school_number, school_name, emis_code, region, district, group_id, group_name, treatment)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    for (const s of schoolsData) {
+      insertSchool.run(
+        s.id,
+        s.school_number,
+        s.school_name,
+        s.emis_code,
+        s.region,
+        s.district,
+        s.group_id,
+        s.group_name,
+        s.treatment
+      );
+    }
+  }
+} catch (err) {
+  console.error("Error seeding sample schools:", err);
 }
 
 // Seed default cohorts if empty
@@ -312,6 +362,44 @@ try {
   }
 } catch (err) {
   console.error("Error seeding registrations:", err);
+}
+
+// Seed Sample Schools Pre-Test and Post-Test if missing
+try {
+  const sampleSchoolAssCount = db.prepare("SELECT COUNT(*) as count FROM assessments WHERE target_program = 'sample_school'").get();
+  if (!sampleSchoolAssCount || sampleSchoolAssCount.count === 0) {
+    const insertAssessment = db.prepare(`
+      INSERT INTO assessments (title, type, description, time_limit_minutes, is_active, target_program, study_group, unlock_time, unlock_date_type)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    
+    insertAssessment.run(
+      "GALOP AF2 Sample Schools: Pre-Training Assessment",
+      "Pre-Test",
+      "Baseline Diagnostic Assessment for Teachers and Headteachers of the 210 selected sample schools on DL Midterm Assessment & Weekly Lesson Checkpoint.",
+      20,
+      1,
+      "sample_school",
+      "all",
+      "09:00",
+      "arrival_date"
+    );
+
+    insertAssessment.run(
+      "GALOP AF2 Sample Schools: Post-Training Assessment",
+      "Post-Test",
+      "Final Evaluation Assessment for Teachers and Headteachers of the 210 selected sample schools on DL Midterm Assessment & Weekly Lesson Checkpoint.",
+      25,
+      1,
+      "sample_school",
+      "all",
+      "12:00",
+      "end_date"
+    );
+    console.log("✓ Seeded Sample Schools Pre-Test and Post-Test assessments.");
+  }
+} catch (err) {
+  console.error("Error seeding sample schools assessments:", err);
 }
 
 module.exports = db;

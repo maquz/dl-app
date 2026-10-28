@@ -59,6 +59,31 @@ function getAssessmentLockStatus(assessment, candidateCohortId = 1) {
     };
   }
 
+  // Sample schools schedule (Pre-Test = 27th Oct 2026, Post-Test = 29th Oct 2026)
+  if (assessment.target_program === "sample_school") {
+    let unlockDateIso = "2026-10-27";
+    let unlockDateFormatted = "Tuesday, 27/10/2026";
+
+    if (assessment.type === "Post-Test" || assessment.unlock_date_type === "end_date" || assessment.unlock_date_type === "departure_date") {
+      unlockDateIso = "2026-10-29";
+      unlockDateFormatted = "Thursday, 29/10/2026";
+    }
+
+    const unlockDateTimeIso = `${unlockDateIso}T${unlockTime.length === 5 ? unlockTime + ":00" : unlockTime}`;
+    const unlockTimestamp = new Date(unlockDateTimeIso).getTime();
+    const isLocked = Date.now() < unlockTimestamp;
+
+    return {
+      isLocked,
+      lockMode: "scheduled",
+      statusText: isLocked ? `Locked until ${unlockDateFormatted} at ${timeFormatted}` : "Open",
+      unlockDateTimeIso,
+      unlockDateFormatted,
+      unlockTime: timeFormatted,
+      cohortName: "Sample Schools Workshop",
+    };
+  }
+
   // Cohort-based schedule (Pre-Test = arrival date at 7:00 PM; Post-Test = end date at 7:00 PM)
   const cohort = db.prepare("SELECT * FROM cohorts WHERE id = ?").get(candidateCohortId || 1) ||
                  db.prepare("SELECT * FROM cohorts WHERE id = 1").get();
@@ -94,6 +119,7 @@ function getAssessmentLockStatus(assessment, candidateCohortId = 1) {
 // GET /api/assessments - List all assessments (public or facilitator)
 router.get("/", async (req, res) => {
   const cohortId = req.query.cohort_id || req.query.cohortId || 1;
+  const programType = req.query.program_type || req.query.target_program || "";
   let assessments = [];
   
   const supabase = require("../supabase");
@@ -153,6 +179,8 @@ router.get("/", async (req, res) => {
     const lockInfo = getAssessmentLockStatus(a, cohortId);
     return {
       ...a,
+      target_program: a.target_program || "master_trainer",
+      study_group: a.study_group || "all",
       unlock_time: a.unlock_time || "19:00",
       unlock_date_type: a.unlock_date_type || (a.type === "Post-Test" ? "end_date" : "arrival_date"),
       lock_mode: a.lock_mode || "scheduled",
@@ -161,7 +189,14 @@ router.get("/", async (req, res) => {
     };
   });
 
-  res.json({ assessments: enriched });
+  let filtered = enriched;
+  if (programType === "sample_school") {
+    filtered = enriched.filter((a) => a.target_program === "sample_school");
+  } else if (programType === "master_trainer") {
+    filtered = enriched.filter((a) => !a.target_program || a.target_program === "master_trainer");
+  }
+
+  res.json({ assessments: filtered });
 });
 
 
@@ -1520,6 +1555,8 @@ router.post("/", trainerOrAdminAuth, (req, res) => {
   const type = req.body.type || req.body.assessment_type || req.body.assessmentType;
   const timeLimitMinutes = req.body.timeLimitMinutes || req.body.time_limit_minutes;
   const cohortId = req.body.cohortId || req.body.cohort_id || req.body.cohortNumber || req.body.cohort_number;
+  const targetProgram = req.body.targetProgram || req.body.target_program || "master_trainer";
+  const studyGroup = req.body.studyGroup || req.body.study_group || "all";
   const questions = req.body.questions || [];
 
   if (!title || !title.trim()) {
@@ -1532,8 +1569,8 @@ router.post("/", trainerOrAdminAuth, (req, res) => {
   const trainerId = req.trainer ? req.trainer.id : null;
 
   const aInfo = db.prepare(`
-    INSERT INTO assessments (title, type, description, time_limit_minutes, is_active, cohort_id, created_by_trainer_id, unlock_time, unlock_date_type, custom_unlock_datetime, custom_close_datetime, lock_mode)
-    VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO assessments (title, type, description, time_limit_minutes, is_active, cohort_id, created_by_trainer_id, unlock_time, unlock_date_type, custom_unlock_datetime, custom_close_datetime, lock_mode, target_program, study_group)
+    VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     title.trim(),
     type,
@@ -1545,7 +1582,9 @@ router.post("/", trainerOrAdminAuth, (req, res) => {
     unlockDateType || (type === "Post-Test" ? "end_date" : "arrival_date"),
     customUnlockDatetime || null,
     customCloseDatetime || null,
-    lockMode || "scheduled"
+    lockMode || "scheduled",
+    targetProgram,
+    studyGroup
   );
 
   const aId = Number(aInfo.lastInsertRowid);
@@ -1652,6 +1691,8 @@ router.put("/:id", trainerOrAdminAuth, (req, res) => {
     custom_unlock_datetime: customUnlockDatetime !== undefined ? customUnlockDatetime : existing.custom_unlock_datetime,
     custom_close_datetime: customCloseDatetime !== undefined ? customCloseDatetime : existing.custom_close_datetime,
     lock_mode: lockMode !== undefined ? lockMode : (existing.lock_mode || "scheduled"),
+    target_program: req.body.targetProgram !== undefined ? req.body.targetProgram : (req.body.target_program !== undefined ? req.body.target_program : (existing.target_program || "master_trainer")),
+    study_group: req.body.studyGroup !== undefined ? req.body.studyGroup : (req.body.study_group !== undefined ? req.body.study_group : (existing.study_group || "all")),
   };
 
   db.prepare(`
@@ -1667,7 +1708,9 @@ router.put("/:id", trainerOrAdminAuth, (req, res) => {
       unlock_date_type = ?,
       custom_unlock_datetime = ?,
       custom_close_datetime = ?,
-      lock_mode = ?
+      lock_mode = ?,
+      target_program = ?,
+      study_group = ?
     WHERE id = ?
   `).run(
     updateValues.title,
@@ -1681,6 +1724,8 @@ router.put("/:id", trainerOrAdminAuth, (req, res) => {
     updateValues.custom_unlock_datetime,
     updateValues.custom_close_datetime,
     updateValues.lock_mode,
+    updateValues.target_program,
+    updateValues.study_group,
     id
   );
 
@@ -1915,12 +1960,17 @@ router.post("/:id/submit", async (req, res) => {
   const phoneClean = phoneNumber.trim();
   let submissionId = null;
 
+  const reg = db.prepare("SELECT * FROM registrations WHERE phone_number = ?").get(phoneClean);
+  const progType = assessment.target_program || reg?.program_type || "master_trainer";
+  const emis = reg?.emis_code || null;
+  const grp = reg?.study_group || null;
+
   try {
     const subInfo = db.prepare(`
       INSERT INTO assessment_submissions 
-        (assessment_id, registration_id, officer_name, phone_number, cohort_id, score, total_points, percentage, answers_json)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(assessmentId, regIdParsed, officerNameClean, phoneClean, cohortIdParsed, earnedScore, totalPoints, percentage, answersJson);
+        (assessment_id, registration_id, officer_name, phone_number, cohort_id, score, total_points, percentage, answers_json, program_type, emis_code, study_group)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(assessmentId, regIdParsed, officerNameClean, phoneClean, cohortIdParsed, earnedScore, totalPoints, percentage, answersJson, progType, emis, grp);
     submissionId = Number(subInfo.lastInsertRowid);
   } catch (err) {
     console.error("SQLite submit error:", err);

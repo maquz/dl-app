@@ -40,6 +40,7 @@ import {
 } from "../api.js";
 import { ROLE_OPTIONS } from "../components/RoleCheckboxGroup.jsx";
 import CameraScanner from "../components/CameraScanner";
+import SampleSchoolsAdminTab from "../components/SampleSchoolsAdminTab.jsx";
 
 const PHONE_REGEX = /^\d{3}-\d{3}-\d{4}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -788,6 +789,8 @@ export default function AdminDashboard() {
       customUnlockDatetime: "",
       customCloseDatetime: "",
       lockMode: "scheduled",
+      targetProgram: "master_trainer",
+      studyGroup: "all",
       questions: [
         {
           questionText: "",
@@ -816,6 +819,8 @@ export default function AdminDashboard() {
         customUnlockDatetime: full.assessment.custom_unlock_datetime || "",
         customCloseDatetime: full.assessment.custom_close_datetime || "",
         lockMode: full.assessment.lock_mode || "scheduled",
+        targetProgram: full.assessment.target_program || "master_trainer",
+        studyGroup: full.assessment.study_group || "all",
         questions: full.assessment.questions?.length > 0
           ? full.assessment.questions
           : [{ questionText: "", questionType: "multiple_choice", options: ["", "", "", ""], correctAnswer: "", points: 2 }],
@@ -1745,6 +1750,23 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               </button>
+
+              <button
+                type="button"
+                className={`admin-nav-item ${activeTab === "sample-schools" ? "active" : ""}`}
+                onClick={() => {
+                  setActiveTab("sample-schools");
+                }}
+              >
+                <div className="admin-nav-item-left">
+                  <span className="admin-nav-item-icon">🏫</span>
+                  <div className="admin-nav-item-text">
+                    <span>Sample Schools</span>
+                    <span className="admin-nav-item-sub">210 Study Schools</span>
+                  </div>
+                </div>
+                <span className="admin-nav-item-badge">210</span>
+              </button>
             </nav>
           </div>
 
@@ -2459,6 +2481,28 @@ export default function AdminDashboard() {
                   <button type="button" className="btn-secondary" onClick={handleOpenBulkPostTest} style={{ background: "#dcfce7", color: "#166534", borderColor: "#bbf7d0", fontWeight: 600 }}>
                     📥 Bulk Upload Post-Test
                   </button>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={() => {
+                      const ssPre = assessmentsList.find(a => a.id === 4 || (a.target_program === "sample_school" && a.type === "Pre-Test")) || { id: 4, title: "GALOP AF2 Sample Schools: Pre-Training Assessment", type: "Pre-Test" };
+                      handleOpenBulkUpload(ssPre);
+                    }}
+                    style={{ background: "#eff6ff", color: "#1d4ed8", borderColor: "#bfdbfe", fontWeight: 600 }}
+                  >
+                    📥 Bulk Upload Schools Pre-Test
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={() => {
+                      const ssPost = assessmentsList.find(a => a.id === 5 || (a.target_program === "sample_school" && a.type === "Post-Test")) || { id: 5, title: "GALOP AF2 Sample Schools: Post-Training Assessment", type: "Post-Test" };
+                      handleOpenBulkUpload(ssPost);
+                    }}
+                    style={{ background: "#f5f3ff", color: "#6d28d9", borderColor: "#ddd6fe", fontWeight: 600 }}
+                  >
+                    📥 Bulk Upload Schools Post-Test
+                  </button>
                   <button className="btn-primary" onClick={handleOpenCreateAssessment}>
                     + Create Assessment
                   </button>
@@ -2582,7 +2626,14 @@ export default function AdminDashboard() {
                       <tr key={a.id}>
                         <td>
                           <div className="assessment-cell-title">
-                            <span className="assessment-main-name">{a.title}</span>
+                            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+                              <span className="assessment-main-name">{a.title}</span>
+                              {a.target_program === "sample_school" && (
+                                <span style={{ fontSize: "0.72rem", background: "#f3e8ff", color: "#7e22ce", padding: "0.15rem 0.55rem", borderRadius: "999px", fontWeight: 700 }}>
+                                  🏫 210 Sample Schools
+                                </span>
+                              )}
+                            </div>
                             {a.description && (
                               <span className="assessment-short-desc" title={a.description}>
                                 {a.description}
@@ -3293,6 +3344,14 @@ export default function AdminDashboard() {
             </div>
           )}
 
+          {/* VIEW: SAMPLE SCHOOLS (210 SCHOOLS TRACK) */}
+          {activeTab === "sample-schools" && (
+            <SampleSchoolsAdminTab
+              onBulkUpload={handleOpenBulkUpload}
+              assessmentsList={assessmentsList}
+            />
+          )}
+
           {/* VIEW 5: ADMIN MANAGEMENT (SUPER ADMIN) */}
           {activeTab === "admins" && (
             <div className="admin-management-section">
@@ -3419,6 +3478,18 @@ export default function AdminDashboard() {
                     <option value="Pre-Test">Pre-Test (Diagnostic Assessment)</option>
                     <option value="Post-Test">Post-Test (Summative Assessment)</option>
                     <option value="Quiz">Module Quiz</option>
+                  </select>
+                </div>
+
+                <div className="field">
+                  <label htmlFor="b-target-program">Target Program *</label>
+                  <select
+                    id="b-target-program"
+                    value={builderForm.targetProgram || "master_trainer"}
+                    onChange={(e) => setBuilderForm({ ...builderForm, targetProgram: e.target.value })}
+                  >
+                    <option value="master_trainer">Master Trainers (Cohorts 1–6)</option>
+                    <option value="sample_school">Sample Schools (210 Schools)</option>
                   </select>
                 </div>
               </div>
