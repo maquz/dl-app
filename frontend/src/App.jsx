@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Component, useEffect, useState } from "react";
 import { Routes, Route, Link, useLocation, useNavigate } from "react-router-dom";
 import RegistrationForm from "./pages/RegistrationForm.jsx";
 import Confirmation from "./pages/Confirmation.jsx";
@@ -11,17 +11,47 @@ import AssessmentTake from "./pages/AssessmentTake.jsx";
 import SampleSchoolRegister from "./pages/SampleSchoolRegister.jsx";
 import SampleSchoolPortal from "./pages/SampleSchoolPortal.jsx";
 
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("ErrorBoundary caught an error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ maxWidth: "600px", margin: "4rem auto", padding: "2.5rem 1.5rem", textAlign: "center", background: "#ffffff", borderRadius: "14px", boxShadow: "0 10px 30px rgba(0,0,0,0.08)", border: "1px solid #e2e8f0" }}>
+          <div style={{ fontSize: "3rem", marginBottom: "0.75rem" }}>⚠️</div>
+          <h2 style={{ fontSize: "1.4rem", color: "#0f172a", marginBottom: "0.5rem", fontWeight: 800 }}>Something went wrong</h2>
+          <p style={{ color: "#64748b", fontSize: "0.95rem", marginBottom: "1.5rem", lineHeight: 1.5 }}>
+            An unexpected error occurred while loading this page.
+          </p>
+          <div style={{ display: "flex", gap: "1rem", justifyContent: "center", flexWrap: "wrap" }}>
+            <a href="/" className="btn-primary" style={{ padding: "0.75rem 1.5rem", borderRadius: "8px", textDecoration: "none", color: "#ffffff", fontWeight: 700, display: "inline-block" }}>
+              ← Return to Main Portal
+            </a>
+            <button type="button" onClick={() => window.location.reload()} className="btn-secondary" style={{ padding: "0.75rem 1.5rem", borderRadius: "8px", cursor: "pointer", fontWeight: 700 }}>
+              🔄 Reload Page
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 function Shell({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const isAdmin = location.pathname.startsWith("/admin");
-  const isTrainer = location.pathname.startsWith("/trainer");
-  const isAssessment = location.pathname.startsWith("/assessment");
-  const isRegister = location.pathname === "/register";
-  const isAuth = location.pathname === "/" || location.pathname === "/signup";
-  const isSchools = location.pathname.startsWith("/schools") || location.pathname.startsWith("/sample-schools");
-  const isSampleSchoolAssessment = location.pathname === "/assessment/4" || location.pathname === "/assessment/5";
-  const isSampleSchoolTrack = isSchools || isSampleSchoolAssessment || (officer?.programType === "sample_school");
 
   const [officer, setOfficer] = useState(null);
 
@@ -37,6 +67,15 @@ function Shell({ children }) {
       setOfficer(null);
     }
   }, [location.pathname]);
+
+  const isAdmin = location.pathname.startsWith("/admin");
+  const isTrainer = location.pathname.startsWith("/trainer");
+  const isAssessment = location.pathname.startsWith("/assessment");
+  const isRegister = location.pathname === "/register";
+  const isAuth = location.pathname === "/" || location.pathname === "/signup";
+  const isSchools = location.pathname.startsWith("/schools") || location.pathname.startsWith("/sample-schools");
+  const isSampleSchoolAssessment = location.pathname === "/assessment/4" || location.pathname === "/assessment/5";
+  const isSampleSchoolTrack = !isAdmin && !isTrainer && (isSchools || isSampleSchoolAssessment || (officer?.programType === "sample_school" && !isAuth));
 
   function handleOfficerSignOut() {
     const wasSchool = officer?.programType === "sample_school";
@@ -79,7 +118,7 @@ function Shell({ children }) {
             <div style={{ display: "flex", alignItems: "center", gap: "0.85rem", flexWrap: "wrap" }}>
               <Link
                 to={officer?.programType === "sample_school" ? "/schools/portal" : "/schools"}
-                className="active"
+                className={location.pathname.startsWith("/schools") ? "active" : ""}
                 style={{ fontWeight: 700 }}
               >
                 Sample Schools Portal
@@ -112,15 +151,23 @@ function Shell({ children }) {
                 </span>
               ) : (
                 <Link
-                  to="/signup"
+                  to="/"
+                  onClick={() => {
+                    localStorage.removeItem("officer_profile");
+                    sessionStorage.removeItem("officer_profile");
+                    sessionStorage.removeItem("recent_nominee");
+                    setOfficer(null);
+                  }}
                   style={{
-                    fontSize: "0.78rem",
-                    color: "rgba(255, 255, 255, 0.7)",
+                    fontSize: "0.82rem",
+                    color: "rgba(255, 255, 255, 0.85)",
                     textDecoration: "none",
                     marginLeft: "0.25rem",
-                    padding: "0.2rem 0.55rem",
-                    borderRadius: "4px",
-                    border: "1px solid rgba(255, 255, 255, 0.25)",
+                    padding: "0.25rem 0.65rem",
+                    borderRadius: "6px",
+                    border: "1px solid rgba(255, 255, 255, 0.35)",
+                    background: "rgba(255, 255, 255, 0.08)",
+                    fontWeight: 600,
                     transition: "all 0.15s ease",
                   }}
                   title="Return to National Master Trainers Portal"
@@ -221,25 +268,27 @@ function Shell({ children }) {
 
 export default function App() {
   return (
-    <Shell>
-      <Routes>
-        <Route path="/" element={<RegistrationForm />} />
-        <Route path="/signup" element={<RegistrationForm />} />
-        <Route path="/register" element={<RegistrationForm />} />
-        <Route path="/confirmation" element={<Confirmation />} />
-        <Route path="/schools" element={<SampleSchoolRegister />} />
-        <Route path="/schools/register" element={<SampleSchoolRegister />} />
-        <Route path="/sample-schools" element={<SampleSchoolRegister />} />
-        <Route path="/schools/portal" element={<SampleSchoolPortal />} />
-        <Route path="/sample-schools/portal" element={<SampleSchoolPortal />} />
-        <Route path="/admin" element={<AdminLogin />} />
-        <Route path="/admin/dashboard" element={<AdminDashboard />} />
-        <Route path="/trainer/login" element={<TrainerLogin />} />
-        <Route path="/trainer/dashboard" element={<TrainerDashboard />} />
-        <Route path="/assessments" element={<AssessmentsList />} />
-        <Route path="/assessment/:id" element={<AssessmentTake />} />
-        <Route path="*" element={<p className="not-found">Page not found.</p>} />
-      </Routes>
-    </Shell>
+    <ErrorBoundary>
+      <Shell>
+        <Routes>
+          <Route path="/" element={<RegistrationForm />} />
+          <Route path="/signup" element={<RegistrationForm />} />
+          <Route path="/register" element={<RegistrationForm />} />
+          <Route path="/confirmation" element={<Confirmation />} />
+          <Route path="/schools" element={<SampleSchoolRegister />} />
+          <Route path="/schools/register" element={<SampleSchoolRegister />} />
+          <Route path="/sample-schools" element={<SampleSchoolRegister />} />
+          <Route path="/schools/portal" element={<SampleSchoolPortal />} />
+          <Route path="/sample-schools/portal" element={<SampleSchoolPortal />} />
+          <Route path="/admin" element={<AdminLogin />} />
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/trainer/login" element={<TrainerLogin />} />
+          <Route path="/trainer/dashboard" element={<TrainerDashboard />} />
+          <Route path="/assessments" element={<AssessmentsList />} />
+          <Route path="/assessment/:id" element={<AssessmentTake />} />
+          <Route path="*" element={<p className="not-found">Page not found.</p>} />
+        </Routes>
+      </Shell>
+    </ErrorBoundary>
   );
 }
