@@ -96,8 +96,9 @@ export default function SampleSchoolRegister() {
   async function handleVerifyPhone(e) {
     if (e) e.preventDefault();
     const clean = verifyPhone.trim();
-    if (!clean || !/^\d{3}-\d{3}-\d{4}$/.test(clean)) {
-      setVerifyError("Please enter your 10-digit mobile number in the format 000-000-0000 (e.g. 024-485-0674).");
+    const digits = clean.replace(/\D/g, "");
+    if (digits.length !== 10) {
+      setVerifyError("Please enter your 10-digit mobile number (e.g. 0244000000).");
       return;
     }
 
@@ -147,8 +148,9 @@ export default function SampleSchoolRegister() {
     if (!["Headteacher", "Teacher"].includes(designation)) {
       e.designation = "Designation must be strictly Headteacher or Teacher.";
     }
-    if (!phoneNumber || !/^\d{3}-\d{3}-\d{4}$/.test(phoneNumber)) {
-      e.phoneNumber = "Phone number must be a valid 10-digit number (e.g. 024-485-0674).";
+    const pDigits = (phoneNumber || "").replace(/\D/g, "");
+    if (pDigits.length !== 10) {
+      e.phoneNumber = "Phone number must be a valid 10-digit number (e.g. 0244000000).";
     }
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -229,7 +231,7 @@ export default function SampleSchoolRegister() {
               <input
                 id="verifyPhoneInput"
                 type="tel"
-                placeholder="e.g. 024-485-0674"
+                placeholder="e.g. 0244000000"
                 value={verifyPhone}
                 onChange={(e) => setVerifyPhone(formatPhoneAsTyped(e.target.value))}
                 style={{
@@ -240,7 +242,7 @@ export default function SampleSchoolRegister() {
                 autoFocus
               />
               <span style={{ fontSize: "0.78rem", color: "#64748b", display: "block", marginBottom: "1.25rem" }}>
-                Format: 10 digits (e.g. 024-485-0674).
+                Format: 10 digits (e.g. 0244000000).
               </span>
 
               <button
@@ -489,12 +491,12 @@ export default function SampleSchoolRegister() {
               <input
                 id="phoneInput"
                 type="tel"
-                placeholder="024-485-0674"
+                placeholder="0244000000"
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(formatPhoneAsTyped(e.target.value))}
                 style={{ width: "100%", padding: "0.75rem", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "0.95rem" }}
               />
-              <span style={{ fontSize: "0.78rem", color: "#64748b" }}>Format: 10 digits (e.g. 024-485-0674).</span>
+              <span style={{ fontSize: "0.78rem", color: "#64748b" }}>Format: 10 digits (e.g. 0244000000).</span>
               {errors.phoneNumber && <p style={{ color: "#ef4444", fontSize: "0.82rem", margin: "0.3rem 0 0 0" }}>{errors.phoneNumber}</p>}
             </div>
 
