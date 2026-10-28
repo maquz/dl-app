@@ -422,6 +422,17 @@ export async function bulkImportAssessmentQuestions(authHeader, id, questions, m
   return handle(res);
 }
 
+export async function copyAssessmentQuestions(authHeader, targetId, sourceId) {
+  const res = await fetch(`${API_URL}/assessments/${targetId}/copy-from/${sourceId}`, {
+    method: "POST",
+    headers: {
+      ...getAdminAuthHeaders(authHeader),
+    },
+  });
+  return handle(res);
+}
+
+
 export async function fetchMySubmissions(phone, registrationId) {
   let query = `?phone=${encodeURIComponent(phone || "")}`;
   if (registrationId) query += `&registrationId=${registrationId}`;

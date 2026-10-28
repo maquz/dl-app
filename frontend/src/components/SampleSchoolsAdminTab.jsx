@@ -8,6 +8,7 @@ import {
   fetchSampleSchoolAssessments,
   fetchAssessmentDetails,
   updateAssessment,
+  copyAssessmentQuestions,
 } from "../api";
 
 export default function SampleSchoolsAdminTab({
@@ -31,6 +32,8 @@ export default function SampleSchoolsAdminTab({
   const [savingQuestions, setSavingQuestions] = useState(false);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState("");
   const [saveErrorMsg, setSaveErrorMsg] = useState("");
+  const [copyingQuestions, setCopyingQuestions] = useState(false);
+  const [copyNotice, setCopyNotice] = useState("");
 
   // Active KPI Card filter tracking
   const [activeCardKey, setActiveCardKey] = useState(null);
@@ -308,6 +311,26 @@ export default function SampleSchoolsAdminTab({
       setSaveErrorMsg(err.message || "Failed to save questions.");
     } finally {
       setSavingQuestions(false);
+    }
+  }
+
+  async function handleCopyFromPreTest() {
+    if (!preTest || !postTest) return;
+    if (!window.confirm(`Are you sure you want to copy all questions from "${preTest.title}" to "${postTest.title}"? This will replace existing questions in Post-Test.`)) {
+      return;
+    }
+    setCopyingQuestions(true);
+    setCopyNotice("");
+    try {
+      const res = await copyAssessmentQuestions(null, postTest.id, preTest.id);
+      setCopyNotice(res.message || "Successfully synced questions from Pre-Test to Post-Test!");
+      await loadAssessments();
+      if (onRefreshAssessments) onRefreshAssessments();
+      setTimeout(() => setCopyNotice(""), 6000);
+    } catch (err) {
+      alert(err.message || "Failed to copy questions.");
+    } finally {
+      setCopyingQuestions(false);
     }
   }
 
@@ -1493,6 +1516,25 @@ export default function SampleSchoolsAdminTab({
             </button>
           </div>
 
+          {copyNotice && (
+            <div
+              style={{
+                background: "#f0fdf4",
+                border: "1.5px solid #86efac",
+                color: "#166534",
+                borderRadius: "10px",
+                padding: "0.85rem 1.25rem",
+                fontWeight: 700,
+                fontSize: "0.9rem",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
+              }}
+            >
+              <span>✅</span> {copyNotice}
+            </div>
+          )}
+
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))", gap: "1.5rem" }}>
             {/* 1. Pre-Training Assessment Card */}
             <div
@@ -1760,6 +1802,28 @@ export default function SampleSchoolsAdminTab({
                   }}
                 >
                   📥 Upload Questions
+                </button>
+
+                <button
+                  type="button"
+                  disabled={copyingQuestions}
+                  onClick={handleCopyFromPreTest}
+                  style={{
+                    background: "#eff6ff",
+                    color: "#1d4ed8",
+                    border: "1px solid #bfdbfe",
+                    borderRadius: "8px",
+                    padding: "0.6rem 1rem",
+                    fontSize: "0.88rem",
+                    fontWeight: 700,
+                    cursor: copyingQuestions ? "wait" : "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "0.35rem",
+                  }}
+                  title="Copy all questions from Pre-Test into Post-Test with one click"
+                >
+                  {copyingQuestions ? "Syncing…" : "🔄 Sync from Pre-Test"}
                 </button>
 
                 <a

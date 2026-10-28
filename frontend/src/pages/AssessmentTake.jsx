@@ -50,7 +50,11 @@ export default function AssessmentTake() {
 
   useEffect(() => {
     const cohortId = nomineeProfile?.cohortId || 1;
-    const params = { cohortId };
+    const params = {
+      cohortId,
+      phone: nomineeProfile?.phoneNumber || phoneNumber || "",
+      nomineeId: nomineeProfile?.id || "",
+    };
     if (isAdmin) {
       params.bypass = "true";
     }
@@ -126,6 +130,7 @@ export default function AssessmentTake() {
         officerName: officerName.trim(),
         phoneNumber: phoneNumber.trim(),
         cohortId: nomineeProfile?.cohortId || 1,
+        registrationId: nomineeProfile?.id || null,
         answers,
         questionIds: questions.map(q => q.id),
       });

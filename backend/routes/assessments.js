@@ -116,6 +116,134 @@ function getAssessmentLockStatus(assessment, candidateCohortId = 1) {
   };
 }
 
+async function getOrSyncAssessment(id) {
+  const assessmentId = Number(id);
+  const supabase = require("../supabase");
+  let assessment = null;
+
+  // 1. Check local SQLite
+  try {
+    assessment = db.prepare("SELECT * FROM assessments WHERE id = ?").get(assessmentId);
+  } catch (e) {}
+
+  // 2. Check Supabase
+  if (!assessment && supabase) {
+    try {
+      const { data, error } = await supabase.from("assessments").select("*").eq("id", assessmentId).maybeSingle();
+      if (!error && data) {
+        assessment = data;
+        try {
+          db.prepare(`
+            INSERT OR REPLACE INTO assessments (
+              id, title, type, description, time_limit_minutes, is_active,
+              cohort_id, unlock_time, unlock_date_type, custom_unlock_datetime, custom_close_datetime, lock_mode, target_program, study_group
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).run(
+            data.id,
+            data.title,
+            data.type,
+            data.description || null,
+            data.time_limit_minutes || 20,
+            data.is_active !== undefined ? data.is_active : 1,
+            data.cohort_id || null,
+            data.unlock_time || "19:00",
+            data.unlock_date_type || "arrival_date",
+            data.custom_unlock_datetime || null,
+            data.custom_close_datetime || null,
+            data.lock_mode || (assessmentId === 4 || assessmentId === 5 ? "open_now" : "scheduled"),
+            data.target_program || (assessmentId === 4 || assessmentId === 5 ? "sample_school" : "master_trainer"),
+            data.study_group || "all"
+          );
+        } catch (syncErr) {
+          console.warn("Failed to cache Supabase assessment to SQLite:", syncErr.message);
+        }
+      }
+    } catch (supaErr) {
+      console.warn("Error querying Supabase assessment:", supaErr.message);
+    }
+  }
+
+  // 3. Fallback for sample school assessments (IDs 4 and 5) if still not found
+  if (!assessment && (assessmentId === 4 || assessmentId === 5)) {
+    const isPre = assessmentId === 4;
+    assessment = {
+      id: assessmentId,
+      title: isPre ? "GALOP AF2 Sample Schools: Pre-Training Assessment" : "GALOP AF2 Sample Schools: Post-Training Assessment",
+      type: isPre ? "Pre-Test" : "Post-Test",
+      description: `${isPre ? "Baseline Diagnostic" : "Final Evaluation"} Assessment for Teachers and Headteachers of the 210 selected sample schools.`,
+      time_limit_minutes: 20,
+      is_active: 1,
+      target_program: "sample_school",
+      study_group: "all",
+      unlock_time: isPre ? "09:00" : "12:00",
+      unlock_date_type: isPre ? "arrival_date" : "end_date",
+      lock_mode: "open_now"
+    };
+
+    try {
+      db.prepare(`
+        INSERT OR REPLACE INTO assessments (
+          id, title, type, description, time_limit_minutes, is_active,
+          unlock_time, unlock_date_type, lock_mode, target_program, study_group
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        assessment.id, assessment.title, assessment.type, assessment.description,
+        assessment.time_limit_minutes, assessment.is_active,
+        assessment.unlock_time, assessment.unlock_date_type, assessment.lock_mode,
+        assessment.target_program, assessment.study_group
+      );
+    } catch (e) {}
+
+    if (supabase) {
+      try {
+        await supabase.from("assessments").upsert({
+          id: assessment.id,
+          title: assessment.title,
+          type: assessment.type,
+          description: assessment.description,
+          time_limit_minutes: assessment.time_limit_minutes,
+          is_active: assessment.is_active,
+          unlock_time: assessment.unlock_time,
+          unlock_date_type: assessment.unlock_date_type,
+          lock_mode: assessment.lock_mode
+        });
+      } catch (e) {}
+    }
+  }
+
+  // Ensure assessment row exists in SQLite so foreign keys on assessment_questions never fail
+  if (assessment) {
+    try {
+      const inSqlite = db.prepare("SELECT id FROM assessments WHERE id = ?").get(assessment.id);
+      if (!inSqlite) {
+        db.prepare(`
+          INSERT OR REPLACE INTO assessments (
+            id, title, type, description, time_limit_minutes, is_active,
+            cohort_id, unlock_time, unlock_date_type, custom_unlock_datetime, custom_close_datetime, lock_mode, target_program, study_group
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          assessment.id,
+          assessment.title,
+          assessment.type,
+          assessment.description || null,
+          assessment.time_limit_minutes || 20,
+          assessment.is_active !== undefined ? assessment.is_active : 1,
+          assessment.cohort_id || null,
+          assessment.unlock_time || "19:00",
+          assessment.unlock_date_type || "arrival_date",
+          assessment.custom_unlock_datetime || null,
+          assessment.custom_close_datetime || null,
+          assessment.lock_mode || (assessmentId === 4 || assessmentId === 5 ? "open_now" : "scheduled"),
+          assessment.target_program || (assessmentId === 4 || assessmentId === 5 ? "sample_school" : "master_trainer"),
+          assessment.study_group || "all"
+        );
+      }
+    } catch (e) {}
+  }
+
+  return assessment;
+}
+
 // GET /api/assessments - List all assessments (public or facilitator)
 router.get("/", async (req, res) => {
   const cohortId = req.query.cohort_id || req.query.cohortId || 1;
@@ -588,7 +716,7 @@ router.post("/:id/questions/bulk", trainerOrAdminAuth, async (req, res) => {
   const { questions, mode = "replace" } = req.body; // mode: 'replace' | 'append'
 
   const supabase = require("../supabase");
-  const assessment = db.prepare("SELECT * FROM assessments WHERE id = ?").get(assessmentId);
+  const assessment = await getOrSyncAssessment(assessmentId);
   if (!assessment) {
     return res.status(404).json({ error: "Assessment not found." });
   }
@@ -731,6 +859,82 @@ router.post("/:id/questions/bulk", trainerOrAdminAuth, async (req, res) => {
         sortOrder: q.sort_order,
       };
     }),
+  });
+});
+
+// POST /api/assessments/:id/copy-from/:sourceId - One-click copy questions from source assessment (e.g. Pre-Test to Post-Test)
+router.post("/:id/copy-from/:sourceId", trainerOrAdminAuth, async (req, res) => {
+  const targetId = Number(req.params.id);
+  const sourceId = Number(req.params.sourceId);
+
+  const target = await getOrSyncAssessment(targetId);
+  if (!target) return res.status(404).json({ error: "Target assessment not found." });
+
+  const source = await getOrSyncAssessment(sourceId);
+  if (!source) return res.status(404).json({ error: "Source assessment not found." });
+
+  const supabase = require("../supabase");
+  let sourceQuestions = [];
+  if (supabase) {
+    try {
+      const { data } = await supabase.from("assessment_questions").select("*").eq("assessment_id", sourceId).order("sort_order", { ascending: true });
+      if (data && data.length > 0) sourceQuestions = data;
+    } catch(e) {}
+  }
+  if (sourceQuestions.length === 0) {
+    sourceQuestions = db.prepare("SELECT * FROM assessment_questions WHERE assessment_id = ? ORDER BY sort_order ASC, id ASC").all(sourceId);
+  }
+
+  if (sourceQuestions.length === 0) {
+    return res.status(400).json({ error: `Source assessment "${source.title}" has no questions to copy.` });
+  }
+
+  // Clear target questions in SQLite and Supabase
+  db.prepare("DELETE FROM assessment_questions WHERE assessment_id = ?").run(targetId);
+  if (supabase) {
+    try {
+      await supabase.from("assessment_questions").delete().eq("assessment_id", targetId);
+    } catch (e) {}
+  }
+
+  const insertStmt = db.prepare(`
+    INSERT INTO assessment_questions (assessment_id, question_text, question_type, options_json, correct_answer, points, sort_order)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  const supabasePayloads = [];
+  let order = 1;
+  for (const q of sourceQuestions) {
+    const optsStr = typeof q.options_json === "string" ? q.options_json : JSON.stringify(q.options_json);
+    let parsedOpts = [];
+    try { parsedOpts = JSON.parse(optsStr); } catch(e) { parsedOpts = [optsStr]; }
+
+    insertStmt.run(targetId, q.question_text, q.question_type, optsStr, q.correct_answer, q.points, order);
+    supabasePayloads.push({
+      assessment_id: targetId,
+      question_text: q.question_text,
+      question_type: q.question_type,
+      options_json: parsedOpts,
+      correct_answer: q.correct_answer,
+      points: q.points,
+      sort_order: order,
+    });
+    order++;
+  }
+
+  if (supabase && supabasePayloads.length > 0) {
+    try {
+      await supabase.from("assessment_questions").insert(supabasePayloads);
+    } catch (err) {
+      console.error("Supabase copy questions error:", err.message);
+    }
+  }
+
+  res.json({
+    message: `Successfully copied ${sourceQuestions.length} questions from "${source.title}" into "${target.title}".`,
+    copiedCount: sourceQuestions.length,
+    sourceId,
+    targetId,
   });
 });
 
@@ -1348,24 +1552,12 @@ router.get("/:id/export/xlsx", async (req, res) => {
 router.get("/:id/take", async (req, res) => {
   const id = req.params.id;
   const cohortId = req.query.cohort_id || req.query.cohortId || 1;
+  const phone = (req.query.phone || req.query.phoneNumber || req.query.candidate_phone || "").trim();
   const adminToken = req.headers["x-admin-token"] || req.headers["x-admin-password"] || req.headers["authorization"] || "";
   const trainerToken = req.headers["x-trainer-token"] || "";
   const bypass = req.query.bypass === "true" || req.query.preview === "true";
 
-  const supabase = require("../supabase");
-  let assessment = null;
-
-  if (supabase) {
-    try {
-      const { data } = await supabase.from("assessments").select("*").eq("id", id).maybeSingle();
-      if (data) assessment = data;
-    } catch (e) {}
-  }
-
-  if (!assessment) {
-    assessment = db.prepare("SELECT * FROM assessments WHERE id = ?").get(id);
-  }
-
+  const assessment = await getOrSyncAssessment(id);
   if (!assessment) {
     return res.status(404).json({ error: "Assessment not found." });
   }
@@ -1427,7 +1619,7 @@ router.get("/:id/take", async (req, res) => {
   });
 
   const { getSeededCohortQuestions } = require("../utils/questionShuffle");
-  parsedQuestions = getSeededCohortQuestions(parsedQuestions, id, cohortId);
+  parsedQuestions = getSeededCohortQuestions(parsedQuestions, id, cohortId, phone);
 
   res.json({
     isLocked: false,
@@ -1496,18 +1688,7 @@ router.get("/my-submissions", async (req, res) => {
 router.get("/:id", trainerOrAdminAuth, async (req, res) => {
   const id = req.params.id;
   const supabase = require("../supabase");
-  let assessment = null;
-
-  if (supabase) {
-    try {
-      const { data } = await supabase.from("assessments").select("*").eq("id", id).maybeSingle();
-      if (data) assessment = data;
-    } catch (e) {}
-  }
-
-  if (!assessment) {
-    assessment = db.prepare("SELECT * FROM assessments WHERE id = ?").get(id);
-  }
+  const assessment = await getOrSyncAssessment(id);
 
   if (!assessment) {
     return res.status(404).json({ error: "Assessment not found." });
@@ -1666,7 +1847,7 @@ router.post("/", trainerOrAdminAuth, (req, res) => {
 });
 
 // PUT /api/assessments/:id - Update assessment, questions, and date/time lock settings (Admin / Facilitator)
-router.put("/:id", trainerOrAdminAuth, (req, res) => {
+router.put("/:id", trainerOrAdminAuth, async (req, res) => {
   const id = req.params.id;
   const {
     title,
@@ -1683,7 +1864,7 @@ router.put("/:id", trainerOrAdminAuth, (req, res) => {
     questions,
   } = req.body;
 
-  const existing = db.prepare("SELECT * FROM assessments WHERE id = ?").get(id);
+  const existing = await getOrSyncAssessment(id);
   if (!existing) {
     return res.status(404).json({ error: "Assessment not found." });
   }
@@ -1740,9 +1921,24 @@ router.put("/:id", trainerOrAdminAuth, (req, res) => {
 
   const supabase = require("../supabase");
   if (supabase) {
-    supabase.from("assessments").update(updateValues).eq("id", id).then(({ error }) => {
-      if (error) console.error("Supabase assessment update error:", error);
-    });
+    const supaPayload = {
+      title: updateValues.title,
+      type: updateValues.type,
+      description: updateValues.description,
+      time_limit_minutes: updateValues.time_limit_minutes,
+      is_active: updateValues.is_active,
+      cohort_id: updateValues.cohort_id,
+      unlock_time: updateValues.unlock_time,
+      unlock_date_type: updateValues.unlock_date_type,
+      custom_unlock_datetime: updateValues.custom_unlock_datetime,
+      custom_close_datetime: updateValues.custom_close_datetime,
+      lock_mode: updateValues.lock_mode,
+    };
+    try {
+      await supabase.from("assessments").update(supaPayload).eq("id", id);
+    } catch (e) {
+      console.error("Supabase assessment update error:", e.message);
+    }
   }
 
   if (Array.isArray(questions)) {
@@ -1780,13 +1976,12 @@ router.put("/:id", trainerOrAdminAuth, (req, res) => {
     }
     
     if (supabase && supaQuestions.length > 0) {
-      supabase.from("assessment_questions").delete().eq("assessment_id", id).then(({ error }) => {
-        if (!error) {
-          supabase.from("assessment_questions").insert(supaQuestions).then(({ error: insertErr }) => {
-            if (insertErr) console.error("Supabase questions update error:", insertErr);
-          });
-        }
-      });
+      try {
+        await supabase.from("assessment_questions").delete().eq("assessment_id", id);
+        await supabase.from("assessment_questions").insert(supaQuestions);
+      } catch (err) {
+        console.error("Supabase questions update error:", err.message);
+      }
     }
   }
 
@@ -1794,9 +1989,9 @@ router.put("/:id", trainerOrAdminAuth, (req, res) => {
 });
 
 // PATCH /api/assessments/:id/toggle - Toggle active status
-router.patch("/:id/toggle", trainerOrAdminAuth, (req, res) => {
+router.patch("/:id/toggle", trainerOrAdminAuth, async (req, res) => {
   const id = req.params.id;
-  const a = db.prepare("SELECT id, is_active FROM assessments WHERE id = ?").get(id);
+  const a = await getOrSyncAssessment(id);
   if (!a) return res.status(404).json({ error: "Assessment not found." });
 
   const nextState = a.is_active ? 0 : 1;
@@ -1804,9 +1999,11 @@ router.patch("/:id/toggle", trainerOrAdminAuth, (req, res) => {
   
   const supabase = require("../supabase");
   if (supabase) {
-    supabase.from("assessments").update({ is_active: nextState }).eq("id", id).then(({ error }) => {
-      if (error) console.error("Supabase assessment toggle error:", error);
-    });
+    try {
+      await supabase.from("assessments").update({ is_active: nextState }).eq("id", id);
+    } catch (error) {
+      console.error("Supabase assessment toggle error:", error.message);
+    }
   }
   
   res.json({ message: `Assessment ${nextState ? "activated" : "deactivated"}.`, isActive: nextState });
@@ -1865,20 +2062,7 @@ router.post("/:id/submit", async (req, res) => {
     return res.status(400).json({ error: "Phone number is required." });
   }
 
-  const supabase = require("../supabase");
-  let assessment = null;
-
-  if (supabase) {
-    try {
-      const { data } = await supabase.from("assessments").select("*").eq("id", assessmentId).maybeSingle();
-      if (data) assessment = data;
-    } catch (e) {}
-  }
-
-  if (!assessment) {
-    assessment = db.prepare("SELECT * FROM assessments WHERE id = ?").get(assessmentId);
-  }
-
+  const assessment = await getOrSyncAssessment(assessmentId);
   if (!assessment) {
     return res.status(404).json({ error: "Assessment not found." });
   }

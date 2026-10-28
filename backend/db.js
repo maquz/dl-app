@@ -364,40 +364,41 @@ try {
   console.error("Error seeding registrations:", err);
 }
 
-// Seed Sample Schools Pre-Test and Post-Test if missing
+// Seed Sample Schools Pre-Test (ID 4) and Post-Test (ID 5) if missing
 try {
-  const sampleSchoolAssCount = db.prepare("SELECT COUNT(*) as count FROM assessments WHERE target_program = 'sample_school'").get();
-  if (!sampleSchoolAssCount || sampleSchoolAssCount.count === 0) {
-    const insertAssessment = db.prepare(`
-      INSERT INTO assessments (title, type, description, time_limit_minutes, is_active, target_program, study_group, unlock_time, unlock_date_type)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-    
-    insertAssessment.run(
-      "GALOP AF2 Sample Schools: Pre-Training Assessment",
-      "Pre-Test",
-      "Baseline Diagnostic Assessment for Teachers and Headteachers of the 210 selected sample schools on DL Midterm Assessment & Weekly Lesson Checkpoint.",
-      20,
-      1,
-      "sample_school",
-      "all",
-      "09:00",
-      "arrival_date"
-    );
+  const insertAssessment = db.prepare(`
+    INSERT OR IGNORE INTO assessments (id, title, type, description, time_limit_minutes, is_active, target_program, study_group, unlock_time, unlock_date_type, lock_mode)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  
+  insertAssessment.run(
+    4,
+    "GALOP AF2 Sample Schools: Pre-Training Assessment",
+    "Pre-Test",
+    "Baseline Diagnostic Assessment for Teachers and Headteachers of the 210 selected sample schools on DL Midterm Assessment & Weekly Lesson Checkpoint.",
+    20,
+    1,
+    "sample_school",
+    "all",
+    "09:00",
+    "arrival_date",
+    "open_now"
+  );
 
-    insertAssessment.run(
-      "GALOP AF2 Sample Schools: Post-Training Assessment",
-      "Post-Test",
-      "Final Evaluation Assessment for Teachers and Headteachers of the 210 selected sample schools on DL Midterm Assessment & Weekly Lesson Checkpoint.",
-      25,
-      1,
-      "sample_school",
-      "all",
-      "12:00",
-      "end_date"
-    );
-    console.log("✓ Seeded Sample Schools Pre-Test and Post-Test assessments.");
-  }
+  insertAssessment.run(
+    5,
+    "GALOP AF2 Sample Schools: Post-Training Assessment",
+    "Post-Test",
+    "Final Evaluation Assessment for Teachers and Headteachers of the 210 selected sample schools on DL Midterm Assessment & Weekly Lesson Checkpoint.",
+    25,
+    1,
+    "sample_school",
+    "all",
+    "12:00",
+    "end_date",
+    "open_now"
+  );
+  console.log("✓ Ensured Sample Schools Pre-Test (ID 4) & Post-Test (ID 5) in SQLite.");
 } catch (err) {
   console.error("Error seeding sample schools assessments:", err);
 }
