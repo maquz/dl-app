@@ -20,6 +20,8 @@ function Shell({ children }) {
   const isRegister = location.pathname === "/register";
   const isAuth = location.pathname === "/" || location.pathname === "/signup";
   const isSchools = location.pathname.startsWith("/schools") || location.pathname.startsWith("/sample-schools");
+  const isSampleSchoolAssessment = location.pathname === "/assessment/4" || location.pathname === "/assessment/5";
+  const isSampleSchoolTrack = isSchools || isSampleSchoolAssessment || (officer?.programType === "sample_school");
 
   const [officer, setOfficer] = useState(null);
 
@@ -45,11 +47,18 @@ function Shell({ children }) {
     navigate(wasSchool ? "/schools" : "/signup", { replace: true });
   }
 
+  const brandTo = isSampleSchoolTrack
+    ? (officer?.programType === "sample_school" ? "/schools/portal" : "/schools")
+    : (officer?.referenceCode ? "/confirmation" : "/");
+
+  const brandEyebrow = isSampleSchoolTrack ? "Ghana Education Service · GALOP AF2" : "Ghana Education Service";
+  const brandTitle = isSampleSchoolTrack ? "DL · Sample Schools Portal" : "Differentiated Learning (DL) Nominations";
+
   return (
     <div className="shell">
       <header className="site-header">
         <Link
-          to={officer?.referenceCode ? (officer.programType === "sample_school" ? "/schools/portal" : "/confirmation") : "/"}
+          to={brandTo}
           className="brand"
           aria-label="DL Nominations Home"
         >
@@ -59,53 +68,111 @@ function Shell({ children }) {
             className="brand-logo"
           />
           <div>
-            <p className="brand-eyebrow">Ghana Education Service</p>
-            <p className="brand-title">Differentiated Learning (DL) Nominations</p>
+            <p className="brand-eyebrow">{brandEyebrow}</p>
+            <p className="brand-title">{brandTitle}</p>
           </div>
         </Link>
 
         <nav aria-label="Main Navigation">
-          {officer ? (
-            <span className="officer-nav-badge">
-              <span
-                className="officer-status-dot"
-                style={{
-                  display: "inline-block",
-                  width: "8px",
-                  height: "8px",
-                  background: "#22c55e",
-                  borderRadius: "50%",
-                  marginRight: "6px",
-                }}
-              />
-              <span className="officer-nav-name">
-                {officer.officerName?.split(" ")[0] || officer.fullName?.split(" ")[0] || "Officer"}
-                {officer.designation ? ` (${officer.designation})` : ""}
-              </span>
-              <button
-                type="button"
-                className="btn-nav-signout"
-                onClick={handleOfficerSignOut}
-                title="Sign out of officer profile"
+          {isSampleSchoolTrack ? (
+            /* Dedicated Sample Schools Navigation: Hides all other portals */
+            <div style={{ display: "flex", alignItems: "center", gap: "0.85rem", flexWrap: "wrap" }}>
+              <Link
+                to={officer?.programType === "sample_school" ? "/schools/portal" : "/schools"}
+                className="active"
+                style={{ fontWeight: 700 }}
               >
-                (Sign out)
-              </button>
-            </span>
+                Sample Schools Portal
+              </Link>
+              {officer ? (
+                <span className="officer-nav-badge">
+                  <span
+                    className="officer-status-dot"
+                    style={{
+                      display: "inline-block",
+                      width: "8px",
+                      height: "8px",
+                      background: "#22c55e",
+                      borderRadius: "50%",
+                      marginRight: "6px",
+                    }}
+                  />
+                  <span className="officer-nav-name">
+                    {officer.officerName?.split(" ")[0] || officer.fullName?.split(" ")[0] || "Participant"}
+                    {officer.designation ? ` (${officer.designation})` : ""}
+                  </span>
+                  <button
+                    type="button"
+                    className="btn-nav-signout"
+                    onClick={handleOfficerSignOut}
+                    title="Sign out of sample schools portal"
+                  >
+                    (Sign out)
+                  </button>
+                </span>
+              ) : (
+                <Link
+                  to="/signup"
+                  style={{
+                    fontSize: "0.78rem",
+                    color: "rgba(255, 255, 255, 0.7)",
+                    textDecoration: "none",
+                    marginLeft: "0.25rem",
+                    padding: "0.2rem 0.55rem",
+                    borderRadius: "4px",
+                    border: "1px solid rgba(255, 255, 255, 0.25)",
+                    transition: "all 0.15s ease",
+                  }}
+                  title="Return to National Master Trainers Portal"
+                >
+                  Exit to Main Portal →
+                </Link>
+              )}
+            </div>
           ) : (
-            <>
-              <Link to="/signup" className={isAuth ? "active" : ""}>
-                Nominee Portal
-              </Link>
-              <Link to="/schools" className={isSchools ? "active" : ""}>
-                Sample Schools
-              </Link>
-              <Link to="/trainer/login" className={isTrainer ? "active" : ""}>
-                Facilitator Portal
-              </Link>
-              <Link to="/admin" className={isAdmin ? "active" : ""}>
-                Admin
-              </Link>
-            </>
+            /* General Navigation for Master Trainers & Admins */
+            officer ? (
+              <span className="officer-nav-badge">
+                <span
+                  className="officer-status-dot"
+                  style={{
+                    display: "inline-block",
+                    width: "8px",
+                    height: "8px",
+                    background: "#22c55e",
+                    borderRadius: "50%",
+                    marginRight: "6px",
+                  }}
+                />
+                <span className="officer-nav-name">
+                  {officer.officerName?.split(" ")[0] || officer.fullName?.split(" ")[0] || "Officer"}
+                  {officer.designation ? ` (${officer.designation})` : ""}
+                </span>
+                <button
+                  type="button"
+                  className="btn-nav-signout"
+                  onClick={handleOfficerSignOut}
+                  title="Sign out of officer profile"
+                >
+                  (Sign out)
+                </button>
+              </span>
+            ) : (
+              <>
+                <Link to="/signup" className={isAuth ? "active" : ""}>
+                  Nominee Portal
+                </Link>
+                <Link to="/schools" className={isSchools ? "active" : ""}>
+                  Sample Schools
+                </Link>
+                <Link to="/trainer/login" className={isTrainer ? "active" : ""}>
+                  Facilitator Portal
+                </Link>
+                <Link to="/admin" className={isAdmin ? "active" : ""}>
+                  Admin
+                </Link>
+              </>
+            )
           )}
         </nav>
       </header>

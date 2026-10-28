@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { fetchSampleSchools, fetchSampleSchoolHierarchy, registerSampleSchool, fetchMyNomination } from "../api";
+import { fetchSampleSchools, fetchSampleSchoolHierarchy, registerSampleSchool, fetchMyNomination, fetchSampleSchoolAssessments } from "../api";
 
 function formatPhoneAsTyped(raw) {
   const digits = raw.replace(/\D/g, "").slice(0, 10);
@@ -179,9 +179,21 @@ export default function SampleSchoolRegister() {
       sessionStorage.setItem("recent_nominee", JSON.stringify(nominee));
       localStorage.setItem("officer_profile", JSON.stringify(nominee));
 
-      navigate("/schools/portal", {
+      // Resolve Pre-Training Test ID (default 4) and launch immediately
+      let preTestId = 4;
+      try {
+        const aData = await fetchSampleSchoolAssessments();
+        const pre = aData?.assessments?.find((a) => a.type === "Pre-Test");
+        if (pre?.id) preTestId = pre.id;
+      } catch (e) {}
+
+      navigate(`/assessment/${preTestId}`, {
         replace: true,
-        state: { nominee, welcomeNotice: res.message || "Registration completed successfully! Welcome to your Sample Schools portal." },
+        state: {
+          nominee,
+          welcomeNotice: "Registration completed! Please complete your Pre-Training Diagnostic Assessment below.",
+          fromRegistration: true,
+        },
       });
     } catch (err) {
       setServerError(err.message || "Registration failed. Please check your network and try again.");
@@ -530,8 +542,11 @@ export default function SampleSchoolRegister() {
               style={{ width: "100%", padding: "0.95rem", fontSize: "1.05rem", fontWeight: 700, borderRadius: "8px" }}
               disabled={submitting}
             >
-              {submitting ? "Registering & Preparing Portal..." : "Complete Registration & Access Portal →"}
+              {submitting ? "Registering & Launching Pre-Test..." : "Complete Registration & Start Pre-Test →"}
             </button>
+            <p style={{ textAlign: "center", fontSize: "0.82rem", color: "#64748b", margin: "0.6rem 0 0 0" }}>
+              Upon submission, you will be taken directly to the Pre-Training Diagnostic Assessment.
+            </p>
           </form>
         </>
       )}

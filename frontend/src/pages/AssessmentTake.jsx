@@ -263,8 +263,8 @@ export default function AssessmentTake() {
                 🔓 Admin Instant Preview & Take Test
               </button>
             )}
-            <Link to="/confirmation" className="btn-secondary">
-              ← Return to District Trainer Portal
+            <Link to={backUrl} className="btn-secondary">
+              {backLabel}
             </Link>
             <button type="button" className="btn-secondary" onClick={() => window.location.reload()}>
               🔄 Refresh Status
@@ -324,12 +324,20 @@ export default function AssessmentTake() {
           </div>
 
           <div className="result-actions" style={{ display: "flex", gap: "0.85rem", flexWrap: "wrap", justifyContent: "center", marginTop: "1.5rem" }}>
-            <Link to="/confirmation" className="btn-secondary">
-              📋 Return to District Trainer Portal
-            </Link>
-            <Link to="/assessments" className="btn-primary">
-              📝 Tests & Evaluations Hub →
-            </Link>
+            {isSampleSchool ? (
+              <Link to="/schools/portal" className="btn-primary" style={{ padding: "0.85rem 1.75rem", fontSize: "1rem", fontWeight: 700 }}>
+                🏫 Access Sample Schools Portal →
+              </Link>
+            ) : (
+              <>
+                <Link to="/confirmation" className="btn-secondary">
+                  📋 Return to District Trainer Portal
+                </Link>
+                <Link to="/assessments" className="btn-primary">
+                  📝 Tests & Evaluations Hub →
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -338,6 +346,16 @@ export default function AssessmentTake() {
 
   return (
     <div className="page-narrow">
+      {location.state?.welcomeNotice && (
+        <div style={{
+          background: "#eff6ff", border: "1.5px solid #93c5fd", borderRadius: "10px",
+          padding: "1rem 1.25rem", marginBottom: "1.25rem", color: "#1e40af",
+          fontWeight: 600, fontSize: "0.95rem", display: "flex", alignItems: "center", gap: "0.6rem"
+        }}>
+          <span style={{ fontSize: "1.3rem" }}>✨</span>
+          <span>{location.state.welcomeNotice}</span>
+        </div>
+      )}
       <div className="form-card test-paper-card">
         <div className="test-header">
           <div className="test-header-left">
