@@ -5,16 +5,35 @@ import {
   fetchSampleSchoolHierarchy,
   fetchSampleSchoolStats,
   fetchSampleSchoolParticipants,
+  fetchSampleSchoolAssessments,
+  fetchAssessmentDetails,
+  updateAssessment,
 } from "../api";
 
-export default function SampleSchoolsAdminTab({ onBulkUpload, assessmentsList = [] }) {
-  const [activeSubTab, setActiveSubTab] = useState("schools"); // 'schools' | 'participants'
+export default function SampleSchoolsAdminTab({
+  onBulkUpload,
+  assessmentsList = [],
+  onEditAssessment,
+  onRefreshAssessments,
+}) {
+  const [activeSubTab, setActiveSubTab] = useState("schools"); // 'schools' | 'participants' | 'assessments'
   const [stats, setStats] = useState(null);
   const [hierarchy, setHierarchy] = useState({ regions: [], districtsByRegion: {} });
 
+  // Assessments state
+  const [schoolAssessments, setSchoolAssessments] = useState([]);
+  const [loadingAssessments, setLoadingAssessments] = useState(false);
+
+  // Question Editor Modal state
+  const [editingModalAssessment, setEditingModalAssessment] = useState(null);
+  const [editingQuestions, setEditingQuestions] = useState([]);
+  const [loadingQuestions, setLoadingQuestions] = useState(false);
+  const [savingQuestions, setSavingQuestions] = useState(false);
+  const [saveSuccessMsg, setSaveSuccessMsg] = useState("");
+  const [saveErrorMsg, setSaveErrorMsg] = useState("");
+
   // Active KPI Card filter tracking
   const [activeCardKey, setActiveCardKey] = useState(null);
-  // 'all-schools' | 'all-staff' | 'headteachers' | 'teachers' | 'coverage' | 'group1' | 'group23'
   const [coverageFilter, setCoverageFilter] = useState(false); // Show only schools with registered staff
 
   // Schools list state
@@ -37,6 +56,7 @@ export default function SampleSchoolsAdminTab({ onBulkUpload, assessmentsList = 
     loadStats();
     loadSchools();
     loadParticipants();
+    loadAssessments();
     fetchSampleSchoolHierarchy()
       .then(setHierarchy)
       .catch((err) => console.error("Error loading hierarchy:", err));
@@ -52,12 +72,42 @@ export default function SampleSchoolsAdminTab({ onBulkUpload, assessmentsList = 
     loadParticipants();
   }, [regionFilter, districtFilter, groupFilter, designationFilter, participantSearch, selectedSchoolEmis]);
 
+  // Merge external assessmentsList if updated
+  useEffect(() => {
+    if (assessmentsList && assessmentsList.length > 0) {
+      const sampleOnes = assessmentsList.filter(
+        (a) => a.target_program === "sample_school" || a.id === 4 || a.id === 5
+      );
+      if (sampleOnes.length > 0) {
+        setSchoolAssessments((prev) => {
+          const map = new Map(prev.map((a) => [a.id, a]));
+          sampleOnes.forEach((a) => map.set(a.id, { ...map.get(a.id), ...a }));
+          return Array.from(map.values());
+        });
+      }
+    }
+  }, [assessmentsList]);
+
   async function loadStats() {
     try {
       const data = await fetchSampleSchoolStats();
       setStats(data);
     } catch (err) {
       console.error("Error loading stats:", err);
+    }
+  }
+
+  async function loadAssessments() {
+    setLoadingAssessments(true);
+    try {
+      const data = await fetchSampleSchoolAssessments();
+      if (data?.assessments && data.assessments.length > 0) {
+        setSchoolAssessments(data.assessments);
+      }
+    } catch (err) {
+      console.error("Error loading sample assessments:", err);
+    } finally {
+      setLoadingAssessments(false);
     }
   }
 
@@ -94,6 +144,170 @@ export default function SampleSchoolsAdminTab({ onBulkUpload, assessmentsList = 
       console.error("Error loading participants:", err);
     } finally {
       setLoadingParticipants(false);
+    }
+  }
+
+  // Pre-Test & Post-Test objects
+  const preTest = useMemo(() => {
+    return (
+      schoolAssessments.find((a) => a.id === 4 || a.type === "Pre-Test") ||
+      assessmentsList.find((a) => a.id === 4 || (a.target_program === "sample_school" && a.type === "Pre-Test")) || {
+        id: 4,
+        title: "GALOP AF2 Sample Schools: Pre-Training Assessment",
+        type: "Pre-Test",
+        target_program: "sample_school",
+        time_limit_minutes: 20,
+        question_count: 0,
+        submission_count: 0,
+        isLocked: false,
+      }
+    );
+  }, [schoolAssessments, assessmentsList]);
+
+  const postTest = useMemo(() => {
+    return (
+      schoolAssessments.find((a) => a.id === 5 || a.type === "Post-Test") ||
+      assessmentsList.find((a) => a.id === 5 || (a.target_program === "sample_school" && a.type === "Post-Test")) || {
+        id: 5,
+        title: "GALOP AF2 Sample Schools: Post-Training Assessment",
+        type: "Post-Test",
+        target_program: "sample_school",
+        time_limit_minutes: 20,
+        question_count: 0,
+        submission_count: 0,
+        isLocked: false,
+      }
+    );
+  }, [schoolAssessments, assessmentsList]);
+
+  // Open Question Editor Modal
+  async function handleOpenQuestionsModal(assessment) {
+    if (onEditAssessment) {
+      onEditAssessment(assessment);
+      return;
+    }
+
+    setEditingModalAssessment(assessment);
+    setLoadingQuestions(true);
+    setSaveSuccessMsg("");
+    setSaveErrorMsg("");
+
+    try {
+      const full = await fetchAssessmentDetails(null, assessment.id);
+      const qs = full?.assessment?.questions || [];
+      if (qs.length > 0) {
+        setEditingQuestions(
+          qs.map((q) => ({
+            id: q.id,
+            questionText: q.questionText || q.question_text || "",
+            questionType: q.questionType || q.question_type || "multiple_choice",
+            options: Array.isArray(q.options) && q.options.length > 0 ? q.options : ["", "", "", ""],
+            correctAnswer: q.correctAnswer || q.correct_answer || "",
+            points: q.points || 2,
+          }))
+        );
+      } else {
+        setEditingQuestions([
+          {
+            questionText: "",
+            questionType: "multiple_choice",
+            options: ["", "", "", ""],
+            correctAnswer: "",
+            points: 2,
+          },
+        ]);
+      }
+    } catch (err) {
+      console.error("Error loading assessment questions:", err);
+      setEditingQuestions([
+        {
+          questionText: "",
+          questionType: "multiple_choice",
+          options: ["", "", "", ""],
+          correctAnswer: "",
+          points: 2,
+        },
+      ]);
+    } finally {
+      setLoadingQuestions(false);
+    }
+  }
+
+  function handleAddQuestion() {
+    setEditingQuestions((prev) => [
+      ...prev,
+      {
+        questionText: "",
+        questionType: "multiple_choice",
+        options: ["", "", "", ""],
+        correctAnswer: "",
+        points: 2,
+      },
+    ]);
+  }
+
+  function handleRemoveQuestion(idx) {
+    setEditingQuestions((prev) => prev.filter((_, i) => i !== idx));
+  }
+
+  function handleQuestionChange(idx, field, val) {
+    setEditingQuestions((prev) => {
+      const next = [...prev];
+      next[idx] = { ...next[idx], [field]: val };
+      return next;
+    });
+  }
+
+  function handleOptionChange(qIdx, optIdx, val) {
+    setEditingQuestions((prev) => {
+      const next = [...prev];
+      const nextOpts = [...next[qIdx].options];
+      nextOpts[optIdx] = val;
+      next[qIdx] = { ...next[qIdx], options: nextOpts };
+      return next;
+    });
+  }
+
+  async function handleSaveQuestions() {
+    if (!editingModalAssessment) return;
+
+    // Validate
+    const invalid = editingQuestions.find((q) => !q.questionText || !q.questionText.trim());
+    if (invalid) {
+      setSaveErrorMsg("Please ensure every question has a prompt/question text.");
+      return;
+    }
+
+    setSavingQuestions(true);
+    setSaveErrorMsg("");
+    setSaveSuccessMsg("");
+
+    try {
+      const payload = {
+        title: editingModalAssessment.title,
+        type: editingModalAssessment.type,
+        description: editingModalAssessment.description || "",
+        timeLimitMinutes: editingModalAssessment.time_limit_minutes || 20,
+        lockMode: editingModalAssessment.lock_mode || "open_now",
+        targetProgram: "sample_school",
+        questions: editingQuestions,
+      };
+
+      await updateAssessment(null, editingModalAssessment.id, payload);
+      setSaveSuccessMsg(`All ${editingQuestions.length} questions saved successfully!`);
+      await loadAssessments();
+      if (onRefreshAssessments) {
+        onRefreshAssessments();
+      }
+      setTimeout(() => {
+        setSaveSuccessMsg("");
+        setEditingModalAssessment(null);
+      }, 1500);
+    } catch (err) {
+      console.error("Failed to save questions:", err);
+      setSaveErrorMsg(err.message || "Failed to save questions.");
+    } finally {
+      setSavingQuestions(false);
     }
   }
 
@@ -151,7 +365,6 @@ export default function SampleSchoolsAdminTab({ onBulkUpload, assessmentsList = 
   // Card 3: Schools Coverage (X/210)
   function handleCardClickCoverage() {
     if (activeCardKey === "coverage" && coverageFilter) {
-      // Toggle off
       setCoverageFilter(false);
       setActiveCardKey(null);
     } else {
@@ -172,7 +385,6 @@ export default function SampleSchoolsAdminTab({ onBulkUpload, assessmentsList = 
     setGroupFilter("Group 1");
     setCoverageFilter(false);
     setSelectedSchoolEmis("");
-    // If stats shows Group 1 registered staff, switch to participants to view them
     if (stats?.byGroup?.["Group 1"] > 0) {
       setActiveSubTab("participants");
     } else {
@@ -222,12 +434,22 @@ export default function SampleSchoolsAdminTab({ onBulkUpload, assessmentsList = 
     if (activeCardKey === "teachers") return "Registered Teachers Only";
     if (activeCardKey === "coverage" || coverageFilter) return "Schools with Registered Staff Only";
     if (activeCardKey === "group1" || groupFilter === "Group 1") return "Group 1: Normal DL Coaching (70 Schools)";
-    if (activeCardKey === "group23" || groupFilter === "Group 2,Group 3") return "Group 2 & Group 3: Treatment Arms T1 & T2 (140 Schools)";
+    if (activeCardKey === "group23" || groupFilter === "Group 2,Group 3")
+      return "Group 2 & Group 3: Treatment Arms T1 & T2 (140 Schools)";
     if (groupFilter) return `Study Group: ${groupFilter}`;
     if (designationFilter) return `Role: ${designationFilter}`;
     if (regionFilter) return `Region: ${regionFilter}${districtFilter ? ` · ${districtFilter}` : ""}`;
     return null;
-  }, [activeCardKey, coverageFilter, selectedSchoolEmis, groupFilter, designationFilter, regionFilter, districtFilter, schools]);
+  }, [
+    activeCardKey,
+    coverageFilter,
+    selectedSchoolEmis,
+    groupFilter,
+    designationFilter,
+    regionFilter,
+    districtFilter,
+    schools,
+  ]);
 
   function handleExportExcel() {
     const wb = XLSX.utils.book_new();
@@ -235,8 +457,8 @@ export default function SampleSchoolsAdminTab({ onBulkUpload, assessmentsList = 
     // Sheet 1: Schools
     const schoolRows = schools.map((s, idx) => ({
       "S/N": idx + 1,
-      "Region": s.region,
-      "District": s.district,
+      Region: s.region,
+      District: s.district,
       "EMIS Code": s.emis_code,
       "School Name": s.school_name,
       "Study Group": s.group_id,
@@ -251,14 +473,14 @@ export default function SampleSchoolsAdminTab({ onBulkUpload, assessmentsList = 
       "S/N": idx + 1,
       "Reference Code": p.referenceCode,
       "Officer Name": p.officerName,
-      "Sex": p.sex,
+      Sex: p.sex,
       "Phone Number": p.phoneNumber,
-      "Designation": p.designation,
+      Designation: p.designation,
       "School Name": p.schoolName,
       "EMIS Code": p.emisCode,
       "Study Group": p.studyGroup,
-      "Region": p.region,
-      "District": p.district,
+      Region: p.region,
+      District: p.district,
       "Registration Date": p.submittedAt,
     }));
     const wsParticipants = XLSX.utils.json_to_sheet(participantRows);
@@ -266,13 +488,6 @@ export default function SampleSchoolsAdminTab({ onBulkUpload, assessmentsList = 
 
     XLSX.writeFile(wb, `GALOP_Sample_Schools_Report_${new Date().toISOString().slice(0, 10)}.xlsx`);
   }
-
-  const samplePreTest = assessmentsList.find(
-    (a) => a.id === 4 || (a.target_program === "sample_school" && a.type === "Pre-Test")
-  );
-  const samplePostTest = assessmentsList.find(
-    (a) => a.id === 5 || (a.target_program === "sample_school" && a.type === "Post-Test")
-  );
 
   return (
     <div className="sample-schools-admin-container" style={{ padding: "0.5rem 0" }}>
@@ -328,10 +543,8 @@ export default function SampleSchoolsAdminTab({ onBulkUpload, assessmentsList = 
               fontSize: "0.85rem",
             }}
             onClick={() => {
-              if (onBulkUpload && samplePreTest) {
-                onBulkUpload(samplePreTest);
-              } else if (onBulkUpload) {
-                onBulkUpload({ id: 4, title: "GALOP AF2 Sample Schools: Pre-Training Assessment", type: "Pre-Test" });
+              if (onBulkUpload) {
+                onBulkUpload(preTest);
               }
             }}
           >
@@ -349,10 +562,8 @@ export default function SampleSchoolsAdminTab({ onBulkUpload, assessmentsList = 
               fontSize: "0.85rem",
             }}
             onClick={() => {
-              if (onBulkUpload && samplePostTest) {
-                onBulkUpload(samplePostTest);
-              } else if (onBulkUpload) {
-                onBulkUpload({ id: 5, title: "GALOP AF2 Sample Schools: Post-Training Assessment", type: "Post-Test" });
+              if (onBulkUpload) {
+                onBulkUpload(postTest);
               }
             }}
           >
@@ -611,6 +822,114 @@ export default function SampleSchoolsAdminTab({ onBulkUpload, assessmentsList = 
         </div>
       </div>
 
+      {/* Quick Assessments Status Bar */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: "0.75rem",
+          background: "#ffffff",
+          border: "1.5px solid #e2e8f0",
+          borderRadius: "12px",
+          padding: "0.85rem 1.25rem",
+          marginBottom: "1.5rem",
+          boxShadow: "0 1px 3px rgba(0, 0, 0, 0.03)",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+          <span style={{ fontSize: "0.95rem", fontWeight: 800, color: "#0f172a" }}>
+            📝 Sample Schools Test Bank:
+          </span>
+
+          {/* Pre-Test Pill */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.4rem",
+              background: "#eff6ff",
+              border: "1px solid #bfdbfe",
+              padding: "0.3rem 0.65rem",
+              borderRadius: "8px",
+            }}
+          >
+            <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "#1e40af" }}>
+              Pre-Test: {preTest?.question_count || 0} Questions
+            </span>
+            <button
+              type="button"
+              onClick={() => handleOpenQuestionsModal(preTest)}
+              style={{
+                background: "#2563eb",
+                color: "#ffffff",
+                border: "none",
+                borderRadius: "4px",
+                padding: "0.2rem 0.5rem",
+                fontSize: "0.75rem",
+                fontWeight: 700,
+                cursor: "pointer",
+              }}
+              title="View and edit Pre-Test questions"
+            >
+              ✏️ Edit / View
+            </button>
+          </div>
+
+          {/* Post-Test Pill */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.4rem",
+              background: "#f0fdf4",
+              border: "1px solid #bbf7d0",
+              padding: "0.3rem 0.65rem",
+              borderRadius: "8px",
+            }}
+          >
+            <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "#166534" }}>
+              Post-Test: {postTest?.question_count || 0} Questions
+            </span>
+            <button
+              type="button"
+              onClick={() => handleOpenQuestionsModal(postTest)}
+              style={{
+                background: "#16a34a",
+                color: "#ffffff",
+                border: "none",
+                borderRadius: "4px",
+                padding: "0.2rem 0.5rem",
+                fontSize: "0.75rem",
+                fontWeight: 700,
+                cursor: "pointer",
+              }}
+              title="View and edit Post-Test questions"
+            >
+              ✏️ Edit / View
+            </button>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setActiveSubTab("assessments")}
+          style={{
+            background: activeSubTab === "assessments" ? "#1e293b" : "#f1f5f9",
+            color: activeSubTab === "assessments" ? "#ffffff" : "#334155",
+            border: "1px solid #cbd5e1",
+            borderRadius: "6px",
+            padding: "0.35rem 0.75rem",
+            fontSize: "0.82rem",
+            fontWeight: 700,
+            cursor: "pointer",
+          }}
+        >
+          {activeSubTab === "assessments" ? "Viewing Tests Tab ✓" : "Go to Tests Management →"}
+        </button>
+      </div>
+
       {/* Active Filter Notification Banner */}
       {activeFilterLabel && (
         <div
@@ -701,348 +1020,1109 @@ export default function SampleSchoolsAdminTab({ onBulkUpload, assessmentsList = 
         >
           👥 Registered Staff ({participants.length})
         </button>
-      </div>
-
-      {/* Filters Toolbar */}
-      <div
-        style={{
-          background: "#f8fafc",
-          border: "1px solid #e2e8f0",
-          borderRadius: "10px",
-          padding: "1rem",
-          marginBottom: "1.5rem",
-          display: "flex",
-          gap: "0.75rem",
-          flexWrap: "wrap",
-          alignItems: "center",
-        }}
-      >
-        <div style={{ flex: "1 1 200px" }}>
-          <input
-            type="search"
-            placeholder={
-              activeSubTab === "schools"
-                ? "Search school name or EMIS code..."
-                : "Search staff name, phone, school, EMIS..."
-            }
-            value={activeSubTab === "schools" ? schoolSearch : participantSearch}
-            onChange={(e) => {
-              if (activeSubTab === "schools") setSchoolSearch(e.target.value);
-              else setParticipantSearch(e.target.value);
-            }}
-            style={{ width: "100%", padding: "0.55rem 0.85rem", borderRadius: "8px", border: "1px solid #cbd5e1" }}
-          />
-        </div>
-
-        <div style={{ minWidth: "150px" }}>
-          <select
-            value={regionFilter}
-            onChange={handleRegionChange}
-            style={{ width: "100%", padding: "0.55rem 0.85rem", borderRadius: "8px", border: "1px solid #cbd5e1" }}
-          >
-            <option value="">All 4 Regions</option>
-            {hierarchy.regions.map((r) => (
-              <option key={r} value={r}>
-                {r}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {regionFilter && hierarchy.districtsByRegion[regionFilter] && (
-          <div style={{ minWidth: "160px" }}>
-            <select
-              value={districtFilter}
-              onChange={(e) => setDistrictFilter(e.target.value)}
-              style={{ width: "100%", padding: "0.55rem 0.85rem", borderRadius: "8px", border: "1px solid #cbd5e1" }}
-            >
-              <option value="">All Districts in {regionFilter}</option>
-              {hierarchy.districtsByRegion[regionFilter].map((d) => (
-                <option key={d} value={d}>
-                  {d}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        <div style={{ minWidth: "160px" }}>
-          <select
-            value={groupFilter}
-            onChange={(e) => {
-              setGroupFilter(e.target.value);
-              setActiveCardKey(null);
-            }}
-            style={{ width: "100%", padding: "0.55rem 0.85rem", borderRadius: "8px", border: "1px solid #cbd5e1" }}
-          >
-            <option value="">All Study Groups</option>
-            <option value="Group 1">Group 1 (Normal DL)</option>
-            <option value="Group 2">Group 2 (T1: Midterm Check)</option>
-            <option value="Group 3">Group 3 (T2: Midterm + Pacing)</option>
-            <option value="Group 2,Group 3">Group 2 & Group 3 (All Treatment Arms)</option>
-          </select>
-        </div>
-
-        {activeSubTab === "participants" && (
-          <div style={{ minWidth: "150px" }}>
-            <select
-              value={designationFilter}
-              onChange={(e) => {
-                setDesignationFilter(e.target.value);
-                setActiveCardKey(null);
-              }}
-              style={{ width: "100%", padding: "0.55rem 0.85rem", borderRadius: "8px", border: "1px solid #cbd5e1" }}
-            >
-              <option value="">All Roles (Headteacher & Teacher)</option>
-              <option value="Headteacher">Headteacher</option>
-              <option value="Teacher">Teacher</option>
-            </select>
-          </div>
-        )}
-
-        {(regionFilter ||
-          districtFilter ||
-          groupFilter ||
-          designationFilter ||
-          schoolSearch ||
-          participantSearch ||
-          coverageFilter ||
-          selectedSchoolEmis) && (
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={handleResetAllFilters}
-            style={{ padding: "0.55rem 0.85rem", fontSize: "0.85rem", fontWeight: 700 }}
-          >
-            Clear Filters ✕
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => setActiveSubTab("assessments")}
+          style={{
+            padding: "0.75rem 1.25rem",
+            fontSize: "0.95rem",
+            fontWeight: 700,
+            background: "none",
+            border: "none",
+            borderBottom: activeSubTab === "assessments" ? "3px solid #2563eb" : "3px solid transparent",
+            color: activeSubTab === "assessments" ? "#2563eb" : "#64748b",
+            cursor: "pointer",
+          }}
+        >
+          📝 Workshop Assessments (2)
+        </button>
       </div>
 
       {/* SUB-VIEW 1: SCHOOLS CATALOG */}
       {activeSubTab === "schools" && (
-        <div className="table-wrap">
-          <table className="assessments-admin-table">
-            <thead>
-              <tr>
-                <th style={{ width: "5%" }}>S/N</th>
-                <th style={{ width: "12%" }}>EMIS Code</th>
-                <th style={{ width: "26%" }}>School Name</th>
-                <th style={{ width: "16%" }}>Region & District</th>
-                <th style={{ width: "13%" }}>Study Group</th>
-                <th style={{ width: "14%" }}>Registered Staff</th>
-                <th style={{ width: "14%" }}>Treatment Protocol</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loadingSchools && (
+        <>
+          {/* Filters Toolbar */}
+          <div
+            style={{
+              background: "#f8fafc",
+              border: "1px solid #e2e8f0",
+              borderRadius: "10px",
+              padding: "1rem",
+              marginBottom: "1.5rem",
+              display: "flex",
+              gap: "0.75rem",
+              flexWrap: "wrap",
+              alignItems: "center",
+            }}
+          >
+            <div style={{ flex: "1 1 200px" }}>
+              <input
+                type="search"
+                placeholder="Search school name or EMIS code..."
+                value={schoolSearch}
+                onChange={(e) => setSchoolSearch(e.target.value)}
+                style={{ width: "100%", padding: "0.55rem 0.85rem", borderRadius: "8px", border: "1px solid #cbd5e1" }}
+              />
+            </div>
+
+            <div style={{ minWidth: "150px" }}>
+              <select
+                value={regionFilter}
+                onChange={handleRegionChange}
+                style={{ width: "100%", padding: "0.55rem 0.85rem", borderRadius: "8px", border: "1px solid #cbd5e1" }}
+              >
+                <option value="">All 4 Regions</option>
+                {hierarchy.regions.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {regionFilter && hierarchy.districtsByRegion[regionFilter] && (
+              <div style={{ minWidth: "160px" }}>
+                <select
+                  value={districtFilter}
+                  onChange={(e) => setDistrictFilter(e.target.value)}
+                  style={{ width: "100%", padding: "0.55rem 0.85rem", borderRadius: "8px", border: "1px solid #cbd5e1" }}
+                >
+                  <option value="">All Districts in {regionFilter}</option>
+                  {hierarchy.districtsByRegion[regionFilter].map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div style={{ minWidth: "160px" }}>
+              <select
+                value={groupFilter}
+                onChange={(e) => {
+                  setGroupFilter(e.target.value);
+                  setActiveCardKey(null);
+                }}
+                style={{ width: "100%", padding: "0.55rem 0.85rem", borderRadius: "8px", border: "1px solid #cbd5e1" }}
+              >
+                <option value="">All Study Groups</option>
+                <option value="Group 1">Group 1 (Normal DL)</option>
+                <option value="Group 2">Group 2 (T1: Midterm Check)</option>
+                <option value="Group 3">Group 3 (T2: Midterm + Pacing)</option>
+                <option value="Group 2,Group 3">Group 2 & Group 3 (All Treatment Arms)</option>
+              </select>
+            </div>
+
+            {(regionFilter || districtFilter || groupFilter || schoolSearch || coverageFilter) && (
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={handleResetAllFilters}
+                style={{ padding: "0.55rem 0.85rem", fontSize: "0.85rem", fontWeight: 700 }}
+              >
+                Clear Filters ✕
+              </button>
+            )}
+          </div>
+
+          <div className="table-wrap">
+            <table className="assessments-admin-table">
+              <thead>
                 <tr>
-                  <td colSpan={7} className="empty-row">
-                    Loading sample schools…
-                  </td>
+                  <th style={{ width: "5%" }}>S/N</th>
+                  <th style={{ width: "12%" }}>EMIS Code</th>
+                  <th style={{ width: "26%" }}>School Name</th>
+                  <th style={{ width: "16%" }}>Region & District</th>
+                  <th style={{ width: "13%" }}>Study Group</th>
+                  <th style={{ width: "14%" }}>Registered Staff</th>
+                  <th style={{ width: "14%" }}>Treatment Protocol</th>
                 </tr>
-              )}
-              {!loadingSchools && displayedSchools.length === 0 && (
+              </thead>
+              <tbody>
+                {loadingSchools && (
+                  <tr>
+                    <td colSpan={7} className="empty-row">
+                      Loading sample schools…
+                    </td>
+                  </tr>
+                )}
+                {!loadingSchools && displayedSchools.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="empty-row">
+                      No schools found matching your search or filters.
+                    </td>
+                  </tr>
+                )}
+                {displayedSchools.map((s, idx) => {
+                  const registeredCount = stats?.schoolCounts?.[s.emis_code] || 0;
+                  return (
+                    <tr key={s.id || s.emis_code}>
+                      <td>{s.sn || idx + 1}</td>
+                      <td>
+                        <span
+                          style={{
+                            fontFamily: "monospace",
+                            background: "#f1f5f9",
+                            padding: "0.2rem 0.5rem",
+                            borderRadius: "6px",
+                            fontWeight: 700,
+                            color: "#0f172a",
+                          }}
+                        >
+                          {s.emis_code}
+                        </span>
+                      </td>
+                      <td>
+                        <strong>{s.school_name}</strong>
+                      </td>
+                      <td>
+                        <div style={{ display: "flex", flexDirection: "column" }}>
+                          <span style={{ fontWeight: 600, color: "#1e293b" }}>{s.region}</span>
+                          <span style={{ fontSize: "0.82rem", color: "#64748b" }}>{s.district}</span>
+                        </div>
+                      </td>
+                      <td>
+                        <span
+                          style={{
+                            display: "inline-block",
+                            padding: "0.25rem 0.65rem",
+                            borderRadius: "999px",
+                            fontSize: "0.8rem",
+                            fontWeight: 700,
+                            background:
+                              s.group_id === "Group 1"
+                                ? "#dbeafe"
+                                : s.group_id === "Group 2"
+                                ? "#fef3c7"
+                                : "#dcfce7",
+                            color:
+                              s.group_id === "Group 1"
+                                ? "#1e40af"
+                                : s.group_id === "Group 2"
+                                ? "#92400e"
+                                : "#166534",
+                          }}
+                        >
+                          {s.group_id}
+                        </span>
+                      </td>
+                      <td>
+                        {registeredCount > 0 ? (
+                          <button
+                            type="button"
+                            onClick={() => handleDrillDownSchoolStaff(s)}
+                            style={{
+                              background: "#dcfce7",
+                              color: "#166534",
+                              border: "1px solid #86efac",
+                              borderRadius: "999px",
+                              padding: "0.25rem 0.6rem",
+                              fontSize: "0.78rem",
+                              fontWeight: 700,
+                              cursor: "pointer",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "0.3rem",
+                            }}
+                            title="Click to view registered staff for this school"
+                          >
+                            🟢 {registeredCount} Staff (View)
+                          </button>
+                        ) : (
+                          <span style={{ color: "#94a3b8", fontSize: "0.82rem" }}>0 registered</span>
+                        )}
+                      </td>
+                      <td>
+                        <span style={{ fontSize: "0.82rem", color: "#475569" }}>{s.treatment}</span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      {/* SUB-VIEW 2: REGISTERED PARTICIPANTS */}
+      {activeSubTab === "participants" && (
+        <>
+          {/* Filters Toolbar */}
+          <div
+            style={{
+              background: "#f8fafc",
+              border: "1px solid #e2e8f0",
+              borderRadius: "10px",
+              padding: "1rem",
+              marginBottom: "1.5rem",
+              display: "flex",
+              gap: "0.75rem",
+              flexWrap: "wrap",
+              alignItems: "center",
+            }}
+          >
+            <div style={{ flex: "1 1 200px" }}>
+              <input
+                type="search"
+                placeholder="Search staff name, phone, school, EMIS..."
+                value={participantSearch}
+                onChange={(e) => setParticipantSearch(e.target.value)}
+                style={{ width: "100%", padding: "0.55rem 0.85rem", borderRadius: "8px", border: "1px solid #cbd5e1" }}
+              />
+            </div>
+
+            <div style={{ minWidth: "150px" }}>
+              <select
+                value={regionFilter}
+                onChange={handleRegionChange}
+                style={{ width: "100%", padding: "0.55rem 0.85rem", borderRadius: "8px", border: "1px solid #cbd5e1" }}
+              >
+                <option value="">All 4 Regions</option>
+                {hierarchy.regions.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {regionFilter && hierarchy.districtsByRegion[regionFilter] && (
+              <div style={{ minWidth: "160px" }}>
+                <select
+                  value={districtFilter}
+                  onChange={(e) => setDistrictFilter(e.target.value)}
+                  style={{ width: "100%", padding: "0.55rem 0.85rem", borderRadius: "8px", border: "1px solid #cbd5e1" }}
+                >
+                  <option value="">All Districts in {regionFilter}</option>
+                  {hierarchy.districtsByRegion[regionFilter].map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div style={{ minWidth: "160px" }}>
+              <select
+                value={groupFilter}
+                onChange={(e) => {
+                  setGroupFilter(e.target.value);
+                  setActiveCardKey(null);
+                }}
+                style={{ width: "100%", padding: "0.55rem 0.85rem", borderRadius: "8px", border: "1px solid #cbd5e1" }}
+              >
+                <option value="">All Study Groups</option>
+                <option value="Group 1">Group 1 (Normal DL)</option>
+                <option value="Group 2">Group 2 (T1: Midterm Check)</option>
+                <option value="Group 3">Group 3 (T2: Midterm + Pacing)</option>
+                <option value="Group 2,Group 3">Group 2 & Group 3 (All Treatment Arms)</option>
+              </select>
+            </div>
+
+            <div style={{ minWidth: "150px" }}>
+              <select
+                value={designationFilter}
+                onChange={(e) => {
+                  setDesignationFilter(e.target.value);
+                  setActiveCardKey(null);
+                }}
+                style={{ width: "100%", padding: "0.55rem 0.85rem", borderRadius: "8px", border: "1px solid #cbd5e1" }}
+              >
+                <option value="">All Roles (Headteacher & Teacher)</option>
+                <option value="Headteacher">Headteacher</option>
+                <option value="Teacher">Teacher</option>
+              </select>
+            </div>
+
+            {(regionFilter ||
+              districtFilter ||
+              groupFilter ||
+              designationFilter ||
+              participantSearch ||
+              selectedSchoolEmis) && (
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={handleResetAllFilters}
+                style={{ padding: "0.55rem 0.85rem", fontSize: "0.85rem", fontWeight: 700 }}
+              >
+                Clear Filters ✕
+              </button>
+            )}
+          </div>
+
+          <div className="table-wrap">
+            <table className="assessments-admin-table">
+              <thead>
                 <tr>
-                  <td colSpan={7} className="empty-row">
-                    No schools found matching your search or filters.
-                  </td>
+                  <th style={{ width: "13%" }}>Ref Code</th>
+                  <th style={{ width: "20%" }}>Staff Name & Sex</th>
+                  <th style={{ width: "12%" }}>Designation</th>
+                  <th style={{ width: "13%" }}>Phone Number</th>
+                  <th style={{ width: "24%" }}>School & EMIS</th>
+                  <th style={{ width: "18%" }}>Study Group</th>
                 </tr>
-              )}
-              {displayedSchools.map((s, idx) => {
-                const registeredCount = stats?.schoolCounts?.[s.emis_code] || 0;
-                return (
-                  <tr key={s.id || s.emis_code}>
-                    <td>{s.sn || idx + 1}</td>
+              </thead>
+              <tbody>
+                {loadingParticipants && (
+                  <tr>
+                    <td colSpan={6} className="empty-row">
+                      Loading participants…
+                    </td>
+                  </tr>
+                )}
+                {!loadingParticipants && participants.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="empty-row">
+                      No participants found matching the active filter.
+                    </td>
+                  </tr>
+                )}
+                {participants.map((p) => (
+                  <tr key={p.id}>
                     <td>
-                      <span
-                        style={{
-                          fontFamily: "monospace",
-                          background: "#f1f5f9",
-                          padding: "0.2rem 0.5rem",
-                          borderRadius: "6px",
-                          fontWeight: 700,
-                          color: "#0f172a",
-                        }}
-                      >
-                        {s.emis_code}
+                      <span className="ref-tag" style={{ background: "#e0f2fe", color: "#0369a1" }}>
+                        {p.referenceCode}
                       </span>
                     </td>
                     <td>
-                      <strong>{s.school_name}</strong>
-                    </td>
-                    <td>
                       <div style={{ display: "flex", flexDirection: "column" }}>
-                        <span style={{ fontWeight: 600, color: "#1e293b" }}>{s.region}</span>
-                        <span style={{ fontSize: "0.82rem", color: "#64748b" }}>{s.district}</span>
+                        <strong>{p.officerName}</strong>
+                        <span style={{ fontSize: "0.82rem", color: "#64748b" }}>{p.sex}</span>
                       </div>
                     </td>
                     <td>
                       <span
                         style={{
-                          display: "inline-block",
-                          padding: "0.25rem 0.65rem",
-                          borderRadius: "999px",
-                          fontSize: "0.8rem",
+                          padding: "0.25rem 0.6rem",
+                          borderRadius: "6px",
+                          fontSize: "0.82rem",
                           fontWeight: 700,
-                          background:
-                            s.group_id === "Group 1"
-                              ? "#dbeafe"
-                              : s.group_id === "Group 2"
-                              ? "#fef3c7"
-                              : "#dcfce7",
-                          color:
-                            s.group_id === "Group 1"
-                              ? "#1e40af"
-                              : s.group_id === "Group 2"
-                              ? "#92400e"
-                              : "#166534",
+                          background: p.designation === "Headteacher" ? "#ede9fe" : "#ccfbf1",
+                          color: p.designation === "Headteacher" ? "#6d28d9" : "#0f766e",
                         }}
                       >
-                        {s.group_id}
+                        {p.designation}
                       </span>
                     </td>
                     <td>
-                      {registeredCount > 0 ? (
-                        <button
-                          type="button"
-                          onClick={() => handleDrillDownSchoolStaff(s)}
-                          style={{
-                            background: "#dcfce7",
-                            color: "#166534",
-                            border: "1px solid #86efac",
-                            borderRadius: "999px",
-                            padding: "0.25rem 0.6rem",
-                            fontSize: "0.78rem",
-                            fontWeight: 700,
-                            cursor: "pointer",
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: "0.3rem",
-                          }}
-                          title="Click to view registered staff for this school"
-                        >
-                          🟢 {registeredCount} Staff (View)
-                        </button>
-                      ) : (
-                        <span style={{ color: "#94a3b8", fontSize: "0.82rem" }}>0 registered</span>
-                      )}
+                      <a href={`tel:${p.phoneNumber}`} className="phone-link">
+                        {p.phoneNumber}
+                      </a>
                     </td>
                     <td>
-                      <span style={{ fontSize: "0.82rem", color: "#475569" }}>{s.treatment}</span>
+                      <div style={{ display: "flex", flexDirection: "column" }}>
+                        <strong>{p.schoolName}</strong>
+                        <span style={{ fontSize: "0.8rem", color: "#64748b", fontFamily: "monospace" }}>
+                          EMIS: {p.emisCode} · {p.district}, {p.region}
+                        </span>
+                      </div>
+                    </td>
+                    <td>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem" }}>
+                        <span
+                          style={{
+                            display: "inline-block",
+                            padding: "0.2rem 0.6rem",
+                            borderRadius: "999px",
+                            fontSize: "0.78rem",
+                            fontWeight: 700,
+                            width: "fit-content",
+                            background:
+                              p.studyGroup === "Group 1"
+                                ? "#dbeafe"
+                                : p.studyGroup === "Group 2"
+                                ? "#fef3c7"
+                                : "#dcfce7",
+                            color:
+                              p.studyGroup === "Group 1"
+                                ? "#1e40af"
+                                : p.studyGroup === "Group 2"
+                                ? "#92400e"
+                                : "#166534",
+                          }}
+                        >
+                          {p.studyGroup}
+                        </span>
+                        {p.treatment && (
+                          <span style={{ fontSize: "0.74rem", color: "#64748b" }}>{p.treatment}</span>
+                        )}
+                      </div>
                     </td>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      {/* SUB-VIEW 3: PRE & POST ASSESSMENTS MANAGEMENT CENTER */}
+      {activeSubTab === "assessments" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+          <div
+            style={{
+              background: "#f8fafc",
+              border: "1px solid #e2e8f0",
+              borderRadius: "12px",
+              padding: "1.25rem",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: "1rem",
+            }}
+          >
+            <div>
+              <h3 style={{ margin: "0 0 0.25rem 0", fontSize: "1.2rem", fontWeight: 800, color: "#0f172a" }}>
+                GALOP AF2 Sample Schools Assessments
+              </h3>
+              <p style={{ margin: 0, fontSize: "0.88rem", color: "#475569" }}>
+                Pre-Training and Post-Training tests uploaded here are solely administered to participants of the 210 sample schools track.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={loadAssessments}
+              style={{ fontSize: "0.85rem", fontWeight: 700 }}
+            >
+              🔄 Refresh Tests
+            </button>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))", gap: "1.5rem" }}>
+            {/* 1. Pre-Training Assessment Card */}
+            <div
+              style={{
+                background: "#ffffff",
+                border: "1.5px solid #bfdbfe",
+                borderRadius: "14px",
+                padding: "1.75rem",
+                boxShadow: "0 4px 12px rgba(59, 130, 246, 0.08)",
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "space-between",
+              }}
+            >
+              <div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+                  <span
+                    style={{
+                      background: "#dbeafe",
+                      color: "#1e40af",
+                      padding: "0.25rem 0.75rem",
+                      borderRadius: "999px",
+                      fontSize: "0.78rem",
+                      fontWeight: 800,
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    📝 PRE-TEST (ID: 4)
+                  </span>
+                  <span style={{ fontSize: "0.78rem", color: "#166534", background: "#dcfce7", padding: "0.2rem 0.6rem", borderRadius: "6px", fontWeight: 700 }}>
+                    🔓 Open Now
+                  </span>
+                </div>
+
+                <h3 style={{ margin: "0 0 0.5rem 0", fontSize: "1.25rem", fontWeight: 800, color: "#0f172a" }}>
+                  {preTest.title}
+                </h3>
+                <p style={{ color: "#475569", fontSize: "0.88rem", margin: "0 0 1.25rem 0", lineHeight: 1.5 }}>
+                  Diagnostic baseline assessment measuring participant readiness on DL Coaching Checklists, lesson pacing, and continuous classroom evaluation.
+                </p>
+
+                <div
+                  style={{
+                    background: "#f8fafc",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: "10px",
+                    padding: "1rem",
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: "1rem",
+                    marginBottom: "1.5rem",
+                  }}
+                >
+                  <div>
+                    <span style={{ fontSize: "0.75rem", color: "#64748b", textTransform: "uppercase", display: "block" }}>
+                      Questions Count
+                    </span>
+                    <strong
+                      style={{
+                        fontSize: "1.3rem",
+                        color: preTest.question_count > 0 ? "#15803d" : "#d97706",
+                      }}
+                    >
+                      {preTest.question_count || 0} Questions
+                    </strong>
+                    <span style={{ fontSize: "0.75rem", color: "#64748b", display: "block" }}>
+                      {preTest.question_count > 0 ? "Uploaded & Available" : "No questions uploaded yet"}
+                    </span>
+                  </div>
+
+                  <div>
+                    <span style={{ fontSize: "0.75rem", color: "#64748b", textTransform: "uppercase", display: "block" }}>
+                      Submissions
+                    </span>
+                    <strong style={{ fontSize: "1.3rem", color: "#0f172a" }}>
+                      {preTest.submission_count || 0} Done
+                    </strong>
+                    <span style={{ fontSize: "0.75rem", color: "#64748b", display: "block" }}>
+                      Time limit: {preTest.time_limit_minutes || 20} mins
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap", borderTop: "1px solid #f1f5f9", paddingTop: "1.25rem" }}>
+                <button
+                  type="button"
+                  onClick={() => handleOpenQuestionsModal(preTest)}
+                  style={{
+                    background: "#2563eb",
+                    color: "#ffffff",
+                    border: "none",
+                    borderRadius: "8px",
+                    padding: "0.6rem 1.1rem",
+                    fontSize: "0.88rem",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "0.35rem",
+                  }}
+                >
+                  ✏️ View / Edit Questions ({preTest.question_count || 0})
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onBulkUpload) onBulkUpload(preTest);
+                  }}
+                  style={{
+                    background: "#eff6ff",
+                    color: "#1e40af",
+                    border: "1px solid #bfdbfe",
+                    borderRadius: "8px",
+                    padding: "0.6rem 1rem",
+                    fontSize: "0.88rem",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  📥 Upload Questions
+                </button>
+
+                <a
+                  href={`/assessment/4?preview=true`}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    background: "#f1f5f9",
+                    color: "#334155",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "8px",
+                    padding: "0.6rem 0.9rem",
+                    fontSize: "0.88rem",
+                    fontWeight: 700,
+                    textDecoration: "none",
+                    display: "inline-flex",
+                    alignItems: "center",
+                  }}
+                >
+                  👁️ Preview
+                </a>
+              </div>
+            </div>
+
+            {/* 2. Post-Training Assessment Card */}
+            <div
+              style={{
+                background: "#ffffff",
+                border: "1.5px solid #bbf7d0",
+                borderRadius: "14px",
+                padding: "1.75rem",
+                boxShadow: "0 4px 12px rgba(16, 185, 129, 0.08)",
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "space-between",
+              }}
+            >
+              <div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+                  <span
+                    style={{
+                      background: "#dcfce7",
+                      color: "#166534",
+                      padding: "0.25rem 0.75rem",
+                      borderRadius: "999px",
+                      fontSize: "0.78rem",
+                      fontWeight: 800,
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    🎓 POST-TEST (ID: 5)
+                  </span>
+                  <span style={{ fontSize: "0.78rem", color: "#166534", background: "#dcfce7", padding: "0.2rem 0.6rem", borderRadius: "6px", fontWeight: 700 }}>
+                    🔓 Open Now
+                  </span>
+                </div>
+
+                <h3 style={{ margin: "0 0 0.5rem 0", fontSize: "1.25rem", fontWeight: 800, color: "#0f172a" }}>
+                  {postTest.title}
+                </h3>
+                <p style={{ color: "#475569", fontSize: "0.88rem", margin: "0 0 1.25rem 0", lineHeight: 1.5 }}>
+                  Summative final workshop evaluation measuring gains in teacher pedagogical confidence, pacing compliance, and mastery of treatment guidelines.
+                </p>
+
+                <div
+                  style={{
+                    background: "#f8fafc",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: "10px",
+                    padding: "1rem",
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: "1rem",
+                    marginBottom: "1.5rem",
+                  }}
+                >
+                  <div>
+                    <span style={{ fontSize: "0.75rem", color: "#64748b", textTransform: "uppercase", display: "block" }}>
+                      Questions Count
+                    </span>
+                    <strong
+                      style={{
+                        fontSize: "1.3rem",
+                        color: postTest.question_count > 0 ? "#15803d" : "#d97706",
+                      }}
+                    >
+                      {postTest.question_count || 0} Questions
+                    </strong>
+                    <span style={{ fontSize: "0.75rem", color: "#64748b", display: "block" }}>
+                      {postTest.question_count > 0 ? "Uploaded & Available" : "No questions uploaded yet"}
+                    </span>
+                  </div>
+
+                  <div>
+                    <span style={{ fontSize: "0.75rem", color: "#64748b", textTransform: "uppercase", display: "block" }}>
+                      Submissions
+                    </span>
+                    <strong style={{ fontSize: "1.3rem", color: "#0f172a" }}>
+                      {postTest.submission_count || 0} Done
+                    </strong>
+                    <span style={{ fontSize: "0.75rem", color: "#64748b", display: "block" }}>
+                      Time limit: {postTest.time_limit_minutes || 20} mins
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap", borderTop: "1px solid #f1f5f9", paddingTop: "1.25rem" }}>
+                <button
+                  type="button"
+                  onClick={() => handleOpenQuestionsModal(postTest)}
+                  style={{
+                    background: "#16a34a",
+                    color: "#ffffff",
+                    border: "none",
+                    borderRadius: "8px",
+                    padding: "0.6rem 1.1rem",
+                    fontSize: "0.88rem",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "0.35rem",
+                  }}
+                >
+                  ✏️ View / Edit Questions ({postTest.question_count || 0})
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onBulkUpload) onBulkUpload(postTest);
+                  }}
+                  style={{
+                    background: "#f0fdf4",
+                    color: "#166534",
+                    border: "1px solid #bbf7d0",
+                    borderRadius: "8px",
+                    padding: "0.6rem 1rem",
+                    fontSize: "0.88rem",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  📥 Upload Questions
+                </button>
+
+                <a
+                  href={`/assessment/5?preview=true`}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    background: "#f1f5f9",
+                    color: "#334155",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "8px",
+                    padding: "0.6rem 0.9rem",
+                    fontSize: "0.88rem",
+                    fontWeight: 700,
+                    textDecoration: "none",
+                    display: "inline-flex",
+                    alignItems: "center",
+                  }}
+                >
+                  👁️ Preview
+                </a>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* SUB-VIEW 2: REGISTERED PARTICIPANTS */}
-      {activeSubTab === "participants" && (
-        <div className="table-wrap">
-          <table className="assessments-admin-table">
-            <thead>
-              <tr>
-                <th style={{ width: "13%" }}>Ref Code</th>
-                <th style={{ width: "20%" }}>Staff Name & Sex</th>
-                <th style={{ width: "12%" }}>Designation</th>
-                <th style={{ width: "13%" }}>Phone Number</th>
-                <th style={{ width: "24%" }}>School & EMIS</th>
-                <th style={{ width: "18%" }}>Study Group</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loadingParticipants && (
-                <tr>
-                  <td colSpan={6} className="empty-row">
-                    Loading participants…
-                  </td>
-                </tr>
+      {/* BUILT-IN INTERACTIVE QUESTIONS VIEWER & EDITOR MODAL */}
+      {editingModalAssessment && (
+        <div
+          className="auth-overlay-backdrop"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(15, 23, 42, 0.75)",
+            zIndex: 1100,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "1rem",
+          }}
+        >
+          <div
+            className="form-card"
+            style={{
+              maxWidth: "850px",
+              width: "100%",
+              maxHeight: "90vh",
+              display: "flex",
+              flexDirection: "column",
+              padding: 0,
+              overflow: "hidden",
+              borderRadius: "14px",
+            }}
+          >
+            {/* Modal Header */}
+            <div
+              style={{
+                padding: "1.25rem 1.75rem",
+                background: "linear-gradient(135deg, #1e293b, #0f172a)",
+                color: "#ffffff",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <div>
+                <span
+                  style={{
+                    fontSize: "0.75rem",
+                    background: "rgba(255, 255, 255, 0.2)",
+                    padding: "0.2rem 0.5rem",
+                    borderRadius: "6px",
+                    fontWeight: 700,
+                  }}
+                >
+                  {editingModalAssessment.type}
+                </span>
+                <h3 style={{ margin: "0.35rem 0 0", fontSize: "1.2rem", fontWeight: 800 }}>
+                  Edit Questions: {editingModalAssessment.title}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingModalAssessment(null)}
+                style={{
+                  background: "rgba(255, 255, 255, 0.15)",
+                  border: "none",
+                  color: "#ffffff",
+                  fontSize: "1.2rem",
+                  width: "36px",
+                  height: "36px",
+                  borderRadius: "50%",
+                  cursor: "pointer",
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: "1.5rem 1.75rem", overflowY: "auto", flex: 1 }}>
+              {saveSuccessMsg && (
+                <div
+                  style={{
+                    background: "#dcfce7",
+                    border: "1px solid #86efac",
+                    color: "#166534",
+                    padding: "0.85rem 1rem",
+                    borderRadius: "8px",
+                    marginBottom: "1rem",
+                    fontWeight: 700,
+                    fontSize: "0.9rem",
+                  }}
+                >
+                  {saveSuccessMsg}
+                </div>
               )}
-              {!loadingParticipants && participants.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="empty-row">
-                    No participants found matching the active filter.
-                  </td>
-                </tr>
+
+              {saveErrorMsg && (
+                <div
+                  style={{
+                    background: "#fee2e2",
+                    border: "1px solid #fca5a5",
+                    color: "#991b1b",
+                    padding: "0.85rem 1rem",
+                    borderRadius: "8px",
+                    marginBottom: "1rem",
+                    fontWeight: 700,
+                    fontSize: "0.9rem",
+                  }}
+                >
+                  {saveErrorMsg}
+                </div>
               )}
-              {participants.map((p) => (
-                <tr key={p.id}>
-                  <td>
-                    <span className="ref-tag" style={{ background: "#e0f2fe", color: "#0369a1" }}>
-                      {p.referenceCode}
+
+              {loadingQuestions ? (
+                <div style={{ padding: "3rem", textAlign: "center", color: "#64748b" }}>
+                  Loading assessment questions…
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: "0.92rem", fontWeight: 700, color: "#334155" }}>
+                      Total Questions in Test: {editingQuestions.length}
                     </span>
-                  </td>
-                  <td>
-                    <div style={{ display: "flex", flexDirection: "column" }}>
-                      <strong>{p.officerName}</strong>
-                      <span style={{ fontSize: "0.82rem", color: "#64748b" }}>{p.sex}</span>
-                    </div>
-                  </td>
-                  <td>
-                    <span
+                    <button
+                      type="button"
+                      onClick={handleAddQuestion}
+                      className="btn-secondary"
+                      style={{ padding: "0.45rem 0.85rem", fontSize: "0.82rem", fontWeight: 700 }}
+                    >
+                      + Add New Question
+                    </button>
+                  </div>
+
+                  {editingQuestions.map((q, qIdx) => (
+                    <div
+                      key={q.id || qIdx}
                       style={{
-                        padding: "0.25rem 0.6rem",
-                        borderRadius: "6px",
-                        fontSize: "0.82rem",
-                        fontWeight: 700,
-                        background: p.designation === "Headteacher" ? "#ede9fe" : "#ccfbf1",
-                        color: p.designation === "Headteacher" ? "#6d28d9" : "#0f766e",
+                        background: "#f8fafc",
+                        border: "1px solid #e2e8f0",
+                        borderRadius: "10px",
+                        padding: "1.25rem",
+                        position: "relative",
                       }}
                     >
-                      {p.designation}
-                    </span>
-                  </td>
-                  <td>
-                    <a href={`tel:${p.phoneNumber}`} className="phone-link">
-                      {p.phoneNumber}
-                    </a>
-                  </td>
-                  <td>
-                    <div style={{ display: "flex", flexDirection: "column" }}>
-                      <strong>{p.schoolName}</strong>
-                      <span style={{ fontSize: "0.8rem", color: "#64748b", fontFamily: "monospace" }}>
-                        EMIS: {p.emisCode} · {p.district}, {p.region}
-                      </span>
-                    </div>
-                  </td>
-                  <td>
-                    <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem" }}>
-                      <span
+                      <div
                         style={{
-                          display: "inline-block",
-                          padding: "0.2rem 0.6rem",
-                          borderRadius: "999px",
-                          fontSize: "0.78rem",
-                          fontWeight: 700,
-                          width: "fit-content",
-                          background:
-                            p.studyGroup === "Group 1"
-                              ? "#dbeafe"
-                              : p.studyGroup === "Group 2"
-                              ? "#fef3c7"
-                              : "#dcfce7",
-                          color:
-                            p.studyGroup === "Group 1"
-                              ? "#1e40af"
-                              : p.studyGroup === "Group 2"
-                              ? "#92400e"
-                              : "#166534",
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          marginBottom: "0.75rem",
                         }}
                       >
-                        {p.studyGroup}
-                      </span>
-                      {p.treatment && (
-                        <span style={{ fontSize: "0.74rem", color: "#64748b" }}>{p.treatment}</span>
-                      )}
+                        <span
+                          style={{
+                            fontWeight: 800,
+                            fontSize: "0.92rem",
+                            background: "#0f172a",
+                            color: "#ffffff",
+                            padding: "0.2rem 0.6rem",
+                            borderRadius: "6px",
+                          }}
+                        >
+                          Q{qIdx + 1}
+                        </span>
+
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                            <span style={{ fontSize: "0.78rem", color: "#64748b", fontWeight: 600 }}>Points:</span>
+                            <input
+                              type="number"
+                              min={1}
+                              value={q.points || 2}
+                              onChange={(e) => handleQuestionChange(qIdx, "points", Number(e.target.value))}
+                              style={{ width: "55px", padding: "0.25rem 0.4rem", borderRadius: "4px", border: "1px solid #cbd5e1", fontSize: "0.82rem" }}
+                            />
+                          </div>
+
+                          {editingQuestions.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveQuestion(qIdx)}
+                              style={{
+                                background: "none",
+                                border: "none",
+                                color: "#dc2626",
+                                cursor: "pointer",
+                                fontSize: "0.82rem",
+                                fontWeight: 700,
+                              }}
+                            >
+                              🗑️ Delete
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Prompt */}
+                      <div style={{ marginBottom: "1rem" }}>
+                        <label
+                          style={{
+                            display: "block",
+                            fontSize: "0.82rem",
+                            fontWeight: 700,
+                            color: "#334155",
+                            marginBottom: "0.35rem",
+                          }}
+                        >
+                          Question Prompt / Text
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={q.questionText}
+                          onChange={(e) => handleQuestionChange(qIdx, "questionText", e.target.value)}
+                          placeholder="Enter question statement here..."
+                          style={{
+                            width: "100%",
+                            padding: "0.6rem 0.8rem",
+                            borderRadius: "8px",
+                            border: "1px solid #cbd5e1",
+                            fontSize: "0.9rem",
+                            fontFamily: "inherit",
+                          }}
+                        />
+                      </div>
+
+                      {/* Options & Correct Answer */}
+                      <div>
+                        <label
+                          style={{
+                            display: "block",
+                            fontSize: "0.82rem",
+                            fontWeight: 700,
+                            color: "#334155",
+                            marginBottom: "0.4rem",
+                          }}
+                        >
+                          Answer Choices (Select radio button for Correct Answer)
+                        </label>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "0.5rem" }}>
+                          {(q.options || ["", "", "", ""]).map((opt, optIdx) => {
+                            const optLetter = String.fromCharCode(65 + optIdx);
+                            const isCorrect = q.correctAnswer && (q.correctAnswer === opt || q.correctAnswer === optLetter);
+                            return (
+                              <div
+                                key={optIdx}
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "0.6rem",
+                                  background: isCorrect ? "#f0fdf4" : "#ffffff",
+                                  border: isCorrect ? "1.5px solid #86efac" : "1px solid #e2e8f0",
+                                  borderRadius: "8px",
+                                  padding: "0.45rem 0.75rem",
+                                }}
+                              >
+                                <input
+                                  type="radio"
+                                  name={`correct-${qIdx}`}
+                                  checked={Boolean(isCorrect)}
+                                  onChange={() => handleQuestionChange(qIdx, "correctAnswer", opt || optLetter)}
+                                  title="Mark as correct answer"
+                                  style={{ cursor: "pointer", width: "16px", height: "16px" }}
+                                />
+                                <span style={{ fontWeight: 800, fontSize: "0.85rem", color: isCorrect ? "#15803d" : "#64748b" }}>
+                                  {optLetter}.
+                                </span>
+                                <input
+                                  type="text"
+                                  value={opt}
+                                  onChange={(e) => {
+                                    handleOptionChange(qIdx, optIdx, e.target.value);
+                                    if (isCorrect) {
+                                      handleQuestionChange(qIdx, "correctAnswer", e.target.value);
+                                    }
+                                  }}
+                                  placeholder={`Option ${optLetter}`}
+                                  style={{
+                                    flex: 1,
+                                    border: "none",
+                                    outline: "none",
+                                    background: "transparent",
+                                    fontSize: "0.88rem",
+                                  }}
+                                />
+                                {isCorrect && (
+                                  <span style={{ fontSize: "0.75rem", fontWeight: 800, color: "#16a34a" }}>
+                                    ✓ Correct Key
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  ))}
+
+                  <button
+                    type="button"
+                    onClick={handleAddQuestion}
+                    className="btn-secondary"
+                    style={{ padding: "0.75rem", fontSize: "0.88rem", fontWeight: 700 }}
+                  >
+                    + Add Another Question
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div
+              style={{
+                padding: "1rem 1.75rem",
+                background: "#f8fafc",
+                borderTop: "1px solid #e2e8f0",
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: "0.75rem",
+              }}
+            >
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setEditingModalAssessment(null)}
+                disabled={savingQuestions}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={handleSaveQuestions}
+                disabled={savingQuestions}
+                style={{ padding: "0.6rem 1.5rem" }}
+              >
+                {savingQuestions ? "Saving Questions…" : `💾 Save All Questions (${editingQuestions.length})`}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

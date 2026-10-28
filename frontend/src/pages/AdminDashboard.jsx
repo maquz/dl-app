@@ -3349,6 +3349,8 @@ export default function AdminDashboard() {
             <SampleSchoolsAdminTab
               onBulkUpload={handleOpenBulkUpload}
               assessmentsList={assessmentsList}
+              onEditAssessment={handleOpenEditAssessment}
+              onRefreshAssessments={loadAssessmentsData}
             />
           )}
 

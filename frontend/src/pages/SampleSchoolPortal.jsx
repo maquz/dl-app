@@ -133,6 +133,24 @@ export default function SampleSchoolPortal() {
     navigate("/schools", { replace: true });
   }
 
+  function handlePreTrainingCardClick() {
+    if (preSub) {
+      setActiveTab("pre-test");
+    } else {
+      const targetId = preTest?.id || 4;
+      navigate(`/assessment/${targetId}`, { state: { nominee } });
+    }
+  }
+
+  function handlePostTrainingCardClick() {
+    if (postSub) {
+      setActiveTab("post-test");
+    } else {
+      const targetId = postTest?.id || 5;
+      navigate(`/assessment/${targetId}`, { state: { nominee } });
+    }
+  }
+
   return (
     <div className="glass-dashboard-wrapper" style={{ maxWidth: "1000px", margin: "1.5rem auto", padding: "0 1rem" }}>
       {/* Hero Card */}
@@ -191,49 +209,57 @@ export default function SampleSchoolPortal() {
         </div>
       </div>
 
-      {/* Navigation Tabs */}
+      {/* Navigation Tabs / Clickable Quick Launch Cards */}
       <div className="glass-metrics-grid no-print" style={{
         display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
         gap: "1rem", marginBottom: "1.5rem"
       }}>
+        {/* Pre-Training Card */}
         <div
-          onClick={() => setActiveTab("pre-test")}
+          onClick={handlePreTrainingCardClick}
+          title={preSub ? "Click to view your submitted Pre-Test results" : "Click to launch Pre-Training Diagnostic Assessment immediately"}
           style={{
             background: "#ffffff", padding: "1.25rem 1rem", borderRadius: "12px", textAlign: "center",
             cursor: "pointer", border: activeTab === "pre-test" ? "2px solid #005BBB" : "1px solid #e2e8f0",
-            boxShadow: activeTab === "pre-test" ? "0 4px 12px rgba(0, 91, 187, 0.15)" : "none",
-            transition: "all 0.15s ease"
+            boxShadow: activeTab === "pre-test" ? "0 4px 12px rgba(0, 91, 187, 0.15)" : "0 2px 4px rgba(0, 0, 0, 0.04)",
+            transition: "all 0.15s ease",
+            position: "relative"
           }}
         >
           <div style={{ fontSize: "1.6rem", marginBottom: "0.25rem" }}>📝</div>
           <strong style={{ display: "block", color: "#0f172a", fontSize: "0.95rem" }}>Pre-Training</strong>
-          <span style={{ fontSize: "0.75rem", color: "#64748b" }}>
-            {preSub ? `Completed (${preSub.percentage}%)` : "Diagnostic Assessment"}
+          <span style={{ fontSize: "0.75rem", color: preSub ? "#15803d" : "#0284c7", fontWeight: 700 }}>
+            {preSub ? `Completed (${preSub.percentage}%) ✓` : "Diagnostic Assessment · Click to Begin 🚀"}
           </span>
         </div>
 
+        {/* Post-Training Card */}
         <div
-          onClick={() => setActiveTab("post-test")}
+          onClick={handlePostTrainingCardClick}
+          title={postSub ? "Click to view your submitted Post-Test results" : "Click to launch Post-Training Final Workshop Test immediately"}
           style={{
             background: "#ffffff", padding: "1.25rem 1rem", borderRadius: "12px", textAlign: "center",
             cursor: "pointer", border: activeTab === "post-test" ? "2px solid #005BBB" : "1px solid #e2e8f0",
-            boxShadow: activeTab === "post-test" ? "0 4px 12px rgba(0, 91, 187, 0.15)" : "none",
-            transition: "all 0.15s ease"
+            boxShadow: activeTab === "post-test" ? "0 4px 12px rgba(0, 91, 187, 0.15)" : "0 2px 4px rgba(0, 0, 0, 0.04)",
+            transition: "all 0.15s ease",
+            position: "relative"
           }}
         >
           <div style={{ fontSize: "1.6rem", marginBottom: "0.25rem" }}>🎓</div>
           <strong style={{ display: "block", color: "#0f172a", fontSize: "0.95rem" }}>Post-Training</strong>
-          <span style={{ fontSize: "0.75rem", color: "#64748b" }}>
-            {postSub ? `Completed (${postSub.percentage}%)` : "Final Workshop Test"}
+          <span style={{ fontSize: "0.75rem", color: postSub ? "#15803d" : "#d97706", fontWeight: 700 }}>
+            {postSub ? `Completed (${postSub.percentage}%) ✓` : "Final Workshop Test · Click to Begin 🚀"}
           </span>
         </div>
 
+        {/* Workshop Slip Card */}
         <div
           onClick={() => setActiveTab("slip")}
+          title="Click to view and print your verified Workshop Slip"
           style={{
             background: "#ffffff", padding: "1.25rem 1rem", borderRadius: "12px", textAlign: "center",
             cursor: "pointer", border: activeTab === "slip" ? "2px solid #005BBB" : "1px solid #e2e8f0",
-            boxShadow: activeTab === "slip" ? "0 4px 12px rgba(0, 91, 187, 0.15)" : "none",
+            boxShadow: activeTab === "slip" ? "0 4px 12px rgba(0, 91, 187, 0.15)" : "0 2px 4px rgba(0, 0, 0, 0.04)",
             transition: "all 0.15s ease"
           }}
         >
@@ -295,34 +321,19 @@ export default function SampleSchoolPortal() {
             </div>
           ) : (
             <>
-              {preTest && preTest.question_count > 0 ? (
-                <div style={{ margin: "1.5rem 0" }}>
-                  <Link
-                    to={`/assessment/${preTest.id}`}
-                    state={{ nominee }}
-                    className="btn-primary"
-                    style={{
-                      display: "inline-block", padding: "0.9rem 2rem", fontSize: "1.05rem",
-                      fontWeight: 700, textDecoration: "none", borderRadius: "8px"
-                    }}
-                  >
-                    Take Pre-Training Assessment Now →
-                  </Link>
-                </div>
-              ) : (
-                <div style={{
-                  background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "10px",
-                  padding: "1.25rem", margin: "1.5rem 0", color: "#1e40af"
-                }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.35rem" }}>
-                    <span style={{ fontSize: "1.2rem" }}>ℹ️</span>
-                    <strong style={{ fontSize: "0.95rem" }}>Questions Being Prepared</strong>
-                  </div>
-                  <p style={{ margin: 0, fontSize: "0.88rem", lineHeight: 1.5 }}>
-                    The Pre-Training Assessment questions for the Sample Schools Workshop are currently being uploaded by facilitators. Please check back shortly or listen for instructions from the workshop lead.
-                  </p>
-                </div>
-              )}
+              <div style={{ margin: "1.5rem 0" }}>
+                <Link
+                  to={`/assessment/${preTest?.id || 4}`}
+                  state={{ nominee }}
+                  className="btn-primary"
+                  style={{
+                    display: "inline-block", padding: "0.9rem 2rem", fontSize: "1.05rem",
+                    fontWeight: 700, textDecoration: "none", borderRadius: "8px"
+                  }}
+                >
+                  Take Pre-Training Assessment Now →
+                </Link>
+              </div>
             </>
           )}
 
@@ -389,40 +400,20 @@ export default function SampleSchoolPortal() {
               </div>
             </div>
           ) : (
-            <>
-              {postTest && !isPostLocked && postTest.question_count > 0 ? (
-                <div style={{ margin: "1.5rem 0" }}>
-                  <Link
-                    to={`/assessment/${postTest.id}`}
-                    state={{ nominee }}
-                    className="btn-primary"
-                    style={{
-                      display: "inline-block", padding: "0.9rem 2rem", fontSize: "1.05rem",
-                      fontWeight: 700, textDecoration: "none", borderRadius: "8px"
-                    }}
-                  >
-                    Take Post-Training Assessment Now →
-                  </Link>
-                </div>
-              ) : (
-                <div style={{
-                  background: "#fffbeb", border: "1px solid #fde68a", borderRadius: "10px",
-                  padding: "1.25rem", margin: "1.5rem 0", color: "#92400e"
-                }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.35rem" }}>
-                    <span style={{ fontSize: "1.2rem" }}>🔒</span>
-                    <strong style={{ fontSize: "0.95rem" }}>
-                      {postTest?.question_count === 0 ? "Questions Being Prepared" : "Assessment Scheduled / Locked"}
-                    </strong>
-                  </div>
-                  <p style={{ margin: 0, fontSize: "0.88rem", lineHeight: 1.5 }}>
-                    {postTest?.question_count === 0
-                      ? "The Post-Training Assessment questions will be available here once facilitators publish the final test."
-                      : "This assessment unlocks on Thursday, 29th October, 2026 at the conclusion of all training sessions."}
-                  </p>
-                </div>
-              )}
-            </>
+              <div style={{ margin: "1.5rem 0" }}>
+                <Link
+                  to={`/assessment/${postTest?.id || 5}`}
+                  state={{ nominee }}
+                  className="btn-primary"
+                  style={{
+                    display: "inline-block", padding: "0.9rem 2rem", fontSize: "1.05rem",
+                    fontWeight: 700, textDecoration: "none", borderRadius: "8px",
+                    background: "#059669", borderColor: "#059669"
+                  }}
+                >
+                  Take Post-Training Assessment Now →
+                </Link>
+              </div>
           )}
         </div>
       )}

@@ -176,16 +176,25 @@ router.get("/", async (req, res) => {
   }
 
   const enriched = assessments.map((a) => {
-    const lockInfo = getAssessmentLockStatus(a, cohortId);
+    let targetProg = a.target_program;
+    if (!targetProg) {
+      if (a.id === 4 || a.id === 5) targetProg = "sample_school";
+      else if (a.title && (a.title.toLowerCase().includes("sample school") || a.title.toLowerCase().includes("galop af2"))) {
+        targetProg = "sample_school";
+      } else {
+        targetProg = "master_trainer";
+      }
+    }
+    const lockInfo = getAssessmentLockStatus({ ...a, target_program: targetProg }, cohortId);
     return {
       ...a,
-      target_program: a.target_program || "master_trainer",
+      target_program: targetProg,
       study_group: a.study_group || "all",
       unlock_time: a.unlock_time || "19:00",
       unlock_date_type: a.unlock_date_type || (a.type === "Post-Test" ? "end_date" : "arrival_date"),
-      lock_mode: a.lock_mode || "scheduled",
+      lock_mode: a.lock_mode || (targetProg === "sample_school" ? "open_now" : "scheduled"),
       lockInfo,
-      isLocked: lockInfo.isLocked,
+      isLocked: targetProg === "sample_school" ? false : lockInfo.isLocked,
     };
   });
 
