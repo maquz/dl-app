@@ -143,11 +143,39 @@ export default function AssessmentTake() {
     }
   }
 
+  const isSampleSchool =
+    nomineeProfile?.programType === "sample_school" ||
+    nomineeProfile?.designation === "Headteacher" ||
+    nomineeProfile?.designation === "Teacher" ||
+    String(id) === "4" ||
+    String(id) === "5";
+  const backUrl = isSampleSchool ? "/schools/portal" : "/confirmation";
+  const backLabel = isSampleSchool ? "← Back to Sample Schools Portal" : "← Back to Nominated Officer Portal";
+
   if (loading) {
     return (
-      <div className="page-narrow">
-        <div className="banner banner-info" style={{ textAlign: "center", padding: "2rem" }}>
-          Loading assessment details…
+      <div className="page-narrow" style={{ maxWidth: "560px", margin: "3rem auto", padding: "0 1rem" }}>
+        <div className="form-card" style={{ textAlign: "center", padding: "2.5rem 1.5rem" }}>
+          <div style={{ fontSize: "2rem", marginBottom: "1rem" }}>⏳</div>
+          <h2 style={{ fontSize: "1.25rem", fontWeight: 700, color: "#0f172a", marginBottom: "0.5rem" }}>
+            Loading Assessment Items…
+          </h2>
+          <p style={{ color: "#64748b", fontSize: "0.9rem", marginBottom: "1.5rem" }}>
+            Preparing your randomized questions. Please wait a moment.
+          </p>
+          <div style={{ display: "flex", gap: "0.75rem", justifyContent: "center" }}>
+            <Link to={backUrl} className="btn-secondary" style={{ fontSize: "0.85rem" }}>
+              {backLabel}
+            </Link>
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={() => window.location.reload()}
+              style={{ fontSize: "0.85rem" }}
+            >
+              🔄 Reload Test
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -155,11 +183,28 @@ export default function AssessmentTake() {
 
   if (error) {
     return (
-      <div className="page-narrow">
-        <div className="banner banner-error">{error}</div>
-        <Link to="/confirmation" className="btn-secondary" style={{ marginTop: "1rem", display: "inline-block" }}>
-          ← Back to Nominated Officer Portal
-        </Link>
+      <div className="page-narrow" style={{ maxWidth: "600px", margin: "2rem auto", padding: "0 1rem" }}>
+        <div className="form-card" style={{ padding: "2rem", textAlign: "center" }}>
+          <div style={{ fontSize: "2.5rem", marginBottom: "0.75rem" }}>⚠️</div>
+          <h2 style={{ fontSize: "1.3rem", fontWeight: 700, color: "#0f172a", marginBottom: "0.5rem" }}>
+            Unable to Load Assessment
+          </h2>
+          <div className="banner banner-error" style={{ textAlign: "left", marginBottom: "1.5rem", fontSize: "0.88rem" }}>
+            {error}
+          </div>
+          <div style={{ display: "flex", gap: "1rem", justifyContent: "center", flexWrap: "wrap" }}>
+            <Link to={backUrl} className="btn-secondary">
+              {backLabel}
+            </Link>
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={() => window.location.reload()}
+            >
+              🔄 Try Again
+            </button>
+          </div>
+        </div>
       </div>
     );
   }

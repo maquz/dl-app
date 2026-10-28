@@ -2,6 +2,7 @@ const XLSX = require("xlsx");
 const express = require("express");
 const db = require("../db");
 const { trainerOrAdminAuth } = require("../middleware/adminAuth");
+const supabase = require("../supabase");
 
 const router = express.Router();
 
@@ -26,6 +27,20 @@ function getAssessmentLockStatus(assessment, candidateCohortId = 1) {
       unlockDateFormatted: "Open Now",
       unlockTime: "Immediate",
     };
+  }
+
+  // Sample schools track (Pre-Test & Post-Test) are open now unless explicitly forced locked or inactive
+  if (assessment.target_program === "sample_school" || String(assessment.id) === "4" || String(assessment.id) === "5") {
+    if (assessment.lock_mode !== "locked" && assessment.lock_mode !== "force_locked" && assessment.is_active !== 0) {
+      return {
+        isLocked: false,
+        lockMode: "unlocked",
+        statusText: "Open for Taking",
+        unlockDateTimeIso: null,
+        unlockDateFormatted: "Open Now",
+        unlockTime: "Immediate",
+      };
+    }
   }
 
   // Force Locked mode or inactive

@@ -140,11 +140,16 @@ router.get("/meta/regions", (req, res) => {
 
 // GET /api/registrations/my-nomination - Check if an officer is already registered
 router.get("/my-nomination", async (req, res) => {
-  const phone = (req.query.phone || req.query.phoneNumber || "").trim();
+  const rawPhone = (req.query.phone || req.query.phoneNumber || "").trim();
+  const digits = rawPhone.replace(/\D/g, "");
+  let hyphenPhone = rawPhone;
+  if (digits.length === 10) {
+    hyphenPhone = `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
+  }
   const email = (req.query.email || "").trim();
   const name = (req.query.name || req.query.officerName || "").trim();
 
-  if (!phone && !email && !name) {
+  if (!rawPhone && !email && !name) {
     return res.json({ hasRegistered: false, nominee: null });
   }
 
@@ -152,8 +157,15 @@ router.get("/my-nomination", async (req, res) => {
   if (supabase) {
     try {
       let q = supabase.from("registrations").select("*").limit(100000);
-      if (phone) q = q.eq("phone_number", phone);
-      else if (email) q = q.ilike("email", email);
+      if (rawPhone) {
+        if (hyphenPhone !== rawPhone) {
+          q = q.or(`phone_number.eq.${rawPhone},phone_number.eq.${hyphenPhone}`);
+        } else {
+          q = q.eq("phone_number", rawPhone);
+        }
+      } else if (email) {
+        q = q.ilike("email", email);
+      }
       const { data, error } = await q.maybeSingle();
       if (!error && data) {
         return res.json({ hasRegistered: true, nominee: formatNomineeRecord(data) });
@@ -165,14 +177,14 @@ router.get("/my-nomination", async (req, res) => {
 
   // 2. Fallback to local SQLite
   let row = null;
-  if (phone) {
-    row = db.prepare("SELECT * FROM registrations WHERE phone_number = ?").get(phone);
+  if (rawPhone) {
+    row = db.prepare("SELECT * FROM registrations WHERE phone_number = ? OR phone_number = ?").get(rawPhone, hyphenPhone);
   }
   if (!row && email) {
     row = db.prepare("SELECT * FROM registrations WHERE LOWER(email) = LOWER(?)").get(email);
   }
-  if (!row && name && phone) {
-    row = db.prepare("SELECT * FROM registrations WHERE LOWER(officer_name) = LOWER(?) AND phone_number = ?").get(name, phone);
+  if (!row && name && (rawPhone || hyphenPhone)) {
+    row = db.prepare("SELECT * FROM registrations WHERE LOWER(officer_name) = LOWER(?) AND (phone_number = ? OR phone_number = ?)").get(name, rawPhone, hyphenPhone);
   }
 
   if (row) {
