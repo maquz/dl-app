@@ -56,7 +56,10 @@ export async function fetchRegions() {
 
 export async function fetchMyNomination(params = {}) {
   const query = new URLSearchParams(params).toString();
-  const res = await fetch(`${API_URL}/registrations/my-nomination?${query}`);
+  const res = await fetch(`${API_URL}/registrations/my-nomination?${query}`, {
+    cache: "no-store",
+    headers: { "Cache-Control": "no-cache", "Pragma": "no-cache" },
+  });
   return handle(res);
 }
 
@@ -317,9 +320,17 @@ export async function fetchTrainerProfile(token) {
 // ---------------------------------------------------
 // Assessments (Pre-Test & Post-Test) API
 // ---------------------------------------------------
-export async function fetchAssessments() {
-  const res = await fetch(`${API_URL}/assessments`);
-  return handle(res);
+export async function fetchAssessments(params = {}) {
+  const query = new URLSearchParams(params).toString();
+  const res = await fetch(`${API_URL}/assessments${query ? `?${query}` : ""}`, {
+    cache: "no-store",
+    headers: { "Cache-Control": "no-cache" },
+  });
+  const data = await handle(res);
+  if (Array.isArray(data)) {
+    return { count: data.length, assessments: data };
+  }
+  return data;
 }
 
 export async function fetchAssessmentOverviewStats(cohortId = "") {
@@ -498,8 +509,15 @@ export async function fetchSampleSchoolStats() {
 }
 
 export async function fetchSampleSchoolAssessments() {
-  const res = await fetch(`${API_URL}/assessments?program_type=sample_school`);
-  return handle(res);
+  const res = await fetch(`${API_URL}/assessments?program_type=sample_school`, {
+    cache: "no-store",
+    headers: { "Cache-Control": "no-cache" },
+  });
+  const data = await handle(res);
+  if (Array.isArray(data)) {
+    return { count: data.length, assessments: data };
+  }
+  return data;
 }
 
 export async function fetchSampleSchoolParticipants(params = {}) {

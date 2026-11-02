@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { fetchSampleSchools, fetchSampleSchoolHierarchy, registerSampleSchool, fetchMyNomination, fetchSampleSchoolAssessments } from "../api";
 
 function formatPhoneAsTyped(raw) {
@@ -10,15 +10,16 @@ function formatPhoneAsTyped(raw) {
 
 export default function SampleSchoolRegister() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Phase state: 'verify' (default upfront check) | 'register' (if phone not found)
-  const [step, setStep] = useState("verify");
+  const [step, setStep] = useState(() => (location.state?.startAtRegister ? "register" : "verify"));
 
   // Verification states
   const [verifyPhone, setVerifyPhone] = useState("");
   const [verifying, setVerifying] = useState(false);
   const [verifyError, setVerifyError] = useState("");
-  const [verifyNotice, setVerifyNotice] = useState("");
+  const [verifyNotice, setVerifyNotice] = useState(() => location.state?.notice || "");
 
   // Data states
   const [hierarchy, setHierarchy] = useState({ regions: [], districtsByRegion: {} });
@@ -30,7 +31,7 @@ export default function SampleSchoolRegister() {
   const [selectedDistrict, setSelectedDistrict] = useState("");
   const [selectedSchoolId, setSelectedSchoolId] = useState("");
   const [officerName, setOfficerName] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState(() => location.state?.initialPhone || "");
   const [sex, setSex] = useState("");
   const [designation, setDesignation] = useState("Teacher"); // strictly 'Headteacher' | 'Teacher'
 

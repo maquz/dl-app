@@ -193,20 +193,19 @@ export default function RegistrationForm() {
   }
 
   async function handlePopupSubmit() {
-    if (!PHONE_REGEX.test(authPopupPhone)) {
-      setAuthPopupError("Please enter a valid phone number (e.g. 024-498-9910).");
-      return;
-    }
-    if (authPopupPhone.replace(/\D/g, "").startsWith("233")) {
-      setAuthPopupError("Please enter your local 10-digit number starting with 0 (do not use the 233 country code).");
+    const raw = (authPopupPhone || "").trim();
+    const digits = raw.replace(/\D/g, "");
+    if (digits.length !== 10) {
+      setAuthPopupError("Please enter your 10-digit mobile number (e.g. 0244000000).");
       return;
     }
     setAuthPopupError("");
     setAuthPopupLoading(true);
     try {
-      const res = await fetchMyNomination({ phone: authPopupPhone });
+      const res = await fetchMyNomination({ phone: raw });
       if (res.hasRegistered && res.nominee) {
         sessionStorage.setItem("recent_nominee", JSON.stringify(res.nominee));
+        localStorage.setItem("officer_profile", JSON.stringify(res.nominee));
         if (res.nominee.programType === "sample_school") {
           navigate("/schools/portal", {
             replace: true,
@@ -219,10 +218,17 @@ export default function RegistrationForm() {
           state: { nominee: res.nominee, activeTab: "pre-test", justLoggedIn: true },
         });
       } else {
-        setAuthPopupError("No registration found with this phone number. Registration is closed. Please check your number or contact the DL Secretariat.");
+        // Not yet registered! Seamlessly guide to Sample School Registration starting at "1. School Selection & Verification"
+        navigate("/schools", {
+          state: {
+            startAtRegister: true,
+            initialPhone: raw,
+            notice: `Phone number ${raw} is not yet registered. Please select your Region, District, and School below to complete your registration.`
+          }
+        });
       }
     } catch (err) {
-      setAuthPopupError("No registration found with this phone number. Registration is closed. Please check your number or contact the DL Secretariat.");
+      setAuthPopupError(err.message || "Unable to reach server. Please check your internet connection.");
     } finally {
       setAuthPopupLoading(false);
     }
@@ -363,8 +369,7 @@ export default function RegistrationForm() {
                     className="btn-secondary"
                     style={{ flex: 1 }}
                     onClick={() => {
-                      setAuthPopupNotice("Registration session is closed. New registrations are no longer accepted. Please enter your registered phone number to verify and access your account.");
-                      setAuthPopupStep("login");
+                      navigate("/schools", { state: { startAtRegister: true } });
                     }}
                   >
                     No, I need to register
@@ -388,7 +393,7 @@ export default function RegistrationForm() {
                   Access Your Portal
                 </h2>
                 <p style={{ color: "#475569", marginBottom: "1.25rem", fontSize: "0.9rem" }}>
-                  Enter your registered phone number to authenticate securely. No password needed.
+                  Enter your mobile phone number to verify and access your account or register.
                 </p>
                 {authPopupNotice && (
                   <div style={{
@@ -415,13 +420,16 @@ export default function RegistrationForm() {
                   <input
                     id="popupPhone"
                     type="tel"
-                    placeholder="e.g. 024-498-9910"
+                    placeholder="e.g. 0244000000"
                     value={authPopupPhone}
                     onChange={(e) => setAuthPopupPhone(formatPhoneAsTyped(e.target.value))}
                     onKeyDown={(e) => e.key === 'Enter' ? handlePopupSubmit() : null}
                     style={{ width: "100%", padding: "0.75rem", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "1rem" }}
                     autoFocus
                   />
+                  <span style={{ fontSize: "0.78rem", color: "#64748b", display: "block", marginTop: "0.35rem" }}>
+                    Format: 10 digits (e.g. 0244000000).
+                  </span>
                 </div>
                 <div style={{ display: "flex", gap: "1rem", justifyContent: "center" }}>
                   <button
