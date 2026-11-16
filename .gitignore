@@ -36,3 +36,9 @@ yarn-error.log*
 Thumbs.db
 .vscode/
 .idea/
+
+# cPanel deployment and packages
+*.zip
+*.sqlite
+cpanel_deployment/
+

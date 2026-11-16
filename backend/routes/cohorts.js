@@ -96,7 +96,10 @@ router.get("/stats", trainerOrAdminAuth, async (req, res) => {
 
   if (supabase) {
     try {
-      const { data, error } = await supabase.from("registrations").select("cohort_id, attendance_status, region, district");
+      const { data, error } = await supabase
+        .from("registrations")
+        .select("cohort_id, attendance_status, region, district, program_type")
+        .neq("program_type", "sample_school");
       if (data && !error) {
         useSupabase = true;
         registrationsData = data;
@@ -107,7 +110,7 @@ router.get("/stats", trainerOrAdminAuth, async (req, res) => {
   }
 
   if (!useSupabase) {
-    registrationsData = db.prepare("SELECT cohort_id, attendance_status, region, district FROM registrations").all();
+    registrationsData = db.prepare("SELECT cohort_id, attendance_status, region, district FROM registrations WHERE (program_type = 'master_trainer' OR (cohort_id IS NOT NULL AND (program_type IS NULL OR program_type != 'sample_school')) OR (program_type IS NULL AND cohort_id IS NULL))").all();
   }
 
   const countsMap = {};

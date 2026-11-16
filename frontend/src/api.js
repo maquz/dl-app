@@ -525,3 +525,15 @@ export async function fetchSampleSchoolParticipants(params = {}) {
   const res = await fetch(`${API_URL}/sample-schools/participants${query ? `?${query}` : ""}`);
   return handle(res);
 }
+
+export async function updateSampleSchoolAttendance(authHeader, id, status = "Attended") {
+  const res = await fetch(`${API_URL}/sample-schools/attendance/${id}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAdminAuthHeaders(authHeader),
+    },
+    body: JSON.stringify({ status }),
+  });
+  return handle(res);
+}

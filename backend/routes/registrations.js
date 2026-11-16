@@ -740,7 +740,10 @@ router.get("/stats", adminAuth, async (req, res) => {
     allRows = db.prepare("SELECT * FROM registrations").all();
   }
 
-  const total = allRows.length;
+  // Filter strictly to Master Trainers (Cohorts 1-6) - never mix Sample Schools
+  const mtRows = allRows.filter(r => r.program_type === "master_trainer" || (r.cohort_id && r.program_type !== "sample_school"));
+
+  const total = mtRows.length;
   let maleCount = 0;
   let femaleCount = 0;
   let attendedCount = 0;
@@ -751,7 +754,7 @@ router.get("/stats", adminAuth, async (req, res) => {
   };
   const regionCounts = {};
 
-  for (const row of allRows) {
+  for (const row of mtRows) {
     if (row.sex === "Male") maleCount++;
     if (row.sex === "Female") femaleCount++;
     if (row.attendance_status === "Attended") attendedCount++;
@@ -787,12 +790,19 @@ router.get("/stats", adminAuth, async (req, res) => {
 
 // GET /api/registrations - list/search/filter (admin only)
 router.get("/", trainerOrAdminAuth, async (req, res) => {
-  const { q, region, district, role, cohort_id, attendance_status } = req.query;
+  const { q, region, district, role, cohort_id, attendance_status, program_type } = req.query;
+  const targetProgram = program_type || "master_trainer";
 
   // 1. Try Supabase
   if (supabase) {
     try {
       let query = supabase.from("registrations").select("*, cohorts(name, arrival_date, start_date, end_date, departure_date, max_capacity).limit(100000)").order("submitted_at", { ascending: false });
+
+      if (targetProgram === "master_trainer") {
+        query = query.neq("program_type", "sample_school");
+      } else if (targetProgram === "sample_school") {
+        query = query.eq("program_type", "sample_school");
+      }
 
       if (region) query = query.eq("region", region);
       if (district) query = query.eq("district", district);
@@ -852,6 +862,12 @@ router.get("/", trainerOrAdminAuth, async (req, res) => {
     WHERE 1=1
   `;
   const params = [];
+
+  if (targetProgram === "master_trainer") {
+    sql += " AND (r.program_type = 'master_trainer' OR (r.cohort_id IS NOT NULL AND (r.program_type IS NULL OR r.program_type != 'sample_school')))";
+  } else if (targetProgram === "sample_school") {
+    sql += " AND r.program_type = 'sample_school'";
+  }
 
   if (q) {
     sql += " AND (r.officer_name LIKE ? OR r.phone_number LIKE ? OR r.email LIKE ? OR r.institution_name LIKE ? OR c.name LIKE ?)";
@@ -1009,7 +1025,11 @@ router.get("/export/csv", adminAuth, async (req, res) => {
   let rows = [];
   if (supabase) {
     try {
-      const { data } = await supabase.from("registrations").select("*, cohorts(name).limit(100000)").order("id", { ascending: true });
+      const { data } = await supabase
+        .from("registrations")
+        .select("*, cohorts(name).limit(100000)")
+        .neq("program_type", "sample_school")
+        .order("id", { ascending: true });
       if (data && data.length > 0) {
         rows = data.map(r => ({
           ...r,
@@ -1024,6 +1044,7 @@ router.get("/export/csv", adminAuth, async (req, res) => {
       SELECT r.*, c.name as cohort_name
       FROM registrations r
       LEFT JOIN cohorts c ON r.cohort_id = c.id
+      WHERE (r.program_type = 'master_trainer' OR (r.cohort_id IS NOT NULL AND (r.program_type IS NULL OR r.program_type != 'sample_school')))
       ORDER BY r.id ASC
     `).all();
   }
@@ -1066,7 +1087,11 @@ router.get("/export/xlsx", adminAuth, async (req, res) => {
   let rows = [];
   if (supabase) {
     try {
-      const { data } = await supabase.from("registrations").select("*, cohorts(name).limit(100000)").order("id", { ascending: true });
+      const { data } = await supabase
+        .from("registrations")
+        .select("*, cohorts(name).limit(100000)")
+        .neq("program_type", "sample_school")
+        .order("id", { ascending: true });
       if (data && data.length > 0) {
         rows = data.map(r => ({
           ...r,
@@ -1081,6 +1106,7 @@ router.get("/export/xlsx", adminAuth, async (req, res) => {
       SELECT r.*, c.name as cohort_name
       FROM registrations r
       LEFT JOIN cohorts c ON r.cohort_id = c.id
+      WHERE (r.program_type = 'master_trainer' OR (r.cohort_id IS NOT NULL AND (r.program_type IS NULL OR r.program_type != 'sample_school')))
       ORDER BY r.id ASC
     `).all();
   }

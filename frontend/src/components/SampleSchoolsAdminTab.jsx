@@ -9,6 +9,7 @@ import {
   fetchAssessmentDetails,
   updateAssessment,
   copyAssessmentQuestions,
+  updateSampleSchoolAttendance,
 } from "../api";
 
 export default function SampleSchoolsAdminTab({
@@ -52,6 +53,8 @@ export default function SampleSchoolsAdminTab({
   const [loadingParticipants, setLoadingParticipants] = useState(false);
   const [participantSearch, setParticipantSearch] = useState("");
   const [designationFilter, setDesignationFilter] = useState("");
+  const [attendanceFilter, setAttendanceFilter] = useState("");
+  const [updatingAttendanceId, setUpdatingAttendanceId] = useState(null);
   const [selectedSchoolEmis, setSelectedSchoolEmis] = useState("");
 
   // Load initial data on mount
@@ -73,7 +76,7 @@ export default function SampleSchoolsAdminTab({
   // Reload participants when participant-related filters change
   useEffect(() => {
     loadParticipants();
-  }, [regionFilter, districtFilter, groupFilter, designationFilter, participantSearch, selectedSchoolEmis]);
+  }, [regionFilter, districtFilter, groupFilter, designationFilter, attendanceFilter, participantSearch, selectedSchoolEmis]);
 
   // Merge external assessmentsList if updated
   useEffect(() => {
@@ -139,6 +142,7 @@ export default function SampleSchoolsAdminTab({
         district: districtFilter,
         group_id: groupFilter,
         designation: designationFilter,
+        status: attendanceFilter,
         emis: selectedSchoolEmis,
         search: participantSearch,
       });
@@ -147,6 +151,23 @@ export default function SampleSchoolsAdminTab({
       console.error("Error loading participants:", err);
     } finally {
       setLoadingParticipants(false);
+    }
+  }
+
+  async function handleToggleAttendance(p) {
+    const newStatus = p.attendanceStatus === "Attended" ? "Registered" : "Attended";
+    setUpdatingAttendanceId(p.id);
+    try {
+      await updateSampleSchoolAttendance(null, p.id, newStatus);
+      setParticipants((prev) =>
+        prev.map((item) => (item.id === p.id ? { ...item, attendanceStatus: newStatus } : item))
+      );
+      loadStats();
+    } catch (err) {
+      console.error("Failed to update sample school attendance:", err);
+      alert("Failed to update attendance status: " + (err.message || "Unknown error"));
+    } finally {
+      setUpdatingAttendanceId(null);
     }
   }
 
@@ -347,6 +368,7 @@ export default function SampleSchoolsAdminTab({
     setDistrictFilter("");
     setGroupFilter("");
     setDesignationFilter("");
+    setAttendanceFilter("");
     setSchoolSearch("");
     setParticipantSearch("");
   }
@@ -459,6 +481,7 @@ export default function SampleSchoolsAdminTab({
     if (activeCardKey === "group1" || groupFilter === "Group 1") return "Group 1: Normal DL Coaching (70 Schools)";
     if (activeCardKey === "group23" || groupFilter === "Group 2,Group 3")
       return "Group 2 & Group 3: Treatment Arms T1 & T2 (140 Schools)";
+    if (attendanceFilter) return `Attendance: ${attendanceFilter}`;
     if (groupFilter) return `Study Group: ${groupFilter}`;
     if (designationFilter) return `Role: ${designationFilter}`;
     if (regionFilter) return `Region: ${regionFilter}${districtFilter ? ` · ${districtFilter}` : ""}`;
@@ -467,6 +490,7 @@ export default function SampleSchoolsAdminTab({
     activeCardKey,
     coverageFilter,
     selectedSchoolEmis,
+    attendanceFilter,
     groupFilter,
     designationFilter,
     regionFilter,
@@ -504,6 +528,7 @@ export default function SampleSchoolsAdminTab({
       "Study Group": p.studyGroup,
       Region: p.region,
       District: p.district,
+      "Attendance Status": p.attendanceStatus || "Registered",
       "Registration Date": p.submittedAt,
     }));
     const wsParticipants = XLSX.utils.json_to_sheet(participantRows);
@@ -682,11 +707,26 @@ export default function SampleSchoolsAdminTab({
             </span>
           </div>
           <span className="kpi-val text-green" style={{ color: "#16a34a" }}>
-            {stats?.totalRegistered || 0}
+            {stats?.totalParticipants || stats?.totalRegistered || 0}
           </span>
           <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              fontSize: "0.82rem",
+              fontWeight: 700,
+              marginTop: "0.2rem",
+              color: "#334155",
+            }}
+          >
+            <span style={{ color: "#16a34a" }}>{stats?.attendedParticipants || 0} Attended</span>
+            <span style={{ color: "#94a3b8" }}>·</span>
+            <span style={{ color: "#d97706" }}>{stats?.pendingParticipants || 0} Pending</span>
+          </div>
+          <div
             className="kpi-hint"
-            style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap", marginTop: "0.15rem" }}
+            style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap", marginTop: "0.25rem" }}
           >
             <span
               onClick={(e) => {
@@ -1359,10 +1399,26 @@ export default function SampleSchoolsAdminTab({
               </select>
             </div>
 
+            <div style={{ minWidth: "150px" }}>
+              <select
+                value={attendanceFilter}
+                onChange={(e) => {
+                  setAttendanceFilter(e.target.value);
+                  setActiveCardKey(null);
+                }}
+                style={{ width: "100%", padding: "0.55rem 0.85rem", borderRadius: "8px", border: "1px solid #cbd5e1" }}
+              >
+                <option value="">All Attendance</option>
+                <option value="Attended">Attended</option>
+                <option value="Registered">Pending (Registered)</option>
+              </select>
+            </div>
+
             {(regionFilter ||
               districtFilter ||
               groupFilter ||
               designationFilter ||
+              attendanceFilter ||
               participantSearch ||
               selectedSchoolEmis) && (
               <button
@@ -1380,25 +1436,26 @@ export default function SampleSchoolsAdminTab({
             <table className="assessments-admin-table">
               <thead>
                 <tr>
-                  <th style={{ width: "13%" }}>Ref Code</th>
-                  <th style={{ width: "20%" }}>Staff Name & Sex</th>
-                  <th style={{ width: "12%" }}>Designation</th>
-                  <th style={{ width: "13%" }}>Phone Number</th>
-                  <th style={{ width: "24%" }}>School & EMIS</th>
-                  <th style={{ width: "18%" }}>Study Group</th>
+                  <th style={{ width: "11%" }}>Ref Code</th>
+                  <th style={{ width: "18%" }}>Staff Name & Sex</th>
+                  <th style={{ width: "11%" }}>Designation</th>
+                  <th style={{ width: "12%" }}>Phone Number</th>
+                  <th style={{ width: "21%" }}>School & EMIS</th>
+                  <th style={{ width: "13%" }}>Study Group</th>
+                  <th style={{ width: "14%" }}>Attendance</th>
                 </tr>
               </thead>
               <tbody>
                 {loadingParticipants && (
                   <tr>
-                    <td colSpan={6} className="empty-row">
+                    <td colSpan={7} className="empty-row">
                       Loading participants…
                     </td>
                   </tr>
                 )}
                 {!loadingParticipants && participants.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="empty-row">
+                    <td colSpan={7} className="empty-row">
                       No participants found matching the active filter.
                     </td>
                   </tr>
@@ -1472,6 +1529,42 @@ export default function SampleSchoolsAdminTab({
                         {p.treatment && (
                           <span style={{ fontSize: "0.74rem", color: "#64748b" }}>{p.treatment}</span>
                         )}
+                      </div>
+                    </td>
+                    <td>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
+                        <span
+                          style={{
+                            display: "inline-block",
+                            padding: "0.2rem 0.55rem",
+                            borderRadius: "999px",
+                            fontSize: "0.75rem",
+                            fontWeight: 700,
+                            width: "fit-content",
+                            background: p.attendanceStatus === "Attended" ? "#dcfce7" : "#fef3c7",
+                            color: p.attendanceStatus === "Attended" ? "#166534" : "#92400e",
+                            border: p.attendanceStatus === "Attended" ? "1px solid #bbf7d0" : "1px solid #fde68a",
+                          }}
+                        >
+                          {p.attendanceStatus === "Attended" ? "✓ Attended" : "⏳ Pending"}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleAttendance(p)}
+                          disabled={updatingAttendanceId === p.id}
+                          style={{
+                            fontSize: "0.72rem",
+                            fontWeight: 600,
+                            padding: "0.15rem 0.45rem",
+                            borderRadius: "4px",
+                            border: "1px solid #cbd5e1",
+                            background: "#ffffff",
+                            cursor: "pointer",
+                            width: "fit-content",
+                          }}
+                        >
+                          {updatingAttendanceId === p.id ? "Saving…" : p.attendanceStatus === "Attended" ? "Mark Pending" : "Mark Attended"}
+                        </button>
                       </div>
                     </td>
                   </tr>

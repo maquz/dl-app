@@ -374,14 +374,26 @@ export default function AdminDashboard() {
   const [submissionsData, setSubmissionsData] = useState({ summary: {}, submissions: [] });
   const [submissionsLoading, setSubmissionsLoading] = useState(false);
   
+  // Strictly isolate Cohorts 1-6 Master Trainers from Sample Schools data
+  const masterTrainerRows = useMemo(() => {
+    return (rows || []).filter((r) => {
+      if (r.programType === "sample_school" || r.program_type === "sample_school") return false;
+      const rolesStr = Array.isArray(r.roles) ? r.roles.join(" ") : (r.roles || "");
+      if (rolesStr.includes("Headteacher") || (rolesStr.includes("Teacher") && !rolesStr.includes("District Trainer") && !rolesStr.includes("Master Trainer"))) {
+        return false;
+      }
+      return true;
+    });
+  }, [rows]);
+
   const displayRows = useMemo(() => {
-    if (!genderFilter) return rows;
-    return rows.filter(r => {
+    if (!genderFilter) return masterTrainerRows;
+    return masterTrainerRows.filter(r => {
        const s = (r.sex || "").toLowerCase();
        const g = genderFilter.toLowerCase();
        return s.startsWith(g) || s === g;
     });
-  }, [rows, genderFilter]);
+  }, [masterTrainerRows, genderFilter]);
 
   const itPersonsList = useMemo(() => {
     let list = displayRows.filter(r => (r.roles || []).some(role => role.toLowerCase().includes("it person")));
@@ -452,7 +464,7 @@ export default function AdminDashboard() {
       setError("");
     }
     try {
-      const filters = {};
+      const filters = { program_type: "master_trainer" };
       if (query) filters.q = query;
       if (regionFilter) filters.region = regionFilter;
       if (districtFilter) filters.district = districtFilter;
@@ -1243,7 +1255,7 @@ export default function AdminDashboard() {
 
   // ---- Export Signed List (Word Format) ----
   function handleExportSignedList() {
-    const listRows = [...rows].sort((a, b) => (a.district || "").localeCompare(b.district || ""));
+    const listRows = [...displayRows].sort((a, b) => (a.district || "").localeCompare(b.district || ""));
     const date = new Date().toLocaleDateString("en-GH", { day: "2-digit", month: "long", year: "numeric" });
     const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Attendance Signed List</title><style>table { border-collapse: collapse; width: 100%; } th, td { border: 1px solid black; padding: 8px; text-align: left; } th { background-color: #f2f2f2; }</style></head><body>";
     const footer = "</body></html>";
@@ -1277,7 +1289,7 @@ export default function AdminDashboard() {
 
   // ---- Export Signed List (Excel Format) ----
   function handleExportSignedListExcel() {
-    const listRows = [...rows].sort((a, b) => (a.district || "").localeCompare(b.district || ""));
+    const listRows = [...displayRows].sort((a, b) => (a.district || "").localeCompare(b.district || ""));
     const date = new Date().toLocaleDateString("en-GH", { day: "2-digit", month: "long", year: "numeric" });
     
     const wsData = [
@@ -1375,7 +1387,7 @@ export default function AdminDashboard() {
 
   // ---- Print current filtered nominees table ----
   function handlePrint() {
-    const printRows = rows;
+    const printRows = displayRows;
     const date = new Date().toLocaleDateString("en-GH", { day: "2-digit", month: "long", year: "numeric" });
     const tableRows = printRows.map((r) => `
       <tr>
@@ -1522,11 +1534,11 @@ export default function AdminDashboard() {
   const filterDistricts = useMemo(() => (regionFilter ? regions[regionFilter] || [] : []), [regionFilter, regions]);
   const editDistricts = useMemo(() => (editValues.region ? regions[editValues.region] || [] : []), [editValues.region, regions]);
 
-  // Analytics calculation strictly bound to current filtered rows
-  const totalCount = rows.length;
-  const maleCount = rows.filter((r) => r.sex === "Male").length;
-  const femaleCount = rows.filter((r) => r.sex === "Female").length;
-  const attendedCount = rows.filter((r) => r.attendance_status === "Attended").length;
+  // Analytics calculation strictly bound to Cohorts 1-6 Master Trainers
+  const totalCount = masterTrainerRows.length;
+  const maleCount = masterTrainerRows.filter((r) => r.sex === "Male").length;
+  const femaleCount = masterTrainerRows.filter((r) => r.sex === "Female").length;
+  const attendedCount = masterTrainerRows.filter((r) => r.attendance_status === "Attended").length;
   const pendingCount = Math.max(0, totalCount - attendedCount);
 
   // Filtered trainers list

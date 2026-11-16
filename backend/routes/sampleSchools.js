@@ -493,7 +493,7 @@ router.get("/stats", async (req, res) => {
 
 // GET /api/sample-schools/participants - List of registered participants
 router.get("/participants", async (req, res) => {
-  const { region, district, group_id, designation, search, emis } = req.query;
+  const { region, district, group_id, designation, status, search, emis } = req.query;
   let participants = await getAllSampleSchoolParticipants();
 
   if (region) {
@@ -515,6 +515,11 @@ router.get("/participants", async (req, res) => {
   if (designation) {
     participants = participants.filter(
       (p) => (p.designation || "").toLowerCase() === designation.trim().toLowerCase()
+    );
+  }
+  if (status && status !== "all") {
+    participants = participants.filter(
+      (p) => (p.attendanceStatus || "Registered").toLowerCase() === status.trim().toLowerCase()
     );
   }
   if (emis) {
@@ -540,6 +545,19 @@ router.get("/participants", async (req, res) => {
     count: participants.length,
     participants,
   });
+});
+
+// PATCH /api/sample-schools/attendance/:id
+router.patch("/attendance/:id", async (req, res) => {
+  const { id } = req.params;
+  const { status = "Attended" } = req.body;
+  if (supabase) {
+    await supabase
+      .from("registrations")
+      .update({ attendance_status: status, checked_in_at: new Date().toISOString() })
+      .eq("id", id);
+  }
+  res.json({ success: true, message: `Attendance updated to ${status}` });
 });
 
 module.exports = router;
