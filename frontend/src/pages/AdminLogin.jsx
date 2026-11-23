@@ -52,6 +52,10 @@ export default function AdminLogin() {
         setErrors(err.body.errors);
       } else if (err.body?.error) {
         setServerError(err.body.error);
+      } else if (typeof err.body === "string" && err.body.length > 0 && err.body.length < 200) {
+        setServerError(err.body);
+      } else if (err.message && err.message !== "Request failed") {
+        setServerError(err.message);
       } else {
         setServerError("Incorrect administrator email or password.");
       }
@@ -89,12 +93,12 @@ export default function AdminLogin() {
             <div className="input-wrapper-modern">
               <input
                 id="admin-email"
-                type="email"
+                type="text"
                 className="input-field-modern"
                 placeholder="e.g. admin@ges.gov.gh"
                 value={loginEmail}
                 onChange={(e) => setLoginEmail(e.target.value)}
-                autoComplete="email"
+                autoComplete="username email"
                 autoFocus
               />
             </div>
